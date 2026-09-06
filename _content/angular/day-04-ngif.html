@@ -1,0 +1,83 @@
+<!--meta
+title: Day 4 — Structural Directive: NgIf / @if
+eyebrow: Angular · Day 4
+short: Day 4
+lede: Hiện hay không hiện một khối giao diện. Điểm mấu chốt: NgIf không ẩn phần tử — nó tháo hẳn khỏi cây DOM.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Tháo ra, lắp vào — không phải ẩn đi</h2></div>
+  <p>Structural directive (chỉ thị cấu trúc) là loại directive làm thay đổi <em>cấu trúc</em> cây DOM: thêm, bớt, lặp phần tử. <code>NgIf</code> là ví dụ đơn giản nhất.</p>
+  <p>Khác biệt quan trọng với CSS: <code>[hidden]</code> hay <code>display: none</code> vẫn giữ phần tử trong trang (vẫn tồn tại, vẫn giữ trạng thái). <code>@if</code> thì <strong>huỷ hẳn</strong> component bên trong — mọi state, mọi subscription (đăng ký lắng nghe) đều mất; khi điều kiện đúng trở lại, một thể hiện hoàn toàn mới được tạo.</p>
+<pre><code><span class="cm">// Cú pháp mới (Angular 17+), khuyên dùng</span>
+&#64;if (dangTai()) {
+  &lt;app-spinner /&gt;
+} &#64;else if (loi()) {
+  &lt;p class="err"&gt;{{ loi() }}&lt;/p&gt;
+} &#64;else {
+  &lt;app-danh-sach [items]="items()" /&gt;
+}
+
+<span class="cm">// Cú pháp cũ, vẫn gặp nhiều trong code hiện có</span>
+&lt;app-spinner *ngIf="dangTai(); else noiDung"&gt;&lt;/app-spinner&gt;
+&lt;ng-template #noiDung&gt;…&lt;/ng-template&gt;</code></pre>
+  <div class="callout">
+    <p><strong>Dấu sao <code>*</code> là đường tắt.</strong> <code>*ngIf</code> được Angular dịch thành một <code>&lt;ng-template&gt;</code> bọc quanh phần tử. Hiểu điều này thì hiểu vì sao không thể đặt hai directive có dấu sao trên cùng một thẻ.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Tiết kiệm thật.</b> Không vẽ thì không tốn DOM, không chạy change detection cho nhánh đó.</li>
+        <li><b>Dọn dẹp tự động.</b> Component bị huỷ kéo theo <code>ngOnDestroy</code>, huỷ subscription — tránh rò rỉ.</li>
+        <li><b>Tránh lỗi dữ liệu rỗng.</b> Bọc <code>@if (data())</code> là con bên trong chắc chắn có dữ liệu.</li>
+        <li><b><code>@if</code> mới gọn hơn hẳn</b>: có <code>@else if</code>, không cần <code>ng-template</code>, kiểm tra kiểu tốt hơn.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>&#64;if (chiTiet(); as ct) {
+  &lt;app-bieu-do-nang [data]="ct.diem" /&gt;   <span class="cm">// chắc chắn có dữ liệu</span>
+}
+<span class="cm">// Đóng khối lại: component bị huỷ → ngOnDestroy chạy, subscription bị ngắt,</span>
+<span class="cm">// biểu đồ nặng không còn tính toán gì nữa.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Mất trạng thái.</b> Ẩn/hiện liên tục một form là mỗi lần gõ lại từ đầu — trường hợp này nên dùng CSS.</li>
+        <li><b>Dựng lại tốn kém.</b> Component nặng bị tạo mới nhiều lần gây giật.</li>
+        <li><b>Không lấy được tham chiếu.</b> <code>viewChild()</code> tới phần tử bên trong <code>@if</code> sẽ rỗng khi điều kiện sai.</li>
+        <li><b>Lồng nhiều tầng làm template rối</b> — dấu hiệu nên tách component con.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&#64;if (dangMoTab()) { &lt;form&gt;…&lt;/form&gt; }
+<span class="cm">// ✗ đóng tab rồi mở lại: form dựng mới hoàn toàn</span>
+<span class="cm">// → mất sạch dữ liệu người dùng đang gõ dở</span>
+<span class="cm">// chữa cho ca này: giữ trong DOM, ẩn bằng CSS (hidden / display:none)</span>
+
+bang = viewChild(IamTable);   <span class="cm">// nằm trong @if đang false</span>
+<span class="kw">this</span>.bang()?.reset();          <span class="cm">// → undefined, lệnh không chạy</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Chọn thế nào:</strong> nội dung nặng, ít khi hiện → <code>@if</code>. Bật tắt liên tục và cần giữ nguyên trạng thái (tab, accordion đang nhập dở) → giữ trong DOM và ẩn bằng CSS.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>directive</td><td>Chỉ thị — lớp gắn thêm hành vi cho phần tử trong template.</td></tr>
+      <tr><td>structural directive</td><td>Chỉ thị cấu trúc — thêm/bớt phần tử khỏi DOM.</td></tr>
+      <tr><td>ng-template</td><td>Khuôn chờ — khối HTML chỉ được vẽ khi có lệnh.</td></tr>
+      <tr><td>subscription</td><td>Đăng ký lắng nghe một luồng dữ liệu; phải huỷ khi không dùng.</td></tr>
+      <tr><td>ngOnDestroy</td><td>Hàm vòng đời chạy khi component bị huỷ.</td></tr>
+      <tr><td>change detection</td><td>Phát hiện thay đổi — chu kỳ rà soát để cập nhật giao diện.</td></tr>
+    </tbody>
+  </table></div>
+</section>

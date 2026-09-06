@@ -1,0 +1,73 @@
+<!--meta
+title: Day 6 — Attribute Directive: Class và Style
+eyebrow: Angular · Day 6
+short: Day 6
+lede: NgClass, NgStyle và cách gán class/style theo điều kiện — cùng lý do vì sao ngày nay nên dùng cú pháp [class.abc] gọn hơn.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Directive không đổi cấu trúc, chỉ đổi diện mạo</h2></div>
+  <p>Attribute directive (chỉ thị thuộc tính) không thêm bớt phần tử — nó sửa <em>bản thân</em> phần tử: class, style, thuộc tính, hành vi. <code>NgClass</code> và <code>NgStyle</code> là hai cái có sẵn hay dùng nhất.</p>
+<pre><code><span class="cm">// Cách gọn nhất — không cần import gì</span>
+&lt;div [class.active]="dangChon()" [class.disabled]="!choPhep()"&gt;…&lt;/div&gt;
+&lt;div [style.width.px]="chieuRong()"&gt;…&lt;/div&gt;
+
+<span class="cm">// NgClass / NgStyle — khi số lượng class động, tính bằng object</span>
+&lt;div [ngClass]="{ active: dangChon(), 'text-error': coLoi() }"&gt;…&lt;/div&gt;
+&lt;div [ngStyle]="{ width: w() + 'px', color: mau() }"&gt;…&lt;/div&gt;</code></pre>
+  <div class="callout">
+    <p><strong>Ưu tiên <code>[class.x]</code> và <code>[style.x]</code></strong> cho các trường hợp cố định — cú pháp này được Angular tối ưu riêng, không cần import <code>NgClass</code>/<code>NgStyle</code>, và đọc rõ ràng hơn. Chỉ dùng <code>ngClass</code> khi tập class thật sự sinh động lúc chạy.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Giao diện phản ứng theo state</b> mà không phải viết một dòng thao tác DOM.</li>
+        <li><b>Cộng dồn an toàn.</b> Angular chỉ thêm/bớt đúng class nó quản lý, không xoá class do nơi khác gắn.</li>
+        <li><b>Kết hợp tốt với hệ token.</b> Bật tắt class tiện ích (Tailwind) theo điều kiện rất gọn.</li>
+        <li><b>Viết được directive riêng.</b> Cùng cơ chế đó, bạn tự tạo được chỉ thị dùng chung (ví dụ tô màu theo trạng thái).</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>&lt;tr [class.bg-error-25]="row.quaHan"
+    [class.opacity-50]="!row.active"&gt;…&lt;/tr&gt;
+<span class="cm">// Trạng thái đổi → class tự thêm/bớt, class tĩnh trên thẻ vẫn giữ nguyên</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Object literal trong template</b> tạo tham chiếu mới mỗi chu kỳ → tốn thêm công so sánh.</li>
+        <li><b><code>ngStyle</code> đẻ ra inline style</b>, đè lên stylesheet và khó ghi đè lại về sau.</li>
+        <li><b>Trộn nhiều nguồn class</b> (<code>class</code> tĩnh + <code>[class]</code> + <code>ngClass</code>) khiến khó đoán kết quả cuối.</li>
+        <li><b>Dễ nhồi logic vào template</b> — điều kiện dài nên chuyển thành <code>computed()</code> trong lớp.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&lt;div [ngClass]="{ active: dangChon(), err: coLoi() }"&gt;
+<span class="cm">// ✗ object literal: mỗi chu kỳ tạo object MỚI → Angular phải so lại toàn bộ</span>
+
+&lt;div [ngStyle]="{ color: '#98A2B3' }"&gt;
+<span class="cm">// ✗ inline style + hardcode màu: theme tối hiện chữ xám trên nền xám,</span>
+<span class="cm">// và không ghi đè lại được bằng stylesheet</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Đừng hardcode màu.</strong> Trong dự án này, mọi màu phải lấy từ token trong <code>tailwind.config.js</code> (<code>text-gray-400</code>, <code>bg-brand-25</code>…), không viết <code>[style.color]="'#98A2B3'"</code> — theme đổi là mọi chỗ hardcode đều sai.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>attribute directive</td><td>Chỉ thị thuộc tính — sửa diện mạo/hành vi của phần tử sẵn có.</td></tr>
+      <tr><td>NgClass / NgStyle</td><td>Directive gán nhiều class/style theo object điều kiện.</td></tr>
+      <tr><td>inline style</td><td>Style viết thẳng trên phần tử, độ ưu tiên rất cao.</td></tr>
+      <tr><td>design token</td><td>Giá trị thiết kế đặt tên sẵn (màu, cỡ chữ) dùng chung toàn hệ thống.</td></tr>
+      <tr><td>computed()</td><td>Signal dẫn xuất — giá trị tính từ signal khác, tự cache.</td></tr>
+    </tbody>
+  </table></div>
+</section>

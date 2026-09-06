@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="vi" data-track="rxjs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Subject và họ hàng — luồng vừa nghe vừa phát</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><a href="index.html">RxJS</a><span>/</span><span class="now">Subject</span></nav>
+<header class="hero col">
+<p class="eyebrow">RxJS · Bài 8</p>
+<h1>Subject và họ hàng — luồng vừa nghe vừa phát</h1>
+<p class="lede">Observable thường chỉ biết phát, bạn chỉ biết nghe. Subject phá vỡ điều đó: nó vừa là luồng, vừa là cái micro ai cũng nói vào được. Bài này đi qua bốn biến thể, chuyện nóng — lạnh, và câu hỏi thật sự khó: khi nào nên thay nó bằng signal.</p>
+</header>
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Cái micro nối vào loa</h2></div>
+  <p>Một <span class="gl" data-gl="Luồng dữ liệu — dãy giá trị xuất hiện dần theo thời gian" tabindex="0"><strong>Observable</strong></span> (luồng dữ liệu — một dãy giá trị xuất hiện dần theo thời gian) bình thường giống một cuộn băng: bạn <span class="gl" data-gl="Đăng ký nghe — hành động khiến luồng bắt đầu chạy" tabindex="0"><code>subscribe</code></span> (đăng ký nghe — hành động khiến luồng bắt đầu chạy) thì nó tua lại từ đầu <em>cho riêng bạn</em>. Hai <span class="gl" data-gl="subscriber" tabindex="0">người nghe</span> là hai cuộn băng chạy song song, không liên quan gì nhau.</p>
+  <p><span class="gl" data-gl="Luồng vừa phát vừa nghe được — vừa là Observable vừa là Observer" tabindex="0"><strong>Subject</strong></span> (luồng vừa phát vừa nghe được) thì khác: nó là một cái micro cắm sẵn vào loa. Ai cầm micro cũng nói vào được bằng <span class="gl" data-gl="Phát ra một giá trị vào luồng" tabindex="0"><code>next()</code></span> (phát ra một giá trị), và tất cả người đang đứng nghe cùng lúc đều nghe đúng câu đó. Nói theo ngôn ngữ RxJS: Subject vừa là <strong>Observable</strong> vừa là <span class="gl" data-gl="Người nghe — vật có ba cửa next / error / complete" tabindex="0"><strong>Observer</strong></span> (người nghe — vật có ba cửa <code>next</code> / <code>error</code> / <code>complete</code>).</p>
+<pre><code><span class="kw">const</span> micro = <span class="kw">new</span> Subject&lt;<span class="kw">string</span>&gt;();
+
+micro.subscribe((v) =&gt; console.log(<span class="str">'A nghe:'</span>, v));   <span class="cm">// người nghe thứ nhất</span>
+micro.next(<span class="str">'xin chào'</span>);                                <span class="out">// A nghe: xin chào</span>
+
+micro.subscribe((v) =&gt; console.log(<span class="str">'B nghe:'</span>, v));   <span class="cm">// vào sau</span>
+micro.next(<span class="str">'tạm biệt'</span>);                                <span class="out">// A nghe: tạm biệt</span>
+                                                       <span class="out">// B nghe: tạm biệt</span>
+<span class="cm">// B KHÔNG bao giờ nghe được 'xin chào' — Subject trần không nhớ gì cả.</span></code></pre>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> Subject là thứ biến một luồng <em>riêng cho từng người</em> thành một luồng <em>chung cho mọi người</em>. Sức mạnh nằm ở chữ "chung" — và mọi rắc rối của nó cũng nằm đúng ở đó: ai cũng phát được, và ai đến muộn thì mất phần.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Một nguồn chia cho nhiều người, thay vì mỗi người một nguồn</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 268" role="img" aria-label="Sơ đồ hai hàng. Hàng trên là Observable lạnh: mỗi người nghe làm nguồn chạy lại một lần riêng, nên nguồn chạy hai lần và hai người có thể nhận hai kết quả khác nhau. Hàng dưới là Subject: nguồn chỉ chạy một lần, đổ vào Subject, rồi Subject phát lại cùng một giá trị cho cả hai người nghe.">
+        <defs>
+          <marker id="subjArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <g>
+          <rect x="0" y="26" width="720" height="104" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="66" font-size="12" font-weight="700" fill="currentColor" font-family="monospace">lạnh</text>
+          <text x="14" y="82" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">unicast</text>
+
+          <rect x="120" y="44" width="130" height="30" rx="8" fill="var(--surface)"></rect>
+          <text x="132" y="63" font-size="11" fill="currentColor" font-family="monospace">nguồn chạy lần 1</text>
+          <rect x="120" y="86" width="130" height="30" rx="8" fill="var(--surface)"></rect>
+          <text x="132" y="105" font-size="11" fill="currentColor" font-family="monospace">nguồn chạy lần 2</text>
+
+          <line x1="254" y1="59" x2="402" y2="59" stroke="currentColor" stroke-width="1.4" opacity=".5" marker-end="url(#subjArrow)"></line>
+          <line x1="254" y1="101" x2="402" y2="101" stroke="currentColor" stroke-width="1.4" opacity=".5" marker-end="url(#subjArrow)"></line>
+
+          <rect x="410" y="44" width="110" height="30" rx="8" fill="var(--surface)"></rect>
+          <text x="422" y="63" font-size="11" fill="currentColor" font-family="monospace">người nghe A</text>
+          <rect x="410" y="86" width="110" height="30" rx="8" fill="var(--surface)"></rect>
+          <text x="422" y="105" font-size="11" fill="currentColor" font-family="monospace">người nghe B</text>
+
+          <text x="534" y="66" font-size="10.5" fill="var(--bad)" font-family="monospace">nguồn chạy 2 lần</text>
+          <text x="534" y="82" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">2 kết quả riêng</text>
+        </g>
+
+        <g>
+          <rect x="0" y="140" width="720" height="120" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="196" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">nóng</text>
+          <text x="14" y="212" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">multicast</text>
+
+          <rect x="112" y="185" width="118" height="30" rx="8" fill="var(--surface)"></rect>
+          <text x="124" y="204" font-size="11" fill="currentColor" font-family="monospace">nguồn 1 lần</text>
+          <line x1="234" y1="200" x2="268" y2="200" stroke="currentColor" stroke-width="1.4" opacity=".5" marker-end="url(#subjArrow)"></line>
+
+          <rect x="276" y="182" width="110" height="36" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.8"></rect>
+          <text x="300" y="205" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">Subject</text>
+
+          <line x1="390" y1="192" x2="420" y2="172" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#subjArrow)"></line>
+          <line x1="390" y1="208" x2="420" y2="230" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#subjArrow)"></line>
+
+          <rect x="428" y="157" width="110" height="30" rx="8" fill="var(--surface)"></rect>
+          <text x="440" y="176" font-size="11" fill="currentColor" font-family="monospace">người nghe A</text>
+          <rect x="428" y="217" width="110" height="30" rx="8" fill="var(--surface)"></rect>
+          <text x="440" y="236" font-size="11" fill="currentColor" font-family="monospace">người nghe B</text>
+
+          <text x="552" y="196" font-size="10.5" fill="var(--good)" font-family="monospace">nguồn chạy 1 lần</text>
+          <text x="552" y="212" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">cùng 1 giá trị</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>Luồng lạnh nhân bản công việc cho từng <span class="gl" data-gl="subscriber" tabindex="0">người nghe</span>; <span class="gl" data-gl="Luồng vừa phát vừa nghe được — vừa là Observable vừa là Observer" tabindex="0">Subject</span> làm công việc đó đúng một lần rồi chia lại.</figcaption>
+  </figure>
+  <p class="col">Đây là toàn bộ khác biệt <strong>nóng — lạnh</strong> (hot — cold). Luồng <strong>lạnh</strong> tự sinh dữ liệu <em>bên trong</em> mỗi lần có người đăng ký, nên mỗi người một bản riêng (<span class="gl" data-gl="Một nguồn phục vụ đúng một người nghe" tabindex="0"><strong>unicast</strong></span> — một nguồn cho một người). Luồng <strong>nóng</strong> lấy dữ liệu từ <em>bên ngoài</em>, ai đến thì nghe từ lúc đó (<span class="gl" data-gl="Một nguồn chia chung cho nhiều người nghe" tabindex="0"><strong>multicast</strong></span> — một nguồn cho nhiều người). <span class="gl" data-gl="Bộ gọi máy chủ của Angular — mỗi lần đăng ký là một lời gọi thật" tabindex="0"><code>HttpClient</code></span> (bộ gọi máy chủ của Angular) là lạnh: ba chỗ dùng là ba lời gọi <span class="gl" data-gl="Giao diện lập trình — địa chỉ máy chủ mà mã nguồn gọi tới" tabindex="0"><strong>API</strong></span> (giao diện lập trình — địa chỉ máy chủ mà mã nguồn gọi tới) thật. Subject là nóng.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Bốn biến thể — khác nhau ở chỗ "nhớ được bao nhiêu"</h2></div>
+  <p class="col">Cả bốn đều là <span class="gl" data-gl="Luồng vừa phát vừa nghe được — vừa là Observable vừa là Observer" tabindex="0">Subject</span>, đều có <span class="gl" data-gl="Phát ra một giá trị vào luồng" tabindex="0"><code>next()</code></span>. Chúng chỉ khác nhau ở câu trả lời cho một câu hỏi: <em>người đăng ký muộn thì nhận được gì?</em></p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Lớp</th><th>Người vào muộn nhận được</th><th>Dùng khi</th></tr></thead>
+    <tbody>
+      <tr><td>Subject</td><td><span class="no">Không gì cả</span> — chỉ nghe từ lúc đăng ký trở đi.</td><td>Sự kiện thuần tuý: bấm nút, gửi form thành công, tín hiệu huỷ.</td></tr>
+      <tr><td><span class="gl" data-gl="Subject nhớ giá trị mới nhất, phát ngay cho người vừa đăng ký" tabindex="0">BehaviorSubject</span></td><td><span class="yes">Giá trị mới nhất</span>, ngay khi vừa đăng ký. Bắt buộc khai giá trị khởi tạo.</td><td>Trạng thái hiện tại: người đang đăng nhập, <span class="gl" data-gl="filter" tabindex="0">bộ lọc</span> đang chọn, chế độ sáng/tối.</td></tr>
+      <tr><td><span class="gl" data-gl="Subject phát lại N giá trị gần nhất cho người vào muộn" tabindex="0">ReplaySubject</span></td><td><span class="yes">N giá trị gần nhất</span> theo số bạn khai.</td><td>Nhật ký ngắn, hoặc khi cần đúng một giá trị cũ nhưng không có giá trị khởi tạo hợp lý.</td></tr>
+      <tr><td><span class="gl" data-gl="Subject chỉ phát giá trị cuối, và chỉ khi đã complete" tabindex="0">AsyncSubject</span></td><td><span class="yes">Đúng một giá trị cuối</span> — và chỉ khi luồng đã <span class="gl" data-gl="Kết thúc luồng bình thường, không phải lỗi" tabindex="0"><code>complete()</code></span>.</td><td>Hiếm. Kết quả một lần dùng mãi, kiểu như một Promise thủ công.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay dùng nhất</span>
+      <h3>BehaviorSubject</h3>
+      <p>Có <code>.value</code> đọc được ngay, không cần đăng ký. Đó là lý do nó thành kho <span class="gl" data-gl="state" tabindex="0">trạng thái</span> nhỏ mặc định của mọi service.</p>
+<pre><code><span class="kw">const</span> s = <span class="kw">new</span> BehaviorSubject(<span class="kw">0</span>);
+s.subscribe((v) =&gt; console.log(<span class="str">'A'</span>, v)); <span class="out">// A 0</span>
+s.next(<span class="kw">1</span>);                             <span class="out">// A 1</span>
+s.subscribe((v) =&gt; console.log(<span class="str">'B'</span>, v)); <span class="out">// B 1</span>
+console.log(s.value);                 <span class="out">// 1</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag warn">Cẩn thận bộ nhớ</span>
+      <h3>ReplaySubject</h3>
+      <p>Không truyền số đệm thì nó nhớ <b>tất cả</b> — luồng chạy cả ngày là bộ nhớ phình cả ngày.</p>
+<pre><code><span class="kw">const</span> s = <span class="kw">new</span> ReplaySubject&lt;<span class="kw">number</span>&gt;(<span class="kw">2</span>);
+s.next(<span class="kw">1</span>); s.next(<span class="kw">2</span>); s.next(<span class="kw">3</span>);
+s.subscribe((v) =&gt; console.log(v));
+<span class="out">// 2</span>
+<span class="out">// 3</span>
+<span class="cm">// new ReplaySubject() → nhớ vô hạn</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag bad">Gần như không cần</span>
+      <h3>AsyncSubject</h3>
+      <p>Im lặng cho tới khi <code>complete()</code>. Quên gọi <code>complete()</code> là không ai nhận được gì — lỗi rất khó nhìn ra.</p>
+<pre><code><span class="kw">const</span> s = <span class="kw">new</span> AsyncSubject&lt;<span class="kw">number</span>&gt;();
+s.next(<span class="kw">1</span>); s.next(<span class="kw">2</span>);
+s.subscribe((v) =&gt; console.log(v));
+<span class="cm">// chưa in gì</span>
+s.next(<span class="kw">3</span>);
+s.complete();                     <span class="out">// 3</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">So sánh</p><h2>Đừng tự cầm micro khi đã có <span class="gl" data-gl="Biến luồng lạnh thành nóng, dùng chung một nguồn" tabindex="0"><code>share</code></span></h2></div>
+  <p class="col">Việc "gọi <span class="gl" data-gl="Giao diện lập trình — địa chỉ máy chủ mà mã nguồn gọi tới" tabindex="0">API</span> một lần, chia cho nhiều chỗ dùng" là lý do phổ biến nhất khiến người ta lôi <span class="gl" data-gl="Luồng vừa phát vừa nghe được — vừa là Observable vừa là Observer" tabindex="0">Subject</span> ra. Nhưng RxJS đã đóng gói sẵn đúng việc đó: <code>share()</code> và <code><span class="gl" data-gl="Chia chung một luồng, phát lại giá trị cũ cho người vào muộn" tabindex="0">shareReplay</span>()</code> bên trong <em>chính là</em> một Subject, chỉ khác là chúng tự lo phần đấu nối và dọn dẹp giúp bạn.</p>
+  <div class="pc">
+    <div class="panel con">
+      <h3><span class="dot">−</span>Tự dựng bằng Subject</h3>
+      <ul>
+        <li><b>Nhiều mảnh phải tự giữ.</b> Một Subject, một chỗ đăng ký nguồn, một chỗ huỷ.</li>
+        <li><b>Dễ rò rỉ.</b> Không ai nhắc bạn <code>unsubscribe</code> cái đăng ký ở giữa.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Dài dòng và dễ quên dọn</p>
+<pre><code><span class="kw">private</span> kho$ = <span class="kw">new</span> ReplaySubject&lt;User[]&gt;(<span class="kw">1</span>);
+
+<span class="kw">constructor</span>() {
+  <span class="kw">this</span>.http.get&lt;User[]&gt;(<span class="str">'/api/users'</span>)
+    .subscribe(<span class="kw">this</span>.kho$);   <span class="cm">// ai huỷ cái này?</span>
+}
+danhSach$ = <span class="kw">this</span>.kho$.asObservable();</code></pre></div>
+    </div>
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Dùng <code>shareReplay</code></h3>
+      <ul>
+        <li><b>Một dòng.</b> Nguồn chạy đúng một lần, người vào muộn vẫn nhận giá trị.</li>
+        <li><b><span class="gl" data-gl="Đếm người nghe — hết người thì tự ngắt nguồn" tabindex="0"><code>refCount</code></span> tự dọn.</b> Người nghe cuối rời đi thì nguồn cũng bị huỷ.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ngắn và tự dọn</p>
+<pre><code>danhSach$ = <span class="kw">this</span>.http.get&lt;User[]&gt;(<span class="str">'/api/users'</span>)
+  .pipe(shareReplay({
+    bufferSize: <span class="kw">1</span>,       <span class="cm">// nhớ 1 giá trị cho người vào muộn</span>
+    refCount: <span class="kw">true</span>,      <span class="cm">// hết người nghe thì ngắt nguồn</span>
+  }));
+<span class="cm">// 3 chỗ dùng async pipe → vẫn chỉ 1 lời gọi HTTP</span></code></pre></div>
+    </div>
+  </div>
+  <p class="col">Nói ngắn: <strong>Subject để cho dữ liệu chảy vào từ bên ngoài</strong> (sự kiện người dùng, tin nhắn <span class="gl" data-gl="Kết nối hai chiều luôn mở, máy chủ đẩy dữ liệu xuống bất cứ lúc nào" tabindex="0">WebSocket</span>, một lệnh gọi từ component khác). <strong><code>share</code>/<code>shareReplay</code> để chia lại một luồng đã có sẵn.</strong> Lẫn hai việc này là nguồn gốc của hầu hết mã Subject thừa thãi.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">So sánh</p><h2>Subject hay signal, trong Angular hôm nay?</h2></div>
+  <p class="col">Từ khi Angular có <strong>signal</strong> (tín hiệu — ô giá trị phản ứng, đọc là biết đang phụ thuộc), phần lớn công việc mà <span class="gl" data-gl="Subject nhớ giá trị mới nhất, phát ngay cho người vừa đăng ký" tabindex="0"><code>BehaviorSubject</code></span> từng gánh đã có người làm gọn hơn. Ranh giới khá rõ nếu hỏi đúng câu: bạn cần <em>một giá trị hiện tại</em>, hay cần <em>một dãy sự kiện theo thời gian</em>?</p>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Tình huống</th><th>Nên dùng</th><th>Vì sao</th></tr></thead>
+    <tbody>
+      <tr><td>Trạng thái màn hình: <span class="gl" data-gl="filter" tabindex="0">bộ lọc</span>, trang hiện tại, danh sách đang hiển thị</td><td><span class="gl" data-gl="Tín hiệu — ô giá trị phản ứng của Angular" tabindex="0"><code>signal</code></span></td><td>Chỉ cần giá trị mới nhất. Không cần đăng ký, không cần dọn, <span class="gl" data-gl="template" tabindex="0">mẫu giao diện</span> đọc thẳng.</td></tr>
+      <tr><td>Giá trị suy ra từ giá trị khác</td><td><span class="gl" data-gl="Giá trị suy ra từ signal khác, tự tính lại khi nguồn đổi" tabindex="0"><code>computed</code></span></td><td>Tự tính lại, tự nhớ kết quả. Làm bằng luồng thì phải ghép toán tử.</td></tr>
+      <tr><td>Ô tìm kiếm cần chờ 300 mili-giây rồi mới gọi máy chủ</td><td><span class="gl" data-gl="Luồng vừa phát vừa nghe được — vừa là Observable vừa là Observer" tabindex="0"><code>Subject</code></span> + <span class="gl" data-gl="operator" tabindex="0">toán tử</span></td><td>Đây là <em>thời gian</em>, không phải giá trị. <span class="gl" data-gl="Chờ im lặng đủ lâu rồi mới cho giá trị đi qua" tabindex="0"><code>debounceTime</code></span>, <span class="gl" data-gl="Đổi sang luồng mới và huỷ luồng cũ đang chạy dở" tabindex="0"><code>switchMap</code></span> không có bản signal tương đương.</td></tr>
+      <tr><td>Sự kiện một lần: lưu thành công, đóng <span class="gl" data-gl="dialog" tabindex="0">hộp thoại</span>, tín hiệu huỷ</td><td><code>Subject</code></td><td>Sự kiện xảy ra rồi thôi. Ép vào signal sẽ phải bịa ra một giá trị "đã xảy ra" vô nghĩa.</td></tr>
+      <tr><td>Tin nhắn đẩy từ máy chủ (<span class="gl" data-gl="Kết nối hai chiều luôn mở, máy chủ đẩy dữ liệu xuống bất cứ lúc nào" tabindex="0">WebSocket</span>, SSE)</td><td><code>Subject</code></td><td>Dữ liệu đến từ bên ngoài theo dòng — đúng bài của luồng.</td></tr>
+      <tr><td>Cần cả hai</td><td><span class="gl" data-gl="Biến một luồng thành signal, tự huỷ theo vòng đời" tabindex="0"><code>toSignal()</code></span> / <span class="gl" data-gl="Biến một signal thành luồng RxJS" tabindex="0"><code>toObservable()</code></span></td><td>Xử lý thời gian bằng luồng, rồi đổ kết quả cuối vào signal cho giao diện đọc.</td></tr>
+    </tbody>
+  </table></div>
+<pre><code><span class="cm">// Mẫu ghép hai thế giới: luồng lo phần thời gian, signal lo phần hiển thị.</span>
+<span class="kw">private readonly</span> tuKhoa$ = <span class="kw">new</span> Subject&lt;<span class="kw">string</span>&gt;();
+
+<span class="kw">readonly</span> ketQua = toSignal(
+  <span class="kw">this</span>.tuKhoa$.pipe(
+    debounceTime(<span class="kw">300</span>),            <span class="cm">// chờ người dùng ngừng gõ</span>
+    distinctUntilChanged(),        <span class="cm">// gõ lại đúng chữ cũ thì bỏ qua</span>
+    switchMap((tu) =&gt; <span class="kw">this</span>.api.tim(tu)),  <span class="cm">// gõ tiếp thì huỷ lời gọi cũ</span>
+  ),
+  { initialValue: [] },
+);
+
+timKiem(tu: <span class="kw">string</span>) { <span class="kw">this</span>.tuKhoa$.next(tu); }   <span class="cm">// bơm vào micro</span></code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Ai cũng bơm dữ liệu vào được.</b> Đây là cách duy nhất để một sự kiện bên ngoài đi vào thế giới RxJS.</li>
+        <li><b>Một nguồn, nhiều người nghe.</b> Việc tốn kém — gọi máy chủ, mở kết nối — làm đúng một lần.</li>
+        <li><b>Nối hai thế giới.</b> Hàm gọi lại, sự kiện trình duyệt, thư viện ngoài đều bắc cầu vào Rx qua Subject.</li>
+        <li><b><span class="gl" data-gl="Subject nhớ giá trị mới nhất, phát ngay cho người vừa đăng ký" tabindex="0"><code>BehaviorSubject</code></span> là kho <span class="gl" data-gl="state" tabindex="0">trạng thái</span> dùng ngay.</b> Có <code>.value</code> đọc đồng bộ, không cần dựng thêm gì.</li>
+        <li><b>Nền của <span class="gl" data-gl="Biến luồng lạnh thành nóng, dùng chung một nguồn" tabindex="0"><code>share</code></span>.</b> Hiểu <span class="gl" data-gl="Luồng vừa phát vừa nghe được — vừa là Observable vừa là Observer" tabindex="0">Subject</span> là hiểu luôn <code>share</code>, <span class="gl" data-gl="Chia chung một luồng, phát lại giá trị cũ cho người vào muộn" tabindex="0"><code>shareReplay</code></span>, <code>connectable</code> hoạt động ra sao.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Che micro lại, chỉ cho nghe</p>
+<pre><code><span class="kw">private readonly</span> _daLuu$ = <span class="kw">new</span> Subject&lt;<span class="kw">void</span>&gt;();
+
+<span class="cm">// Bên ngoài chỉ nghe được, không gọi next() được.</span>
+<span class="kw">readonly</span> daLuu$ = <span class="kw">this</span>._daLuu$.asObservable();
+
+luu() {
+  <span class="kw">this</span>.api.luu().subscribe(() =&gt; <span class="kw">this</span>._daLuu$.next());
+}</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Ai cũng phát được là mất kiểm soát.</b> Để lộ Subject ra ngoài thì mọi nơi đều có thể <span class="gl" data-gl="Phát ra một giá trị vào luồng" tabindex="0"><code>next()</code></span> — không còn biết giá trị sai đến từ đâu.</li>
+        <li><b>Đến muộn là mất phần.</b> Subject trần nuốt trọn mọi giá trị phát trước lúc đăng ký — lỗi "chạy máy chậm thì được, máy nhanh thì mất dữ liệu".</li>
+        <li><b>Không tự chết.</b> Nó giữ danh sách <span class="gl" data-gl="subscriber" tabindex="0">người nghe</span> cho tới khi bạn <span class="gl" data-gl="Kết thúc luồng bình thường, không phải lỗi" tabindex="0"><code>complete()</code></span>. Quên là rò rỉ bộ nhớ.</li>
+        <li><b>Một lỗi là chết hẳn.</b> Gọi <span class="gl" data-gl="Phát tín hiệu lỗi — luồng chấm dứt và không nhận gì thêm" tabindex="0"><code>error()</code></span> xong thì Subject vĩnh viễn không nhận <code>next()</code> nữa — kho trạng thái đứng hình.</li>
+        <li><b><span class="gl" data-gl="Subject phát lại N giá trị gần nhất cho người vào muộn" tabindex="0"><code>ReplaySubject</code></span> không khai số đệm thì nhớ vô hạn.</b> Bộ nhớ tăng đều cho tới khi trang treo.</li>
+        <li><b>Lạm dụng làm trạng thái.</b> Việc mà một <span class="gl" data-gl="Tín hiệu — ô giá trị phản ứng của Angular" tabindex="0"><code>signal</code></span> ba dòng làm xong thì không cần tới luồng.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ba cái bẫy kinh điển</p>
+<pre><code><span class="cm">// ✗ để lộ: chỗ nào cũng next() được</span>
+<span class="kw">readonly</span> nguoiDung$ = <span class="kw">new</span> BehaviorSubject&lt;User | <span class="kw">null</span>&gt;(<span class="kw">null</span>);
+
+<span class="cm">// ✗ đến muộn: phát trước khi có người nghe → mất trắng</span>
+<span class="kw">const</span> s = <span class="kw">new</span> Subject&lt;<span class="kw">number</span>&gt;();
+s.next(<span class="kw">1</span>);
+s.subscribe(console.log);   <span class="out">// không in gì</span>
+
+<span class="cm">// ✗ chết hẳn: sau error() thì next() bị bỏ qua vĩnh viễn</span>
+kho$.error(<span class="kw">new</span> Error(<span class="str">'hỏng'</span>));
+kho$.next(giaTriMoi);       <span class="cm">// không ai nhận được</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> giữ Subject ở dạng <code>private</code> và chỉ để lộ ra ngoài bản <span class="gl" data-gl="Trả về bản chỉ-nghe của Subject, che mất khả năng phát" tabindex="0"><code>asObservable()</code></span> — muốn phát thì phải đi qua một phương thức có tên rõ ràng. Trạng thái thì dùng <code>signal</code>; sự kiện theo thời gian mới dùng Subject, và mặc định chọn <code>BehaviorSubject</code> khi người vào muộn cần biết giá trị hiện tại. Trong service sống lâu, gọi <code>complete()</code> trong <code>destroyRef.onDestroy()</code>. Và với lỗi, đừng gọi <code>error()</code> trên kho trạng thái — hãy phát ra một giá trị mô tả lỗi, để luồng còn sống mà chạy tiếp.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> <span class="gl" data-gl="Luồng vừa phát vừa nghe được — vừa là Observable vừa là Observer" tabindex="0">Subject</span> là Observable nhưng đồng thời là <span class="gl" data-gl="Người nghe — vật có ba cửa next / error / complete" tabindex="0">Observer</span> — nghĩa là bạn gọi <span class="gl" data-gl="Phát ra một giá trị vào luồng" tabindex="0"><code>next()</code></span> vào nó được từ bên ngoài. Hệ quả là nó <span class="gl" data-gl="Một nguồn chia chung cho nhiều người nghe" tabindex="0"><em>multicast</em></span>: một nguồn chia chung cho mọi <span class="gl" data-gl="subscriber" tabindex="0">người nghe</span>, khác với Observable thường vốn chạy lại từ đầu cho từng người. Dùng nó khi dữ liệu đến từ bên ngoài — sự kiện người dùng, tin nhắn máy chủ; còn để chia sẻ một luồng đã có sẵn thì dùng <span class="gl" data-gl="Chia chung một luồng, phát lại giá trị cũ cho người vào muộn" tabindex="0"><code>shareReplay</code></span>, vì bên trong nó cũng chính là một Subject nhưng tự lo phần dọn dẹp.</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Subject khác Observable thường ở chỗ nào?</h3>
+      <p>Hai chỗ, và phải nói cả hai. Một: Subject có <code>next()</code> nên nguồn dữ liệu nằm ngoài nó. Hai: vì thế nó nóng — giữ một danh sách người nghe và phát cùng một giá trị cho tất cả, thay vì chạy lại logic cho từng người.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><span class="gl" data-gl="Subject nhớ giá trị mới nhất, phát ngay cho người vừa đăng ký" tabindex="0"><code>BehaviorSubject</code></span> với <code>ReplaySubject(1)</code> khác gì nhau?</h3>
+      <p>Nhìn qua thì giống — đều đưa một giá trị cho người vào muộn. Khác ở ba chỗ: <code>BehaviorSubject</code> bắt buộc có giá trị khởi tạo nên luôn có gì đó để phát; nó có <code>.value</code> đọc đồng bộ; và sau khi <span class="gl" data-gl="Kết thúc luồng bình thường, không phải lỗi" tabindex="0"><code>complete()</code></span> thì nó im, còn <span class="gl" data-gl="Subject phát lại N giá trị gần nhất cho người vào muộn" tabindex="0"><code>ReplaySubject</code></span> vẫn phát lại giá trị đã đệm rồi mới kết thúc.</p>
+    </div>
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Vì sao ba chỗ dùng cùng một <span class="gl" data-gl="Luồng dữ liệu — dãy giá trị xuất hiện dần theo thời gian" tabindex="0"><code>Observable</code></span> HTTP lại thành ba lời gọi máy chủ?</h3>
+      <p>Vì luồng đó lạnh: logic gọi mạng nằm <em>bên trong</em> hàm khởi tạo, chạy lại mỗi lần có người đăng ký. Muốn một lần thì phải multicast — <code>shareReplay({ <span class="gl" data-gl="Số giá trị được giữ lại để phát cho người vào muộn" tabindex="0">bufferSize</span>: 1, refCount: true })</code>. Nói thêm <span class="gl" data-gl="Đếm người nghe — hết người thì tự ngắt nguồn" tabindex="0"><code>refCount</code></span> là điểm cộng: thiếu nó thì kết nối không bao giờ được ngắt.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Khi nào bạn <em>không</em> dùng Subject?</h3>
+      <p>Khi thứ cần lưu chỉ là một giá trị hiện tại — đó là việc của <span class="gl" data-gl="Tín hiệu — ô giá trị phản ứng của Angular" tabindex="0"><code>signal</code></span>. Và khi chỉ muốn chia sẻ một luồng có sẵn — đó là việc của <span class="gl" data-gl="Biến luồng lạnh thành nóng, dùng chung một nguồn" tabindex="0"><code>share</code></span>. Trả lời được câu này là chứng minh đã dùng thật; ứng viên chỉ đọc tài liệu thường coi Subject là câu trả lời cho mọi thứ.</p>
+    </div>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "Subject là để lưu <span class="gl" data-gl="state" tabindex="0">trạng thái</span>, còn Observable là để gọi API." Sai ở cả hai vế. Chuyện lưu trạng thái chỉ đúng với <code>BehaviorSubject</code>, và trong Angular hôm nay <code>signal</code> làm việc đó gọn hơn; còn <span class="gl" data-gl="Bộ gọi máy chủ của Angular — mỗi lần đăng ký là một lời gọi thật" tabindex="0"><code>HttpClient</code></span> trả về Observable không phải vì nó "dành cho <span class="gl" data-gl="Giao diện lập trình — địa chỉ máy chủ mà mã nguồn gọi tới" tabindex="0">API</span>" mà vì mỗi lần đăng ký là một lời gọi mạng mới — đúng định nghĩa luồng lạnh. Nói theo kiểu này là lộ ngay việc chỉ nhớ tên lớp chứ chưa nắm cơ chế nóng — lạnh.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>Observable</td><td>Luồng dữ liệu — một dãy giá trị xuất hiện dần theo thời gian.</td></tr>
+      <tr><td>Observer</td><td>Người nghe — vật có ba cửa <code>next</code> / <code>error</code> / <code>complete</code>.</td></tr>
+      <tr><td>subscribe</td><td>Đăng ký nghe — hành động khiến luồng bắt đầu chạy.</td></tr>
+      <tr><td>unsubscribe</td><td>Huỷ đăng ký — báo cho luồng biết không nghe nữa và dọn tài nguyên.</td></tr>
+      <tr><td>next</td><td>Phát ra một giá trị vào luồng.</td></tr>
+      <tr><td>error</td><td>Phát tín hiệu lỗi — luồng chấm dứt bất thường và không nhận gì thêm.</td></tr>
+      <tr><td>complete</td><td>Tín hiệu luồng kết thúc bình thường, không phải lỗi.</td></tr>
+      <tr><td>Subject</td><td>Luồng vừa phát vừa nghe được — vừa là Observable vừa là Observer.</td></tr>
+      <tr><td>BehaviorSubject</td><td>Subject nhớ giá trị mới nhất và phát ngay cho người vừa đăng ký.</td></tr>
+      <tr><td>ReplaySubject</td><td>Subject phát lại N giá trị gần nhất cho người vừa đăng ký.</td></tr>
+      <tr><td>AsyncSubject</td><td>Subject chỉ phát đúng giá trị cuối, và chỉ khi đã complete.</td></tr>
+      <tr><td>asObservable</td><td>Phương thức trả về bản chỉ-nghe của Subject, che mất khả năng phát.</td></tr>
+      <tr><td>cold / lạnh</td><td>Luồng tự sinh dữ liệu riêng cho từng người đăng ký.</td></tr>
+      <tr><td>hot / nóng</td><td>Luồng lấy dữ liệu từ bên ngoài, ai đến thì nghe từ lúc đó.</td></tr>
+      <tr><td>unicast</td><td>Một nguồn phục vụ đúng một người nghe.</td></tr>
+      <tr><td>multicast</td><td>Một nguồn chia chung cho nhiều người nghe.</td></tr>
+      <tr><td>share</td><td>Toán tử biến luồng lạnh thành nóng, dùng chung một nguồn.</td></tr>
+      <tr><td>shareReplay</td><td>Như share, nhưng còn phát lại giá trị cũ cho người vào muộn.</td></tr>
+      <tr><td>bufferSize</td><td>Số giá trị được giữ lại để phát cho người vào muộn.</td></tr>
+      <tr><td>refCount</td><td>Đếm số người nghe — hết người thì tự ngắt nguồn.</td></tr>
+      <tr><td>operator / toán tử</td><td>Hàm nhận một luồng và trả về luồng mới đã biến đổi.</td></tr>
+      <tr><td>pipe</td><td>Ống nối — nơi xâu chuỗi các toán tử của một luồng.</td></tr>
+      <tr><td>debounceTime</td><td>Toán tử chờ im lặng đủ lâu rồi mới cho giá trị đi qua.</td></tr>
+      <tr><td>distinctUntilChanged</td><td>Toán tử bỏ qua giá trị trùng với giá trị liền trước.</td></tr>
+      <tr><td>switchMap</td><td>Toán tử đổi sang luồng mới và huỷ luồng cũ đang chạy dở.</td></tr>
+      <tr><td>signal</td><td>Tín hiệu — ô giá trị phản ứng của Angular, đọc là biết đang phụ thuộc.</td></tr>
+      <tr><td>computed</td><td>Giá trị suy ra từ signal khác, tự tính lại khi nguồn đổi.</td></tr>
+      <tr><td>toSignal</td><td>Hàm biến một luồng thành signal, tự huỷ theo vòng đời.</td></tr>
+      <tr><td>toObservable</td><td>Hàm biến một signal thành luồng RxJS.</td></tr>
+      <tr><td>async pipe</td><td>Ống nối của Angular tự đăng ký và tự dọn ngay trong mẫu giao diện.</td></tr>
+      <tr><td>API</td><td>Giao diện lập trình — địa chỉ máy chủ mà mã nguồn gọi tới để lấy hoặc gửi dữ liệu.</td></tr>
+      <tr><td>HttpClient</td><td>Bộ gọi máy chủ của Angular; mỗi lần đăng ký là một lời gọi thật.</td></tr>
+      <tr><td>WebSocket</td><td>Kết nối hai chiều luôn mở, máy chủ đẩy dữ liệu xuống bất cứ lúc nào.</td></tr>
+      <tr><td>service</td><td>Lớp dịch vụ — nơi chứa dữ liệu và logic dùng chung giữa nhiều màn hình.</td></tr>
+      <tr><td>component</td><td>Thành phần giao diện — một mảnh màn hình có mã và mẫu riêng.</td></tr>
+      <tr><td>memory leak</td><td>Rò rỉ bộ nhớ — thứ đáng lẽ phải được dọn nhưng vẫn bị giữ lại.</td></tr>
+      <tr><td>DestroyRef</td><td>Tham chiếu vòng đời — vật Angular dùng để báo thành phần sắp bị huỷ.</td></tr>
+      <tr><td>Promise</td><td>Lời hứa — vật đại diện cho đúng một kết quả sẽ có trong tương lai.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<nav class="pager"><a class="prev" href="fork-join.html"><span class="dir">← Bài trước</span><span class="nm">forkJoin — chờ tất cả xong rồi mới nói</span></a><a class="next" href="share-vs-sharereplay.html"><span class="dir">Bài tiếp →</span><span class="nm">share và shareReplay — chia chung một luồng</span></a></nav>
+<footer class="page-foot col"><p>Sổ tay eli5 · RxJS · trang 8/10</p></footer>
+</div>
+</body>
+</html>

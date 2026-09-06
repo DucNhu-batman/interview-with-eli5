@@ -1,0 +1,99 @@
+<!--meta
+title: Day 1 — Dựng môi trường làm việc
+eyebrow: Angular · Day 1
+short: Day 1
+lede: Node, package manager và Angular CLI: ba thứ phải có trước khi gõ dòng code đầu tiên, và lý do phiên bản của chúng lại quan trọng đến thế.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Ba mảnh ghép của một máy trạm Angular</h2></div>
+  <p>Angular không chạy thẳng trong trình duyệt như một file HTML. Code bạn viết (TypeScript, template, SCSS) phải được <strong>build</strong> (biên dịch và đóng gói) thành JavaScript thuần trước. Ba công cụ lo việc đó:</p>
+  <ol class="steps">
+    <li><span><b>Node.js</b> — bộ chạy JavaScript ngoài trình duyệt. Mọi công cụ build đều là chương trình Node.</span></li>
+    <li><span><b>Package manager</b> (trình quản lý gói: npm, pnpm, yarn) — tải thư viện về <code>node_modules</code> và khoá phiên bản trong <code>package-lock</code>/<code>pnpm-lock</code>.</span></li>
+    <li><span><b>Angular CLI</b> — bộ lệnh <code>ng</code> để tạo dự án, sinh file, chạy dev server (máy chủ phát triển), build bản phát hành.</span></li>
+  </ol>
+<pre><code>node -v            <span class="cm"># kiểm tra phiên bản Node</span>
+npm i -g @angular/cli
+ng new my-app --standalone --style=scss
+cd my-app &amp;&amp; ng serve -o    <span class="cm"># mở http://localhost:4200</span></code></pre>
+  <div class="callout">
+    <p><strong>Phiên bản không phải chuyện vặt.</strong> Mỗi bản Angular chỉ chạy với một khoảng phiên bản Node và TypeScript nhất định. Lệch phiên bản là nguồn của những lỗi build "không thể hiểu nổi". Dự án nên khoá bằng trường <code>engines</code> trong <code>package.json</code> và một file <code>.nvmrc</code>.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Nên biết</p><h2>Vài lệnh CLI dùng hằng ngày</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Lệnh</th><th>Làm gì</th></tr></thead>
+    <tbody>
+      <tr><td>ng serve</td><td>Chạy dev server, tự nạp lại khi sửa file</td></tr>
+      <tr><td>ng generate c ten</td><td>Sinh component kèm file test, đăng ký sẵn</td></tr>
+      <tr><td>ng build</td><td>Build bản phát hành (tối ưu, rút gọn, chia gói)</td></tr>
+      <tr><td>ng test</td><td>Chạy unit test (kiểm thử đơn vị)</td></tr>
+      <tr><td>ng update</td><td>Nâng phiên bản Angular kèm sửa code tự động (migration)</td></tr>
+      <tr><td>ng lint</td><td>Soát code theo quy tắc dự án</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của bộ công cụ</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Cấu hình sẵn, thống nhất.</b> CLI dựng sẵn TypeScript, bundler, test runner, linter — cả đội có cùng một cách làm.</li>
+        <li><b>Nâng cấp có hỗ trợ.</b> <code>ng update</code> tự sửa phần lớn thay đổi phá vỡ (breaking change) giữa các bản.</li>
+        <li><b>Sinh code chuẩn.</b> <code>ng generate</code> tạo file đúng quy ước đặt tên, đỡ tranh cãi cấu trúc thư mục.</li>
+        <li><b>Dev server nhanh.</b> Nạp lại từng phần khi sửa, giữ nguyên trạng thái màn hình.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm"># Người mới vào dự án: ba lệnh là chạy được</span>
+nvm use            <span class="cm"># đọc .nvmrc → đúng phiên bản Node của dự án</span>
+pnpm install       <span class="cm"># đúng phiên bản thư viện nhờ lock file</span>
+pnpm start
+
+<span class="cm"># Và nâng cấp có công cụ đi kèm:</span>
+ng update &#64;angular/core &#64;angular/cli   <span class="cm"># tự sửa phần lớn breaking change</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Nặng.</b> <code>node_modules</code> hàng trăm MB; cài lần đầu tốn thời gian và băng thông.</li>
+        <li><b>Khó tuỳ biến sâu.</b> Muốn đổi cấu hình bundler phải dùng builder tuỳ chỉnh hoặc "eject" gián tiếp.</li>
+        <li><b>Rất kén phiên bản.</b> Node/TypeScript/Angular phải khớp nhau; máy mỗi người một bản là hỏng.</li>
+        <li><b>Che mất bên dưới.</b> Người mới dễ không hiểu chuyện gì xảy ra giữa code và trình duyệt.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm"># Máy A: Node 20 · Máy B: Node 18</span>
+ERROR: The Angular CLI requires a minimum Node.js version of v20.19
+<span class="cm"># Cùng một commit, máy này build được, máy kia không.</span>
+
+<span class="cm"># Và cài lẫn npm với pnpm sinh hai lock file:</span>
+package-lock.json + pnpm-lock.yaml
+<span class="cm"># → mỗi người một cây phụ thuộc khác nhau, lỗi "chỉ xảy ra trên máy tôi"</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Thực tế trong dự án:</strong> hãy ghi rõ phiên bản Node và package manager vào README, dùng chung một lock file và tuyệt đối không commit <code>node_modules</code>. Người mới join chỉ cần một lệnh cài là chạy được.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>Node.js</td><td>Môi trường chạy JavaScript bên ngoài trình duyệt.</td></tr>
+      <tr><td>package manager</td><td>Trình quản lý gói thư viện (npm, pnpm, yarn).</td></tr>
+      <tr><td>CLI</td><td>Giao diện dòng lệnh — chương trình gõ lệnh trong terminal.</td></tr>
+      <tr><td>build</td><td>Biên dịch và đóng gói code thành bản chạy được.</td></tr>
+      <tr><td>dev server</td><td>Máy chủ phát triển, phục vụ ứng dụng khi đang code.</td></tr>
+      <tr><td>lock file</td><td>File khoá phiên bản chính xác của mọi thư viện.</td></tr>
+      <tr><td>migration</td><td>Bước chuyển đổi code tự động khi nâng phiên bản.</td></tr>
+      <tr><td>breaking change</td><td>Thay đổi phá vỡ tương thích với code cũ.</td></tr>
+      <tr><td>linter</td><td>Công cụ soát code theo quy tắc định sẵn.</td></tr>
+    </tbody>
+  </table></div>
+</section>

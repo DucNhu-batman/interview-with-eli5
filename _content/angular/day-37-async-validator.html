@@ -1,0 +1,78 @@
+<!--meta
+title: Day 37 — Async Validator
+eyebrow: Angular · Day 37
+short: Day 37
+lede: Kiểm tra hợp lệ bằng cách hỏi máy chủ — "mã này có ai dùng chưa?" — mà không làm nghẽn ô nhập của người dùng.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Validator biết chờ</h2></div>
+  <p>Async validator (kiểm tra bất đồng bộ) trả về một Observable/Promise thay vì kết quả tức thì. Trong lúc chờ, control mang trạng thái <code>PENDING</code> (đang chờ) — dùng nó để hiện vòng xoay nhỏ và khoá nút Lưu.</p>
+<pre><code>export <span class="kw">function</span> maChuaTonTai(api: KhoService): AsyncValidatorFn {
+  <span class="kw">return</span> (c: AbstractControl) =&gt;
+    timer(400).pipe(                        <span class="cm">// chống dội: chờ người dùng ngừng gõ</span>
+      switchMap(() =&gt; api.kiemTraMa(c.value)),
+      map((daTonTai) =&gt; (daTonTai ? { maTrung: <span class="kw">true</span> } : <span class="kw">null</span>)),
+      catchError(() =&gt; of(<span class="kw">null</span>)),          <span class="cm">// lỗi mạng thì đừng chặn người dùng</span>
+      first(),                              <span class="cm">// BẮT BUỘC: phải complete</span>
+    );
+}
+
+ma: [<span class="str">''</span>, [Validators.required], [maChuaTonTai(<span class="kw">this</span>.api)]],   <span class="cm">// mảng thứ 3</span></code></pre>
+  <div class="callout">
+    <p><strong>Ba luật sống còn:</strong> (1) async validator chỉ chạy khi các validator đồng bộ đã hợp lệ; (2) luồng trả về <em>phải</em> kết thúc, nếu không control kẹt ở <code>PENDING</code> mãi mãi; (3) luôn chống dội trước khi gọi API.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Báo trùng ngay khi gõ,</b> người dùng không phải bấm Lưu mới biết mình sai.</li>
+        <li><b>Nằm trong hệ thống form</b> nên trạng thái hợp lệ của cả form tự tính đúng.</li>
+        <li><b>Trạng thái <code>PENDING</code> có sẵn</b> để hiện chỉ báo đang kiểm tra.</li>
+        <li><b>Dùng lại được</b> cho cả màn tạo mới lẫn màn sửa, chỉ cần đổi tham số loại trừ id hiện tại.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>&#64;if (form.controls.ma.pending) { &lt;span class="spin"&gt;Đang kiểm tra…&lt;/span&gt; }
+&#64;if (form.controls.ma.errors?.['maTrung']) {
+  &lt;small&gt;Mã kho đã tồn tại trên hệ thống&lt;/small&gt;
+}
+&lt;button [disabled]="form.invalid || form.pending"&gt;Lưu&lt;/button&gt;</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Luồng không complete là treo form.</b> Control mắc kẹt <code>PENDING</code>, nút Lưu không bao giờ bật lại.</li>
+        <li><b>Bắn API mỗi lần gõ</b> nếu quên chống dội — máy chủ lãnh đủ.</li>
+        <li><b>Không thay được kiểm tra ở máy chủ.</b> Hai người gõ cùng lúc vẫn có thể trùng.</li>
+        <li><b>Test khó hơn,</b> phải giả lập cả thời gian lẫn phản hồi mạng.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// Thiếu first()/take(1): luồng không bao giờ complete</span>
+<span class="kw">return</span> api.kiemTraMa(c.value).pipe(map(…));
+<span class="cm">// → form.pending mãi là true → nút Lưu vô hiệu vĩnh viễn</span>
+
+<span class="cm">// Thiếu timer/debounce: gõ "KHO-0001" = 8 request</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Trong dự án này,</strong> lỗi trùng do backend trả về (409 / <code>errorCode: "CONFLICT"</code>) vẫn phải hiện inline dưới ô nhập bằng đúng câu backend gửi lên — async validator chỉ là lớp báo sớm cho dễ chịu, không thay thế được lớp kiểm tra cuối ở máy chủ.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>async validator</td><td>Kiểm tra hợp lệ bất đồng bộ (thường hỏi máy chủ).</td></tr>
+      <tr><td>PENDING</td><td>Trạng thái đang chờ kết quả kiểm tra.</td></tr>
+      <tr><td>debounce</td><td>Chống dội — chờ ngừng gõ mới gọi.</td></tr>
+      <tr><td>complete</td><td>Luồng kết thúc; điều kiện bắt buộc của async validator.</td></tr>
+      <tr><td>race condition</td><td>Đua — hai người cùng tạo một mã trong cùng thời điểm.</td></tr>
+    </tbody>
+  </table></div>
+</section>

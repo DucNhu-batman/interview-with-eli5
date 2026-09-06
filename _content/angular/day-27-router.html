@@ -1,0 +1,79 @@
+<!--meta
+title: Day 27 — Angular Router
+eyebrow: Angular · Day 27
+short: Day 27
+lede: Biến thanh địa chỉ thành bảng điều khiển của ứng dụng: URL nào thì vẽ component nào, và làm sao truyền dữ liệu qua đường dẫn.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Một bảng tra: URL vào, component ra</h2></div>
+  <p>Router (bộ định tuyến) giữ một danh sách route (tuyến): mỗi mục nói "đường dẫn này thì vẽ component kia vào <code>&lt;router-outlet&gt;</code>". Người dùng bấm link, URL đổi, router tra bảng rồi thay component — không tải lại trang.</p>
+<pre><code>export <span class="kw">const</span> routes: Routes = [
+  { path: <span class="str">''</span>, redirectTo: <span class="str">'kho'</span>, pathMatch: <span class="str">'full'</span> },
+  { path: <span class="str">'kho'</span>, component: DsKhoComponent },
+  { path: <span class="str">'kho/:id'</span>, component: ChiTietKhoComponent },   <span class="cm">// tham số đường dẫn</span>
+  { path: <span class="str">'**'</span>, component: KhongTimThayComponent },      <span class="cm">// phải để cuối cùng</span>
+];
+
+&lt;a [routerLink]="['/kho', kho.id]" [queryParams]="{ tab: 'chung' }"&gt;Xem&lt;/a&gt;
+&lt;a routerLink="/kho" routerLinkActive="dang-chon"&gt;Danh sách&lt;/a&gt;</code></pre>
+  <p>Đọc tham số ở phía component:</p>
+<pre><code><span class="kw">private</span> route = inject(ActivatedRoute);
+<span class="kw">readonly</span> id = toSignal(<span class="kw">this</span>.route.paramMap.pipe(map((p) =&gt; p.get(<span class="str">'id'</span>))));</code></pre>
+  <div class="callout">
+    <p><strong>Tham số đường dẫn hay query param?</strong> Cái <em>xác định</em> tài nguyên (id bản ghi) đi vào đường dẫn. Cái <em>tuỳ chọn</em> (trang, từ khoá, tab đang mở) đi vào query param — nhờ vậy người dùng chia sẻ link là giữ nguyên bộ lọc.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>URL trở thành trạng thái chia sẻ được:</b> gửi link cho đồng nghiệp là họ thấy đúng màn hình đó.</li>
+        <li><b>Nút Back/Forward của trình duyệt hoạt động đúng</b> mà không phải viết gì thêm.</li>
+        <li><b>Chuyển màn mượt,</b> giữ nguyên state chung và không tải lại toàn bộ ứng dụng.</li>
+        <li><b>Là điểm móc cho lazy loading, guard, resolver</b> — mọi thứ về sau đều gắn vào bảng route.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>&lt;a [routerLink]="['/kho', kho.id]" [queryParams]="{ tab: 'ton' }"&gt;Xem&lt;/a&gt;
+<span class="cm">// URL: /kho/12?tab=ton — gửi cho đồng nghiệp là họ mở đúng màn đó,</span>
+<span class="cm">// và nút Back của trình duyệt hoạt động đúng mà không viết thêm dòng nào.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Thứ tự route quan trọng.</b> Đặt <code>'**'</code> nhầm chỗ là nuốt hết mọi đường dẫn phía sau.</li>
+        <li><b>Component không tự dựng lại</b> khi chỉ đổi tham số trên cùng một route — phải lắng nghe <code>paramMap</code>.</li>
+        <li><b>Đường dẫn là chuỗi,</b> gõ sai không ai báo cho tới lúc chạy.</li>
+        <li><b>Deep link cần máy chủ cấu hình đúng,</b> nếu không F5 giữa chừng sẽ ra 404.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="kw">const</span> routes = [
+  { path: <span class="str">'**'</span>, component: KhongTimThay },   <span class="cm">// ✗ đặt ĐẦU danh sách</span>
+  { path: <span class="str">'kho'</span>, component: DsKho },        <span class="cm">// không bao giờ tới được</span>
+];
+
+<span class="cm">// Và component không tự dựng lại khi chỉ đổi tham số:</span>
+<span class="cm">// /kho/1 → /kho/2 : ngOnInit KHÔNG chạy lại, màn hình vẫn hiện kho 1</span>
+<span class="cm">// chữa: lắng nghe route.paramMap thay vì đọc snapshot một lần</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>router</td><td>Bộ định tuyến — ánh xạ URL sang component.</td></tr>
+      <tr><td>route</td><td>Tuyến — một mục trong bảng định tuyến.</td></tr>
+      <tr><td>router-outlet</td><td>Ô chứa component của route hiện tại.</td></tr>
+      <tr><td>path param</td><td>Tham số nằm trong đường dẫn, ví dụ <code>/kho/12</code>.</td></tr>
+      <tr><td>query param</td><td>Tham số sau dấu <code>?</code>, ví dụ <code>?trang=2</code>.</td></tr>
+      <tr><td>ActivatedRoute</td><td>Đối tượng mô tả route đang hoạt động.</td></tr>
+      <tr><td>deep link</td><td>Link trỏ thẳng vào một màn hình bên trong ứng dụng.</td></tr>
+    </tbody>
+  </table></div>
+</section>

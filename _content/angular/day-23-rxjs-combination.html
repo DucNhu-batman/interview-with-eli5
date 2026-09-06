@@ -1,0 +1,85 @@
+<!--meta
+title: Day 23 — RxJS Combination Operators
+eyebrow: Angular · Day 23
+short: Day 23
+lede: Khi màn hình cần nhiều nguồn dữ liệu cùng lúc: chờ tất cả, ghép giá trị mới nhất, hay nối đuôi nhau.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Bốn kiểu gộp luồng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Toán tử</th><th>Phát khi</th><th>Dùng khi</th></tr></thead>
+    <tbody>
+      <tr><td>forkJoin</td><td>Tất cả cùng <em>hoàn tất</em>, phát một lần</td><td>Tải nhiều danh mục trước khi mở màn hình</td></tr>
+      <tr><td>combineLatest</td><td>Bất kỳ luồng nào phát, gộp giá trị mới nhất của tất cả</td><td>Bộ lọc + phân trang + sắp xếp</td></tr>
+      <tr><td>merge</td><td>Bất kỳ luồng nào phát, đẩy thẳng ra</td><td>Gộp nhiều nguồn sự kiện cùng loại</td></tr>
+      <tr><td>concat</td><td>Xong luồng trước mới tới luồng sau</td><td>Chạy tuần tự có thứ tự</td></tr>
+      <tr><td>withLatestFrom</td><td>Luồng chính phát, kèm giá trị mới nhất của luồng phụ</td><td>Bấm Lưu, lấy kèm state hiện tại</td></tr>
+      <tr><td>startWith</td><td>Chèn một giá trị khởi đầu</td><td>Cho <code>combineLatest</code> chạy được ngay</td></tr>
+    </tbody>
+  </table></div>
+<pre><code><span class="cm">// Tải song song mọi danh mục, chỉ vẽ màn hình khi có đủ</span>
+forkJoin({
+  kho: <span class="kw">this</span>.api.dsKho(),
+  loai: <span class="kw">this</span>.api.dsLoai(),
+}).subscribe(({ kho, loai }) =&gt; { <span class="kw">this</span>.kho.set(kho); <span class="kw">this</span>.loai.set(loai); });
+
+<span class="cm">// Bộ lọc: bất cứ thứ gì đổi cũng gọi lại danh sách</span>
+combineLatest([<span class="kw">this</span>.tuKhoa$, <span class="kw">this</span>.trang$, <span class="kw">this</span>.sapXep$]).pipe(
+  debounceTime(0),
+  switchMap(([tk, trang, sx]) =&gt; <span class="kw">this</span>.api.tim(tk, trang, sx)),
+).subscribe((kq) =&gt; <span class="kw">this</span>.ketQua.set(kq));</code></pre>
+  <div class="callout bad">
+    <p><strong>Hai bẫy phải nhớ:</strong> <code>forkJoin</code> chỉ phát khi <em>mọi</em> luồng hoàn tất — một luồng không bao giờ complete (như <code>valueChanges</code>) sẽ khiến nó im lặng mãi mãi. Còn <code>combineLatest</code> chỉ phát khi <em>mọi</em> luồng đã có ít nhất một giá trị — thiếu một cái là cả cụm đứng im; thêm <code>startWith</code> để chữa.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Hết cảnh cờ "đã tải xong chưa".</b> <code>forkJoin</code> thay cho một mớ biến trạng thái thủ công.</li>
+        <li><b>Bộ lọc phức tạp trở nên khai báo được:</b> mọi nguồn thay đổi đều đổ về một luồng kết quả duy nhất.</li>
+        <li><b>Tải song song</b> nhanh hơn hẳn gọi lần lượt.</li>
+        <li><b>Kiểu dữ liệu được giữ nguyên</b> qua tổ hợp — TypeScript biết từng phần tử là gì.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>forkJoin({ kho: api.dsKho(), loai: api.dsLoai(), dv: api.dsDonVi() })
+  .subscribe((r) =&gt; { … });
+<span class="cm">// 3 API chạy SONG SONG: tổng thời gian = API chậm nhất,</span>
+<span class="cm">// không phải tổng của cả ba. Và không cần cờ "đã xong chưa" nào.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b><code>forkJoin</code> lỗi một là hỏng tất.</b> Một API gãy thì cả cụm ném lỗi, không nhận được phần đã lấy được.</li>
+        <li><b><code>combineLatest</code> phát dồn dập</b> khi nhiều nguồn đổi gần nhau — dễ gọi API trùng.</li>
+        <li><b>Khó gỡ lỗi.</b> Không biết giá trị lỗi đến từ luồng nào nếu không đặt tên rõ.</li>
+        <li><b>Kết hợp sai ngữ nghĩa</b> (dùng <code>merge</code> khi cần <code>combineLatest</code>) cho ra dữ liệu thiếu mà vẫn chạy.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>forkJoin([api.dsKho(), form.valueChanges]).subscribe(…);
+<span class="cm">// ✗ valueChanges không bao giờ complete → callback KHÔNG BAO GIỜ chạy</span>
+<span class="cm">// Màn hình đứng im mãi mãi, không lỗi, không cảnh báo.</span>
+
+combineLatest([tuKhoa$, trang$, sapXep$])
+<span class="cm">// ✗ sapXep$ chưa phát giá trị nào → cả cụm im lặng</span>
+<span class="cm">// chữa: sapXep$.pipe(startWith(null))</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>combination operator</td><td>Toán tử tổ hợp nhiều luồng thành một.</td></tr>
+      <tr><td>complete</td><td>Luồng kết thúc, không phát gì thêm.</td></tr>
+      <tr><td>startWith</td><td>Chèn giá trị khởi đầu cho luồng.</td></tr>
+      <tr><td>withLatestFrom</td><td>Lấy kèm giá trị mới nhất của luồng phụ.</td></tr>
+    </tbody>
+  </table></div>
+</section>

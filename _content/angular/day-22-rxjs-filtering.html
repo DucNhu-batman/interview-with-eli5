@@ -1,0 +1,89 @@
+<!--meta
+title: Day 22 — RxJS Filtering Operators
+eyebrow: Angular · Day 22
+short: Day 22
+lede: Lọc bớt để chỉ giữ những gì đáng xử lý — và bộ ba filter, debounceTime, takeUntil mà màn hình nào cũng cần.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Cái sàng đặt giữa dòng chảy</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Toán tử</th><th>Giữ lại gì</th></tr></thead>
+    <tbody>
+      <tr><td>filter(fn)</td><td>Chỉ giá trị thoả điều kiện</td></tr>
+      <tr><td>debounceTime(ms)</td><td>Giá trị cuối, sau khi im lặng đủ lâu — chống dội phím</td></tr>
+      <tr><td>throttleTime(ms)</td><td>Giá trị đầu mỗi khoảng — hợp với sự kiện cuộn</td></tr>
+      <tr><td>distinctUntilChanged()</td><td>Bỏ qua nếu trùng giá trị liền trước</td></tr>
+      <tr><td>take(n) / first()</td><td>Chỉ n giá trị đầu rồi tự kết thúc</td></tr>
+      <tr><td>takeUntil(stop$)</td><td>Nhận cho tới khi luồng <code>stop$</code> phát — cách dọn dẹp kinh điển</td></tr>
+      <tr><td>skip(n)</td><td>Bỏ qua n giá trị đầu (ví dụ giá trị khởi tạo)</td></tr>
+    </tbody>
+  </table></div>
+<pre><code><span class="kw">private</span> destroyRef = inject(DestroyRef);
+
+<span class="kw">this</span>.form.controls.tuKhoa.valueChanges.pipe(
+  filter((v): v is string =&gt; !!v &amp;&amp; v.length &gt;= 2),
+  debounceTime(300),
+  distinctUntilChanged(),
+  takeUntilDestroyed(<span class="kw">this</span>.destroyRef),   <span class="cm">// tự huỷ khi component chết</span>
+).subscribe((v) =&gt; <span class="kw">this</span>.tim(v));</code></pre>
+  <div class="callout">
+    <p><strong>Trong Angular hiện đại,</strong> <code>takeUntilDestroyed()</code> thay cho cặp <code>destroy$ = new Subject()</code> + <code>takeUntil(destroy$)</code> + <code>ngOnDestroy</code>. Ít code hơn, không thể quên gọi.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Giảm mạnh số lần gọi API.</b> Một ô tìm kiếm có <code>debounceTime</code> tiết kiệm hàng chục request mỗi lượt gõ.</li>
+        <li><b>Tuyên bố rõ ràng.</b> Đọc chuỗi toán tử là biết điều kiện xử lý, không phải lần theo mấy câu <code>if</code>.</li>
+        <li><b>Tự kết thúc.</b> <code>take</code>, <code>first</code>, <code>takeUntil</code> đóng luồng hộ — hết lo rò rỉ.</li>
+        <li><b>Type guard trong <code>filter</code></b> giúp TypeScript loại bỏ <code>null</code> ở các bước sau.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>form.controls.tuKhoa.valueChanges.pipe(
+  filter((v): v is string =&gt; !!v &amp;&amp; v.length &gt;= 2),
+  debounceTime(300),
+  takeUntilDestroyed(destroyRef),
+).subscribe((v) =&gt; <span class="kw">this</span>.tim(v));
+<span class="cm">// Gõ "kho hàng A" (10 ký tự): 1 request thay vì 10.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Đặt sai vị trí là sai kết quả.</b> <code>debounceTime</code> sau <code>switchMap</code> không còn tác dụng chặn request.</li>
+        <li><b><code>debounceTime</code> làm giao diện có vẻ chậm</b> nếu đặt quá lớn.</li>
+        <li><b><code>takeUntil</code> phải là toán tử cuối cùng,</b> đặt giữa chuỗi có thể không huỷ được phần phía sau.</li>
+        <li><b>Lọc quá tay</b> khiến người dùng không hiểu vì sao thao tác của mình bị bỏ qua.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>api.tim(tk).pipe(
+  switchMap((kq) =&gt; xuLy(kq)),
+  takeUntil(<span class="kw">this</span>.destroy$),        <span class="cm">// ✗ đặt SAU switchMap</span>
+);
+<span class="cm">// → luồng con bên trong switchMap không bị huỷ, vẫn chạy sau khi rời màn</span>
+<span class="cm">// Quy tắc: takeUntil luôn là toán tử CUỐI CÙNG.</span>
+
+debounceTime(2000)   <span class="cm">// ✗ đặt quá lớn: người dùng gõ xong ngồi chờ 2 giây,</span>
+<span class="cm">// tưởng ứng dụng bị treo</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>filtering operator</td><td>Toán tử lọc — loại bớt giá trị khỏi luồng.</td></tr>
+      <tr><td>debounce / throttle</td><td>Chống dội / giới hạn tần suất.</td></tr>
+      <tr><td>takeUntil</td><td>Nhận cho tới khi một luồng khác phát tín hiệu dừng.</td></tr>
+      <tr><td>takeUntilDestroyed</td><td>Tự huỷ đăng ký khi component bị huỷ.</td></tr>
+      <tr><td>DestroyRef</td><td>Đối tượng đại diện vòng đời huỷ của component.</td></tr>
+      <tr><td>valueChanges</td><td>Luồng phát ra mỗi khi giá trị control trong form đổi.</td></tr>
+    </tbody>
+  </table></div>
+</section>

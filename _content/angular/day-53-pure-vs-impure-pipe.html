@@ -1,0 +1,200 @@
+<!--meta
+title: Day 53 — Pure hay impure: công tắc quyết định pipe chạy bao nhiêu lần
+eyebrow: Angular · Day 53
+short: Day 53
+lede: async không phải là "loại pipe impure" — nó chỉ là một pipe cụ thể được khai impure. Hiểu đúng cái công tắc pure: false để biết pipe nào rẻ và pipe nào làm giật cả bảng 500 dòng.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Một cái công tắc, không phải một cái tên</h2></div>
+  <p>Hình dung hai người đánh máy. Người thứ nhất có trí nhớ: bạn đưa lại đúng tờ giấy hôm qua, anh ta không gõ lại, chỉ rút bản đã đánh máy trong ngăn kéo đưa cho bạn. Người thứ hai không nhớ gì: cứ hỏi là gõ lại từ đầu, kể cả khi tờ giấy y hệt lần trước.</p>
+  <p>Trong Angular, chọn người nào là một dòng khai báo. <strong>pure</strong> (thuần) là mặc định; <strong>impure</strong> (không thuần) là khi bạn tự tay bật <code>pure: false</code>:</p>
+<pre><code>&#64;Pipe({ name: <span class="str">'rutGon'</span> })                    <span class="cm">// pure — mặc định, có trí nhớ</span>
+&#64;Pipe({ name: <span class="str">'loc'</span>, pure: <span class="kw">false</span> })          <span class="cm">// impure — gõ lại mỗi lần được hỏi</span></code></pre>
+  <p><em>pure</em> và <em>impure</em> là <strong>tính chất</strong> gắn lên một pipe bất kỳ, giống như “có bảo hành / không bảo hành” gắn lên món hàng. Chúng không phải tên của pipe nào cả.</p>
+  <div class="callout">
+    <p><strong>Vì thế <code>async</code> không phải là “pipe impure”.</strong> <code>async</code> là <em>một</em> pipe cụ thể Angular viết sẵn, và nó tình cờ được khai <code>pure: false</code>. Quan hệ là <em>async nằm trong nhóm impure</em>, chứ không phải <em>impure nghĩa là async</em> — hệt như “con mèo là động vật” không có nghĩa “động vật là con mèo”.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Cái cổng gác đứng trước transform()</h2></div>
+  <p class="col">Mỗi <strong>chu kỳ dò thay đổi</strong> (change detection — vòng Angular quét xem dữ liệu có đổi để vẽ lại giao diện), khi chạy tới chỗ <code>{{ x | myPipe: a }}</code>, Angular làm một trong hai việc:</p>
+  <ol class="steps col">
+    <li><b>Pipe pure</b> — so <code>x</code> và <code>a</code> với lần chạy trước bằng phép so sánh đồng nhất (<code>===</code>, đúng cùng một ô nhớ). Giống hệt thì Angular <em>không gọi</em> <code>transform()</code>, mà lấy kết quả đã nhớ sẵn trong ô nhớ của view (khối giao diện) ra dùng lại.</li>
+    <li><b>Pipe impure</b> — bỏ qua hẳn bước so sánh, gọi <code>transform()</code> luôn, mọi lúc.</li>
+  </ol>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 290" role="img" aria-label="Hai làn ngang biểu diễn sáu chu kỳ dò thay đổi liên tiếp. Làn pure chỉ có hai chu kỳ gọi transform, bốn chu kỳ còn lại dùng lại kết quả cũ. Làn impure gọi transform ở cả sáu chu kỳ.">
+        <defs>
+          <marker id="ar53" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+
+        <text x="180" y="26" font-size="11" fill="var(--muted)">6 chu kỳ dò thay đổi liên tiếp, đầu vào chỉ thật sự đổi ở chu kỳ 1 và 4</text>
+        <line x1="600" y1="22" x2="690" y2="22" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#ar53)"></line>
+
+        <text x="14" y="66" font-size="12.5" font-weight="700" fill="currentColor">pure</text>
+        <text x="14" y="86" font-size="11" fill="var(--muted)">mặc định</text>
+        <line x1="180" y1="72" x2="690" y2="72" stroke="var(--line)" stroke-width="2"></line>
+        <circle cx="200" cy="72" r="10" fill="var(--accent)"></circle>
+        <circle cx="290" cy="72" r="6.5" fill="var(--surface-2)" stroke="var(--line)" stroke-width="2"></circle>
+        <circle cx="380" cy="72" r="6.5" fill="var(--surface-2)" stroke="var(--line)" stroke-width="2"></circle>
+        <circle cx="470" cy="72" r="10" fill="var(--accent)"></circle>
+        <circle cx="560" cy="72" r="6.5" fill="var(--surface-2)" stroke="var(--line)" stroke-width="2"></circle>
+        <circle cx="650" cy="72" r="6.5" fill="var(--surface-2)" stroke="var(--line)" stroke-width="2"></circle>
+        <text x="180" y="112" font-size="11.5" font-weight="700" fill="currentColor">2 / 6 chu kỳ gọi transform()</text>
+        <text x="180" y="130" font-size="11" fill="var(--muted)">4 chu kỳ còn lại: lấy kết quả đã nhớ ra dùng lại, không tính gì</text>
+
+        <text x="14" y="186" font-size="12.5" font-weight="700" fill="currentColor">impure</text>
+        <text x="14" y="206" font-size="11" fill="var(--muted)">pure: false</text>
+        <line x1="180" y1="192" x2="690" y2="192" stroke="var(--line)" stroke-width="2"></line>
+        <circle cx="200" cy="192" r="10" fill="var(--accent)"></circle>
+        <circle cx="290" cy="192" r="10" fill="var(--accent)"></circle>
+        <circle cx="380" cy="192" r="10" fill="var(--accent)"></circle>
+        <circle cx="470" cy="192" r="10" fill="var(--accent)"></circle>
+        <circle cx="560" cy="192" r="10" fill="var(--accent)"></circle>
+        <circle cx="650" cy="192" r="10" fill="var(--accent)"></circle>
+        <text x="180" y="232" font-size="11.5" font-weight="700" fill="currentColor">6 / 6 chu kỳ gọi transform()</text>
+        <text x="180" y="250" font-size="11" fill="var(--muted)">không có cổng gác, không có ô nhớ — cứ hỏi là chạy</text>
+
+        <text x="14" y="278" font-size="11.5" font-weight="700" fill="var(--accent)">async nằm ở làn dưới — nhưng mỗi lần chạy của nó chỉ là đọc lại một biến đã cất sẵn.</text>
+      </svg>
+    </div>
+    <figcaption>Chấm đặc = một lần <code>transform()</code> thật sự chạy. Cùng một khối lượng công việc, làn dưới trả giá gấp ba.</figcaption>
+  </figure>
+  <div class="board col">
+    <p><strong>“Mỗi chu kỳ” là chu kỳ của khối giao diện chứa nó, không phải của cả ứng dụng.</strong> Nếu pipe impure nằm trong một component khai <code>OnPush</code> và component đó không bị đánh dấu bẩn, khối đó không được kiểm tra — pipe cũng không chạy. Nói cách khác, <code>OnPush</code> có giảm được thiệt hại, nhưng nó là cái phanh, không phải cái sửa.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Pipe sẵn có của Angular: cái nào thuần, cái nào không</h2></div>
+  <p class="col">Tra thẳng trong <code>@angular/common</code> bản 21.2.5 mà dự án đang dùng — chỉ đúng bốn pipe được khai <code>pure: false</code>:</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Pipe</th><th>Loại · vì sao</th></tr></thead>
+    <tbody>
+      <tr><td>date, currency, number, percent</td><td><span class="yes">pure</span> — cùng một giá trị vào thì luôn ra cùng một chuỗi. Nhớ được thì nhớ.</td></tr>
+      <tr><td>uppercase, lowercase, titlecase</td><td><span class="yes">pure</span> — như trên, thuần tuý biến đổi chuỗi.</td></tr>
+      <tr><td>async</td><td><span class="no">impure</span> — đầu vào là <em>cùng một</em> luồng từ đầu tới cuối, tham chiếu không bao giờ đổi. Nếu thuần thì giá trị mới phát ra sẽ chẳng bao giờ lên tới màn hình.</td></tr>
+      <tr><td>json, keyvalue, slice</td><td><span class="no">impure</span> — nhận object hoặc mảng, mà người ta hay sửa <em>bên trong</em> chúng chứ không tạo cái mới. Thuần thì sẽ mù trước những thay đổi đó.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="col">Nhìn cột phải sẽ thấy quy luật: pipe được cho impure không phải vì nó “nặng”, mà vì <strong>đầu vào của nó đổi ruột mà không đổi vỏ</strong> — cổng gác so sánh tham chiếu sẽ không bao giờ mở.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">So sánh</p><h2>Cùng là impure, vì sao async rẻ mà pipe lọc thì đắt</h2></div>
+  <p class="col">Đây là ruột thật của <code>async</code>, rút gọn từ mã nguồn Angular. Để ý: mỗi chu kỳ nó <em>không tính gì cả</em>.</p>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Impure nhưng rẻ</span>
+      <h3><code>async</code> — mỗi chu kỳ chỉ đọc một biến</h3>
+<pre><code>transform(obj) {
+  <span class="kw">if</span> (!<span class="kw">this</span>._obj) {         <span class="cm">// lần đầu:</span>
+    <span class="kw">this</span>._subscribe(obj);      <span class="cm">// đăng ký ĐÚNG MỘT LẦN</span>
+    <span class="kw">return</span> <span class="kw">this</span>._latestValue;
+  }
+  <span class="kw">return</span> <b><span class="kw">this</span>._latestValue</b>;   <span class="cm">// mọi lần sau: đọc 1 biến</span>
+}
+<span class="cm">// Luồng phát giá trị mới → _latestValue = value</span>
+<span class="cm">//                        → markForCheck() báo Angular vẽ lại</span>
+<span class="cm">// Component chết → ngOnDestroy() tự huỷ đăng ký</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag bad">Impure và đắt</span>
+      <h3>Pipe lọc tự viết — mỗi chu kỳ làm lại từ đầu</h3>
+<pre><code>&#64;Pipe({ name: <span class="str">'loc'</span>, pure: <span class="kw">false</span> })
+export class LocPipe <span class="kw">implements</span> PipeTransform {
+  transform(ds: Row[], tuKhoa: string) {
+    <span class="kw">return</span> <b>ds.filter</b>((r) =&gt;      <span class="cm">// quét lại CẢ 1.000 dòng</span>
+      r.ten.toLowerCase().includes(tuKhoa));
+  }
+}
+<span class="cm">// Không có ô nhớ, không có gì để dùng lại.</span>
+<span class="cm">// Nhân thêm số lần chu kỳ chạy → giao diện giật.</span></code></pre>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Câu đúng không phải “impure là chậm”, mà “impure là bị gọi lại rất nhiều lần”.</strong> Chậm hay không nằm ở chỗ bạn viết gì trong <code>transform()</code>. <code>async</code> impure mà rẻ vì nó chỉ đọc một biến; pipe lọc impure thì đắt vì nó quét lại cả danh sách.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của việc bật pure: false</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Thấy được thay đổi bên trong</b> object và mảng, kể cả khi tham chiếu giữ nguyên.</li>
+        <li><b>Là cách duy nhất cho dữ liệu “sống”</b> — luồng, thời gian trôi, dữ liệu tự cập nhật.</li>
+        <li><b>Giữ template khai báo,</b> không phải nhét vòng lặp và điều kiện vào giữa HTML.</li>
+        <li><b>Rẻ khi transform() rẻ.</b> <code>async</code>, <code>keyvalue</code>, <code>slice</code> dùng thoải mái, đừng né vì cái nhãn impure.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>&lt;p&gt;{{ (nguoiDung$ | async)?.ten }}&lt;/p&gt;
+<span class="cm">// impure nên bắt được mọi giá trị mới của luồng,</span>
+<span class="cm">// mà vẫn tự huỷ đăng ký khi rời màn.</span>
+
+&#64;for (m of cauHinh | keyvalue; track m.key) { … }
+<span class="cm">// sửa một khoá bên trong object → giao diện vẫn cập nhật</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Không có ô nhớ.</b> Mọi chu kỳ đều tính lại từ đầu, không có gì được dùng lại.</li>
+        <li><b>Chi phí nhân với số dòng.</b> Đặt trong <code>&#64;for</code> 500 dòng là 500 lần mỗi chu kỳ.</li>
+        <li><b>Không đo được bằng mắt.</b> Code nhìn vô hại, chỉ hồ sơ hiệu năng mới lộ ra.</li>
+        <li><b>Dễ hiểu nhầm cả hai chiều:</b> tưởng impure luôn chậm nên né cả <code>async</code>, hoặc tưởng đã impure thì tha hồ tính toán.</li>
+        <li><b>Che mất chỗ đúng để tính.</b> Lọc và sắp xếp là việc của tầng dữ liệu, không phải của giao diện.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// ✗ Đắt: 500 dòng × mỗi chu kỳ dò thay đổi</span>
+&#64;for (r of ds() | loc: tuKhoa(); track r.id) { … }
+
+<span class="cm">// ✓ Rẻ: tính đúng một lần khi ds hoặc tuKhoa đổi</span>
+<span class="kw">readonly</span> dsLoc = computed(() =&gt;
+  <span class="kw">this</span>.ds().filter((r) =&gt; r.ten.includes(<span class="kw">this</span>.tuKhoa())));
+&#64;for (r of dsLoc(); track r.id) { … }</code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Ba luật sống chung.</strong> Một: cần lọc hay sắp xếp thì dùng <code>computed()</code> hoặc làm ở facade, đừng viết pipe impure. Hai: muốn pipe thuần nhìn thấy thay đổi thì <em>đổi vỏ</em> — <code>ds.set([...ds(), moi])</code> thay vì <code>ds().push(moi)</code>. Ba: <code>async</code>, <code>keyvalue</code>, <code>slice</code>, <code>json</code> cứ dùng bình thường — chúng impure nhưng phần việc mỗi lần chạy gần như bằng không.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Đọc thêm</p><h2>Ba bài cùng chủ đề</h2></div>
+  <div class="board">
+    <p><a href="day-18-pipes.html">Day 18 — Pipes</a> · pipe là gì, cách tự viết một cái cho riêng mình.</p>
+    <p><a href="day-49-zonejs-change-detection.html">Day 49 — Zone.js và change detection</a> · cái chu kỳ nói suốt bài này do đâu mà chạy, và chạy bao nhiêu lần.</p>
+    <p><a href="day-52-closure-rxjs-pipe-memory-leak.html">Day 52 — Closure gặp .pipe()</a> · chữ “pipe” còn một nghĩa thứ hai bên RxJS. Đó mới là chỗ rò rỉ bộ nhớ — còn template pipe trong bài này thì không.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>pipe</td><td>Ống lọc — hàm nhỏ định dạng giá trị ngay trên giao diện, viết sau dấu <code>|</code>.</td></tr>
+      <tr><td>pure pipe</td><td>Pipe thuần — có ô nhớ, chỉ chạy lại khi đối số đổi.</td></tr>
+      <tr><td>impure pipe</td><td>Pipe không thuần — không nhớ gì, chạy lại mỗi chu kỳ dò thay đổi.</td></tr>
+      <tr><td>transform()</td><td>Hàm duy nhất của một pipe, nơi việc biến đổi thật sự xảy ra.</td></tr>
+      <tr><td>PipeTransform</td><td>Giao ước bắt buộc mọi pipe phải có hàm <code>transform</code>.</td></tr>
+      <tr><td>change detection</td><td>Chu kỳ dò thay đổi — vòng Angular quét dữ liệu để vẽ lại giao diện.</td></tr>
+      <tr><td>OnPush</td><td>Chế độ chỉ kiểm tra component khi nó bị đánh dấu bẩn, thay vì kiểm tra mọi lúc.</td></tr>
+      <tr><td>markForCheck()</td><td>Lệnh báo Angular “khối này có thay đổi, chu kỳ tới nhớ ghé qua”.</td></tr>
+      <tr><td>tham chiếu</td><td>Địa chỉ ô nhớ của object hay mảng — đổi ruột không làm đổi tham chiếu.</td></tr>
+      <tr><td>so sánh đồng nhất</td><td>Phép <code>===</code> — hỏi “có phải đúng cùng một ô nhớ không”, không so từng phần tử.</td></tr>
+      <tr><td>Observable</td><td>Luồng dữ liệu — nguồn phát giá trị nhiều lần theo thời gian.</td></tr>
+      <tr><td>subscribe / unsubscribe</td><td>Đăng ký nhận dữ liệu từ luồng / huỷ đăng ký đó.</td></tr>
+      <tr><td>signal</td><td>Ô dữ liệu biết tự báo khi giá trị đổi, nền tảng phản ứng mới của Angular.</td></tr>
+      <tr><td>computed()</td><td>Signal dẫn xuất — tự tính lại đúng một lần khi nguồn của nó đổi.</td></tr>
+      <tr><td>facade</td><td>Lớp dịch vụ gom state và logic của một màn, để component chỉ lo hiển thị.</td></tr>
+      <tr><td>ngOnDestroy</td><td>Hàm Angular gọi lúc huỷ, chỗ để dọn dẹp đăng ký còn treo.</td></tr>
+    </tbody>
+  </table></div>
+</section>

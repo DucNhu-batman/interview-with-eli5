@@ -1,0 +1,235 @@
+<!--meta
+title: share và shareReplay — chia chung một luồng
+eyebrow: RxJS · Bài 9
+short: share / shareReplay
+lede: Ba màn hình dùng chung một Observable HTTP thì có ba lời gọi mạng — không ai làm gì sai, luồng lạnh vốn thế. share đặt một hộp chia vào giữa để chỉ còn một. shareReplay thêm cái kho cho người đến muộn. Và đúng một tuỳ chọn mặc định trong đó là chỗ rò rỉ kinh điển.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Ba người xếp hàng mua ba vé cho cùng một chuyến</h2></div>
+  <p>Một <span class="gl" data-gl="Luồng dữ liệu — dãy giá trị xuất hiện dần theo thời gian" tabindex="0"><strong>Observable</strong></span> (luồng dữ liệu — dãy giá trị xuất hiện dần theo thời gian) do <span class="gl" data-gl="Bộ gọi máy chủ của Angular — mỗi lần đăng ký là một lời gọi thật" tabindex="0"><code>HttpClient</code></span> trả về là luồng <span class="gl" data-gl="cold — luồng chạy lại logic từ đầu cho từng người đăng ký" tabindex="0"><strong>lạnh</strong></span>: logic gọi mạng nằm <em>bên trong</em>, chạy lại nguyên vẹn mỗi lần có người đăng ký. Ba chỗ dùng là ba lời gọi thật, ba lần chờ, ba kết quả riêng.</p>
+<pre><code>danhSach$ = <span class="kw">this</span>.http.get&lt;User[]&gt;(<span class="str">'/api/users'</span>);
+
+<span class="cm">// 3 chỗ dùng async pipe → 3 lời gọi GET /api/users</span></code></pre>
+  <p><code>share()</code> đặt một <strong>hộp chia</strong> vào giữa nguồn và những người nghe. Hộp chia đó chính là một <span class="gl" data-gl="Luồng vừa phát vừa nghe được — chính là hộp chia" tabindex="0"><code>Subject</code></span>: nguồn chạy đúng một lần, đổ vào hộp, hộp phát lại cho tất cả. <code>shareReplay()</code> là cùng cái hộp đó nhưng đổi ruột thành <span class="gl" data-gl="Subject có kho nhớ N giá trị gần nhất — ruột của shareReplay" tabindex="0"><code>ReplaySubject</code></span> — tức là có thêm một cái kho nhớ giá trị cũ.</p>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> <span class="gl" data-gl="Đặt một Subject vào giữa để nhiều người dùng chung một nguồn" tabindex="0"><code>share</code></span> chia chung nhưng không nhớ gì; <span class="gl" data-gl="Chia chung một luồng và phát lại giá trị cũ cho người đến muộn" tabindex="0"><code>shareReplay</code></span> chia chung <em>và</em> nhớ lại cho người đến muộn. Việc còn lại chỉ là một tuỳ chọn tên <span class="gl" data-gl="Đếm người nghe — hết người thì tự ngắt nguồn và xoá kho" tabindex="0"><code>refCount</code></span> — và nó là chỗ 90% lỗi nằm ở đó.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Một hộp chia, một bộ đếm</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 250" role="img" aria-label="Sơ đồ. Bên trái là một hộp lời gọi máy chủ duy nhất, chạy một lần. Nó nối vào một hộp chia mang nhãn Subject, phía trên hộp chia có bộ đếm ghi số người đang nghe là ba. Từ hộp chia toả ra ba nhánh tới ba màn hình A, B và C.">
+        <defs>
+          <marker id="shArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <rect x="14" y="100" width="182" height="46" rx="10" fill="var(--surface-2)"></rect>
+        <text x="32" y="128" font-size="12.5" font-weight="700" fill="currentColor" font-family="monospace">GET /api/users</text>
+        <text x="32" y="168" font-size="11" fill="currentColor" opacity=".7" font-family="monospace">chạy đúng 1 lần</text>
+        <line x1="204" y1="123" x2="254" y2="123" stroke="currentColor" stroke-width="2" opacity=".5" marker-end="url(#shArrow)"></line>
+
+        <rect x="262" y="92" width="152" height="62" rx="14" fill="var(--surface-2)" stroke="var(--accent)" stroke-width="2.4"></rect>
+        <text x="338" y="120" font-size="13" font-weight="700" fill="var(--accent)" font-family="monospace" text-anchor="middle">hộp chia</text>
+        <text x="338" y="139" font-size="11" fill="currentColor" opacity=".7" font-family="monospace" text-anchor="middle">Subject</text>
+        <rect x="298" y="58" width="80" height="24" rx="12" fill="var(--surface-2)"></rect>
+        <text x="338" y="75" font-size="11" font-weight="700" fill="var(--accent)" font-family="monospace" text-anchor="middle">đang mở: 3</text>
+
+        <line x1="422" y1="112" x2="472" y2="52" stroke="var(--accent)" stroke-width="2" marker-end="url(#shArrow)"></line>
+        <line x1="422" y1="123" x2="472" y2="123" stroke="var(--accent)" stroke-width="2" marker-end="url(#shArrow)"></line>
+        <line x1="422" y1="134" x2="472" y2="194" stroke="var(--accent)" stroke-width="2" marker-end="url(#shArrow)"></line>
+
+        <rect x="484" y="28" width="176" height="44" rx="10" fill="var(--surface-2)"></rect>
+        <text x="504" y="55" font-size="12.5" fill="currentColor" font-family="monospace">màn hình A</text>
+        <rect x="484" y="101" width="176" height="44" rx="10" fill="var(--surface-2)"></rect>
+        <text x="504" y="128" font-size="12.5" fill="currentColor" font-family="monospace">màn hình B</text>
+        <rect x="484" y="172" width="176" height="44" rx="10" fill="var(--surface-2)"></rect>
+        <text x="504" y="199" font-size="12.5" fill="currentColor" font-family="monospace">màn hình C</text>
+      </svg>
+    </div>
+    <figcaption>Cái bộ đếm "đang mở" là nhân vật chính — mọi tranh cãi về <span class="gl" data-gl="Chia chung một luồng và phát lại giá trị cũ cho người đến muộn" tabindex="0">shareReplay</span> đều xoay quanh chuyện nó về 0 thì làm gì.</figcaption>
+  </figure>
+  <p class="col">Người nghe thứ nhất đăng ký thì hộp chia mới đấu vào nguồn. Người thứ hai, thứ ba đăng ký thì chỉ được thêm vào danh sách — nguồn không chạy lại. Khi bộ đếm về 0, câu hỏi là: <strong>ngắt nguồn hay giữ nguyên?</strong> <code><span class="gl" data-gl="Đặt một Subject vào giữa để nhiều người dùng chung một nguồn" tabindex="0">share</span>()</code> luôn ngắt. <code>shareReplay()</code> thì tuỳ bạn khai <span class="gl" data-gl="Đếm người nghe — hết người thì tự ngắt nguồn và xoá kho" tabindex="0"><code>refCount</code></span>.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Ba cách viết, ba hành vi</h2></div>
+  <p class="col">Đây là toàn bộ phần cần thuộc. Ba cột dưới đây là ba dòng mã bạn sẽ thật sự gõ, không phải ba khái niệm.</p>
+  <div class="tbl-scroll"><table class="plain">
+    <thead>
+      <tr>
+        <th>Hành vi</th>
+        <th><code><span class="gl" data-gl="Đặt một Subject vào giữa để nhiều người dùng chung một nguồn" tabindex="0">share</span>()</code></th>
+        <th><code><span class="gl" data-gl="Chia chung một luồng và phát lại giá trị cũ cho người đến muộn" tabindex="0">shareReplay</span>(1)</code></th>
+        <th><code>shareReplay({ <span class="gl" data-gl="Số giá trị được giữ trong kho để phát cho người đến muộn" tabindex="0">bufferSize</span>: 1, <span class="gl" data-gl="Đếm người nghe — hết người thì tự ngắt nguồn và xoá kho" tabindex="0">refCount</span>: true })</code></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Gộp nhiều <span class="gl" data-gl="subscriber" tabindex="0">người nghe</span> thành một nguồn</td><td colspan="3"><span class="yes">Có</span> — cả ba đều làm đúng việc này</td></tr>
+      <tr><td>Người đến muộn nhận giá trị cũ</td><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td><span class="yes">Có</span> — chừng nào vẫn còn người nghe</td></tr>
+      <tr><td>Hết người nghe thì ngắt nguồn</td><td><span class="yes">Có</span></td><td><span class="no">Không</span></td><td><span class="yes">Có</span></td></tr>
+      <tr><td>Hết người nghe thì xoá kho</td><td>Không có kho</td><td><span class="no">Giữ mãi</span></td><td><span class="yes">Xoá</span> — người sau làm nguồn chạy lại</td></tr>
+      <tr><td>Sau khi nguồn <span class="gl" data-gl="Kết thúc luồng bình thường, không phải lỗi" tabindex="0"><code>complete()</code></span></td><td>Đặt lại — người sau làm nguồn chạy lại</td><td colspan="2">Giữ kho và phát tiếp cho người sau</td></tr>
+      <tr><td>Sau khi nguồn lỗi</td><td colspan="3">Đặt lại — người đăng ký sau sẽ làm nguồn chạy lại từ đầu</td></tr>
+      <tr><td>Rủi ro <span class="gl" data-gl="memory leak" tabindex="0">rò rỉ</span> với nguồn vô hạn</td><td><span class="yes">Không</span></td><td><span class="no">Có</span></td><td><span class="yes">Không</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Mặc định nên dùng</span>
+      <h3>Dữ liệu dùng chung nhiều màn</h3>
+      <p>Chia chung, người vào muộn có ngay, hết người thì dọn sạch. Không phải nghĩ.</p>
+<pre><code>danhSach$ = <span class="kw">this</span>.http
+  .get&lt;User[]&gt;(<span class="str">'/api/users'</span>)
+  .pipe(shareReplay({
+    bufferSize: <span class="kw">1</span>,
+    refCount: <span class="kw">true</span>,
+  }));</code></pre>
+    </div>
+    <div class="card">
+      <span class="tag warn">Cố tình giữ kho</span>
+      <h3>Danh mục ít khi đổi</h3>
+      <p>Số trần là <code>refCount: false</code>. Ở đây điều đó <em>đúng ý</em>: giữ kết quả suốt phiên làm việc. An toàn vì lời gọi mạng tự kết thúc.</p>
+<pre><code>tinhThanh$ = <span class="kw">this</span>.http
+  .get&lt;Tinh[]&gt;(<span class="str">'/api/provinces'</span>)
+  .pipe(shareReplay(<span class="kw">1</span>));
+<span class="cm">// nguồn tự complete → không có gì để rò rỉ</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag bad">Hiếm khi đúng</span>
+      <h3>Sự kiện thuần tuý</h3>
+      <p>Chỉ khi giá trị cũ vô nghĩa với người đến muộn — luồng "vừa bấm nút", "vừa lưu xong".</p>
+<pre><code>daLuu$ = nguon$.pipe(share());
+<span class="cm">// đến muộn thì thôi, không cần</span>
+<span class="cm">// biết chuyện đã xảy ra lúc nãy</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Vấn đề</p><h2>Vì sao <code><span class="gl" data-gl="Chia chung một luồng và phát lại giá trị cũ cho người đến muộn" tabindex="0">shareReplay</span>(1)</code> bị mang tiếng <span class="gl" data-gl="memory leak" tabindex="0">rò rỉ</span></h2></div>
+  <p class="col">Viết bằng số trần thì <span class="gl" data-gl="Đếm người nghe — hết người thì tự ngắt nguồn và xoá kho" tabindex="0"><code>refCount</code></span> mặc định là <strong>tắt</strong>. Bộ đếm về 0 mà hộp chia vẫn giữ nguyên đường dây tới nguồn. Với một lời gọi mạng thì chẳng sao — nguồn tự kết thúc, không còn gì chạy. Nhưng với nguồn <em>không bao giờ kết thúc</em> thì đó là một cái vòi nước không có khoá.</p>
+<pre><code><span class="cm">// ✗ interval chạy mãi kể cả khi mọi màn hình đã rời đi</span>
+dongHo$ = interval(<span class="kw">1000</span>).pipe(shareReplay(<span class="kw">1</span>));
+
+<span class="cm">// ✓ hết người nghe là ngắt</span>
+dongHo$ = interval(<span class="kw">1000</span>).pipe(shareReplay({ bufferSize: <span class="kw">1</span>, refCount: <span class="kw">true</span> }));</code></pre>
+  <div class="callout bad col">
+    <p><strong>Nhưng đừng đảo sang cực kia:</strong> <code>refCount: true</code> có cái giá của nó — <span class="gl" data-gl="subscriber" tabindex="0">người nghe</span> cuối cùng rời đi là kho bị xoá, người vào sau làm nguồn chạy lại. Gắn nó vào một lời gọi danh mục để "cho an toàn" là bạn vừa vô hiệu hoá chính cái <span class="gl" data-gl="cache" tabindex="0">bộ nhớ đệm</span> mình định làm.</p>
+  </div>
+  <p class="col">Câu hỏi để chọn đúng chỉ có một: <strong>nguồn này có tự kết thúc không?</strong> Có thì số trần là ổn và còn lợi hơn. Không thì bắt buộc phải khai <code>refCount: true</code>.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Một dòng thay cho cả một bộ máy.</b> Không phải tự dựng <span class="gl" data-gl="Luồng vừa phát vừa nghe được — chính là hộp chia" tabindex="0"><code>Subject</code></span>, tự đăng ký nguồn, tự lo huỷ.</li>
+        <li><b>Việc tốn kém làm đúng một lần.</b> Ba màn hình, một lời gọi mạng — người dùng thấy nhanh hơn thật.</li>
+        <li><b>Người đến muộn không phải chờ.</b> <span class="gl" data-gl="Chia chung một luồng và phát lại giá trị cũ cho người đến muộn" tabindex="0"><code>shareReplay</code></span> đưa ngay giá trị đang có, giao diện không nhấp nháy.</li>
+        <li><b><span class="gl" data-gl="Đếm người nghe — hết người thì tự ngắt nguồn và xoá kho" tabindex="0"><code>refCount</code></span> tự dọn.</b> Không cần nhớ huỷ đăng ký ở đâu — bộ đếm về 0 là tự ngắt.</li>
+        <li><b>Làm <span class="gl" data-gl="cache" tabindex="0">bộ nhớ đệm</span> cấp ứng dụng rẻ tiền.</b> Danh mục tỉnh thành, cấu hình, quyền — một dòng là xong, không cần thư viện.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Trước và sau</p>
+<pre><code><span class="cm">// trước: 3 chỗ dùng = 3 lời gọi</span>
+danhSach$ = http.get(<span class="str">'/api/users'</span>);
+
+<span class="cm">// sau: 3 chỗ dùng = 1 lời gọi</span>
+danhSach$ = http.get(<span class="str">'/api/users'</span>)
+  .pipe(shareReplay({ bufferSize: <span class="kw">1</span>, refCount: <span class="kw">true</span> }));</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Mặc định của <code>shareReplay(n)</code> đi ngược trực giác.</b> <code>refCount</code> tắt sẵn — nguồn vô hạn thì không bao giờ được ngắt.</li>
+        <li><b><code>refCount: true</code> làm mất kho.</b> Hết <span class="gl" data-gl="subscriber" tabindex="0">người nghe</span> là xoá sạch, lần sau gọi lại — đúng thứ bạn định tránh.</li>
+        <li><b><code><span class="gl" data-gl="Đặt một Subject vào giữa để nhiều người dùng chung một nguồn" tabindex="0">share</span>()</code> tự đặt lại sau <span class="gl" data-gl="Kết thúc luồng bình thường, không phải lỗi" tabindex="0"><code>complete()</code></span>.</b> Tưởng đang có bộ nhớ đệm, thực ra mỗi người đến sau lại một lời gọi mới.</li>
+        <li><b>Lỗi làm mất sạch.</b> Nguồn ném lỗi thì cả hai đều đặt lại — người đăng ký sau chạy lại từ đầu, dễ tưởng là bộ đệm hỏng.</li>
+        <li><b>Vị trí trong <span class="gl" data-gl="Ống nối — nơi xâu chuỗi các toán tử của một luồng" tabindex="0"><code>pipe</code></span> đổi hoàn toàn ý nghĩa.</b> Toán tử đặt trước chạy một lần, đặt sau chạy cho từng người nghe.</li>
+        <li><b>Nhìn code khó thấy.</b> Một chữ giữa <code>pipe</code> quyết định số lời gọi mạng của cả màn hình — không có gì trong giao diện gợi ý điều đó.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Vị trí quyết định ai chạy mấy lần</p>
+<pre><code>nguon$.pipe(
+  map(nang),        <span class="cm">// chạy 1 lần cho tất cả</span>
+  shareReplay(<span class="kw">1</span>),
+  map(nhe),         <span class="cm">// chạy lại cho TỪNG người nghe</span>
+)
+
+<span class="cm">// ✗ đặt share cuối pipe rồi tưởng đã chia sẻ</span>
+nguon$.pipe(map(nang), filter(loc)).pipe(share())</code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> mặc định viết đầy đủ <code>shareReplay({ <span class="gl" data-gl="Số giá trị được giữ trong kho để phát cho người đến muộn" tabindex="0">bufferSize</span>: 1, refCount: true })</code> và chỉ đổi khi có lý do nói ra được. Bỏ <code>refCount</code> đúng một trường hợp: nguồn tự kết thúc <em>và</em> bạn muốn giữ kết quả suốt phiên. Đặt <span class="gl" data-gl="operator" tabindex="0">toán tử</span> chia sẻ ngay sau phần việc tốn kém, đừng đặt cuối <code>pipe</code>. Và đừng dùng nó làm bộ nhớ đệm có thời hạn — chuyện hết hạn, làm mới, xoá theo yêu cầu là việc của một <span class="gl" data-gl="service" tabindex="0">lớp dịch vụ</span> đàng hoàng, không phải của một toán tử.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> Cả hai đều biến luồng <span class="gl" data-gl="cold — luồng chạy lại logic từ đầu cho từng người đăng ký" tabindex="0">lạnh</span> thành <span class="gl" data-gl="hot — luồng lấy dữ liệu từ bên ngoài, ai đến thì nghe từ lúc đó" tabindex="0">nóng</span> bằng cách đặt một <span class="gl" data-gl="Luồng vừa phát vừa nghe được — chính là hộp chia" tabindex="0"><code>Subject</code></span> vào giữa, nên nguồn chỉ chạy một lần cho nhiều người nghe. Khác nhau ở cái kho: <span class="gl" data-gl="Đặt một Subject vào giữa để nhiều người dùng chung một nguồn" tabindex="0"><code>share</code></span> dùng <code>Subject</code> trần nên người đến muộn không nhận gì; <span class="gl" data-gl="Chia chung một luồng và phát lại giá trị cũ cho người đến muộn" tabindex="0"><code>shareReplay</code></span> dùng <span class="gl" data-gl="Subject có kho nhớ N giá trị gần nhất — ruột của shareReplay" tabindex="0"><code>ReplaySubject</code></span> nên phát lại giá trị cũ. Điểm hay sai nhất là <code>shareReplay(1)</code> viết bằng số trần thì <span class="gl" data-gl="Đếm người nghe — hết người thì tự ngắt nguồn và xoá kho" tabindex="0"><code>refCount</code></span> mặc định là <code>false</code> — với nguồn không tự kết thúc thì nó không bao giờ ngắt, đó là chỗ rò rỉ.</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3><code>share</code> khác <code>shareReplay</code> ở chỗ nào?</h3>
+      <p>Nói đúng một câu là đủ: khác cái hộp chia bên trong — <code>Subject</code> trần so với <code>ReplaySubject</code>. Mọi khác biệt còn lại đều suy ra từ đó. Nói được câu này là chứng minh bạn hiểu cơ chế chứ không thuộc lòng bảng so sánh.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>shareReplay(1)</code> có <span class="gl" data-gl="memory leak" tabindex="0">rò rỉ</span> bộ nhớ không?</h3>
+      <p>Câu trả lời đúng là "còn tuỳ nguồn". Nguồn tự kết thúc như một lời gọi <span class="gl" data-gl="Bộ gọi máy chủ của Angular — mỗi lần đăng ký là một lời gọi thật" tabindex="0"><code>HttpClient</code></span> thì không rò rỉ gì cả. Nguồn vô hạn như <span class="gl" data-gl="Tạo luồng phát một số đều đặn theo chu kỳ, chạy mãi không dừng" tabindex="0"><code>interval</code></span>, <span class="gl" data-gl="Biến sự kiện của trình duyệt thành một luồng RxJS" tabindex="0"><code>fromEvent</code></span>, <span class="gl" data-gl="Kết nối hai chiều luôn mở, máy chủ đẩy dữ liệu xuống bất cứ lúc nào" tabindex="0">WebSocket</span> thì có. Trả lời cụt lủn "có, luôn rò rỉ" là sai.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Vậy cứ luôn bật <code>refCount: true</code> cho chắc?</h3>
+      <p>Không. Bật nó là hết <span class="gl" data-gl="subscriber" tabindex="0">người nghe</span> thì kho bị xoá, người vào sau làm nguồn chạy lại. Gắn vào một danh mục ít đổi là vô hiệu hoá chính cái <span class="gl" data-gl="cache" tabindex="0">bộ nhớ đệm</span> mình muốn. Nêu được cái giá này là điểm cộng lớn.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Đặt nó ở đâu trong <span class="gl" data-gl="Ống nối — nơi xâu chuỗi các toán tử của một luồng" tabindex="0"><code>pipe</code></span>?</h3>
+      <p>Ngay sau phần việc tốn kém. Mọi <span class="gl" data-gl="operator" tabindex="0">toán tử</span> <em>trước</em> nó chạy một lần cho tất cả; mọi toán tử <em>sau</em> nó chạy lại cho từng người nghe. Rất nhiều người dùng <code>shareReplay</code> hằng ngày mà chưa từng nghĩ tới điều này.</p>
+    </div>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "<code>shareReplay</code> là cache, cứ gắn vào cuối <code>pipe</code> là xong." Sai ở ba chỗ. Nó không phải bộ nhớ đệm đúng nghĩa — không có hết hạn, không làm mới được, và một lỗi của nguồn là mất sạch. Vị trí trong <code>pipe</code> quyết định phần nào được chia sẻ, gắn cuối thường là chia sẻ nhầm chỗ. Và câu đó bỏ qua hoàn toàn <code>refCount</code>, thứ duy nhất thật sự cần quyết định.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>Observable</td><td>Luồng dữ liệu — dãy giá trị xuất hiện dần theo thời gian.</td></tr>
+      <tr><td>cold / lạnh</td><td>Luồng chạy lại logic từ đầu cho từng người đăng ký.</td></tr>
+      <tr><td>hot / nóng</td><td>Luồng lấy dữ liệu từ bên ngoài, ai đến thì nghe từ lúc đó.</td></tr>
+      <tr><td>multicast</td><td>Một nguồn chia chung cho nhiều người nghe.</td></tr>
+      <tr><td>Subject</td><td>Luồng vừa phát vừa nghe được — chính là "hộp chia" trong hình.</td></tr>
+      <tr><td>ReplaySubject</td><td>Subject có kho nhớ N giá trị gần nhất; là ruột của shareReplay.</td></tr>
+      <tr><td>share</td><td>Toán tử đặt một Subject vào giữa để nhiều người dùng chung một nguồn.</td></tr>
+      <tr><td>shareReplay</td><td>Như share nhưng hộp chia có kho, nên người đến muộn vẫn nhận được giá trị cũ.</td></tr>
+      <tr><td>refCount</td><td>Đếm người nghe — hết người thì tự ngắt nguồn và xoá kho.</td></tr>
+      <tr><td>bufferSize</td><td>Số giá trị được giữ trong kho để phát cho người đến muộn.</td></tr>
+      <tr><td>subscribe</td><td>Đăng ký nghe — hành động khiến luồng bắt đầu chạy.</td></tr>
+      <tr><td>complete()</td><td>Kết thúc luồng bình thường, không phải lỗi.</td></tr>
+      <tr><td>operator / toán tử</td><td>Hàm nhận một luồng và trả về luồng mới đã biến đổi.</td></tr>
+      <tr><td>pipe</td><td>Ống nối — nơi xâu chuỗi các toán tử của một luồng.</td></tr>
+      <tr><td>cache / bộ nhớ đệm</td><td>Kho giữ kết quả để lần sau khỏi đi lấy lại.</td></tr>
+      <tr><td>memory leak</td><td>Rò rỉ bộ nhớ — thứ đáng lẽ phải được dọn nhưng vẫn bị giữ lại.</td></tr>
+      <tr><td>HttpClient</td><td>Bộ gọi máy chủ của Angular — mỗi lần đăng ký là một lời gọi thật.</td></tr>
+      <tr><td>API</td><td>Giao diện lập trình — địa chỉ máy chủ mà mã nguồn gọi tới.</td></tr>
+      <tr><td>WebSocket</td><td>Kết nối hai chiều luôn mở, máy chủ đẩy dữ liệu xuống bất cứ lúc nào.</td></tr>
+      <tr><td>interval</td><td>Hàm tạo luồng phát một số đều đặn theo chu kỳ, chạy mãi không dừng.</td></tr>
+      <tr><td>fromEvent</td><td>Hàm biến sự kiện của trình duyệt thành một luồng RxJS.</td></tr>
+      <tr><td>async pipe</td><td>Ống nối của Angular tự đăng ký và tự dọn ngay trong mẫu giao diện.</td></tr>
+      <tr><td>service</td><td>Lớp dịch vụ — nơi chứa dữ liệu và logic dùng chung giữa nhiều màn hình.</td></tr>
+    </tbody>
+  </table></div>
+</section>

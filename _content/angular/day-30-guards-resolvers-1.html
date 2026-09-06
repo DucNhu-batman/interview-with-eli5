@@ -1,0 +1,85 @@
+<!--meta
+title: Day 30 — Guards và Resolvers, phần 1
+eyebrow: Angular · Day 30
+short: Day 30
+lede: Người gác cửa của route: cho vào, chặn lại, hay đá sang chỗ khác. Bắt đầu với canActivate và canMatch.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Trạm kiểm soát trước khi vào màn hình</h2></div>
+  <p>Guard (người gác) là một hàm chạy <em>trước</em> khi router vẽ component. Nó trả về <code>true</code> (cho qua), <code>false</code> (chặn), hoặc một <code>UrlTree</code> (chuyển hướng sang route khác). Được trả về Promise hay Observable, nên hỏi máy chủ trước khi quyết định cũng được.</p>
+<pre><code>export <span class="kw">const</span> authGuard: CanActivateFn = (route, state) =&gt; {
+  <span class="kw">const</span> token = inject(TokenService);
+  <span class="kw">const</span> router = inject(Router);
+  <span class="kw">return</span> token.hopLe()
+    ? <span class="kw">true</span>
+    : router.createUrlTree([<span class="str">'/dang-nhap'</span>], { queryParams: { next: state.url } });
+};
+
+{ path: <span class="str">'kho'</span>, canActivate: [authGuard], loadChildren: … }</code></pre>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Loại guard</th><th>Chạy khi</th><th>Dùng cho</th></tr></thead>
+    <tbody>
+      <tr><td>canActivate</td><td>Trước khi vào route</td><td>Đăng nhập, phân quyền</td></tr>
+      <tr><td>canActivateChild</td><td>Trước khi vào từng route con</td><td>Áp một luật cho cả nhánh</td></tr>
+      <tr><td>canMatch</td><td>Trước cả khi route được chọn</td><td>Ẩn hẳn route; chặn luôn việc tải gói lazy</td></tr>
+      <tr><td>canDeactivate</td><td>Trước khi rời route</td><td>Cảnh báo mất dữ liệu (phần 2)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <p><strong><code>canMatch</code> mạnh hơn <code>canActivate</code>:</strong> nó chạy ở bước khớp đường dẫn, nên route bị chặn coi như không tồn tại — router thử tiếp mục sau. Nhờ đó cùng một URL có thể vẽ màn khác nhau theo quyền, và gói lazy của khu vực cấm không bao giờ bị tải về.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Luật kiểm soát nằm một chỗ,</b> không rải <code>if</code> trong từng component.</li>
+        <li><b>Chặn trước khi vẽ</b> nên người dùng không kịp thấy màn hình cấm nhấp nháy.</li>
+        <li><b>Guard hàm dùng được <code>inject()</code></b>, ngắn gọn và test dễ.</li>
+        <li><b>Ghép nhiều guard</b> cho một route, mỗi cái lo một khía cạnh.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>export <span class="kw">const</span> quyenGuard: CanMatchFn = (route) =&gt;
+  inject(PermissionService).co(route.data?.[<span class="str">'quyen'</span>]) ||
+  inject(Router).createUrlTree([<span class="str">'/403'</span>]);
+<span class="cm">// Người không có quyền: không thấy màn hình nhấp nháy,</span>
+<span class="cm">// và gói lazy của khu vực đó không hề được tải về máy họ.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Không phải bảo mật thật.</b> Guard chỉ chạy ở trình duyệt; máy chủ vẫn phải kiểm tra quyền.</li>
+        <li><b>Guard bất đồng bộ chậm làm điều hướng khựng</b> nếu không có chỉ báo.</li>
+        <li><b>Nhiều guard chồng nhau khó lần</b> khi bị chặn mà không rõ vì cái nào.</li>
+        <li><b>Chuyển hướng sai gây vòng lặp</b> giữa hai route đá qua đá lại.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// Chỉ chặn ở FE:</span>
+canActivate: [adminGuard]
+<span class="cm">// ✗ người dùng gọi thẳng API bằng công cụ trình duyệt vẫn lấy được dữ liệu</span>
+<span class="cm">// Guard là trải nghiệm, KHÔNG phải bảo mật — máy chủ vẫn phải kiểm tra.</span>
+
+authGuard  → chuyển hướng /dang-nhap
+loginGuard → chuyển hướng /trang-chu
+<span class="cm">// ✗ điều kiện lệch nhau một chút → hai guard đá qua đá lại, trình duyệt treo</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>guard</td><td>Người gác route — quyết định cho vào hay không.</td></tr>
+      <tr><td>UrlTree</td><td>Đối tượng mô tả một URL, dùng để chuyển hướng.</td></tr>
+      <tr><td>canMatch</td><td>Guard chạy ở bước khớp route, có thể làm route "biến mất".</td></tr>
+      <tr><td>functional guard</td><td>Guard viết dạng hàm (khuyên dùng thay cho class).</td></tr>
+      <tr><td>RBAC</td><td>Phân quyền theo vai trò.</td></tr>
+    </tbody>
+  </table></div>
+</section>

@@ -1,0 +1,81 @@
+<!--meta
+title: Day 48 — Dùng DI để lấy dữ liệu từ ActivatedRoute
+eyebrow: Angular · Day 48
+short: Day 48
+lede: Component không cần biết ActivatedRoute tồn tại. Gói việc đọc tham số route vào một provider, và component chỉ việc nhận dữ liệu đã sẵn sàng.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Vấn đề</p><h2>Vì sao không nên inject ActivatedRoute khắp nơi</h2></div>
+  <p>Đọc <code>route.paramMap</code> trong từng component nghe có vẻ vô hại, nhưng nó buộc component phải biết mình đang nằm ở đâu trong bảng route. Muốn dùng lại component đó trong một dialog hay một tab thì không được nữa, và mỗi bài test đều phải giả lập <code>ActivatedRoute</code>.</p>
+<pre><code><span class="cm">// Cách 1 — provider gói sẵn, component chỉ inject cái nó cần</span>
+export <span class="kw">const</span> KHO_ID = <span class="kw">new</span> InjectionToken&lt;Signal&lt;string&gt;&gt;(<span class="str">'KHO_ID'</span>);
+
+{
+  path: <span class="str">':id'</span>,
+  component: ChiTietKhoComponent,
+  providers: [{
+    provide: KHO_ID,
+    useFactory: () =&gt; toSignal(inject(ActivatedRoute).paramMap.pipe(map((p) =&gt; p.get(<span class="str">'id'</span>)!))),
+  }],
+}
+
+export class ChiTietKhoComponent {
+  <span class="kw">readonly</span> id = inject(KHO_ID);   <span class="cm">// không biết gì về router</span>
+}</code></pre>
+<pre><code><span class="cm">// Cách 2 — gọn hơn nữa: bật input binding, tham số chảy thẳng vào input</span>
+provideRouter(routes, withComponentInputBinding());
+
+export class ChiTietKhoComponent {
+  id = input.required&lt;string&gt;();   <span class="cm">// khớp tên tham số route</span>
+}</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Component dùng lại được ở mọi ngữ cảnh</b> — trang, tab, dialog — vì nó chỉ nhận dữ liệu.</li>
+        <li><b>Test đơn giản hẳn:</b> truyền một input thay vì dựng cả router giả.</li>
+        <li><b>Logic đọc route nằm một chỗ,</b> đổi tên tham số chỉ sửa ở route.</li>
+        <li><b>Ghép được với resolver</b> để component nhận thẳng dữ liệu đã tải xong.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Test trước: phải giả lập cả ActivatedRoute</span>
+providers: [{ provide: ActivatedRoute, useValue: { paramMap: of(…) } }]
+
+<span class="cm">// Test sau: một dòng</span>
+fixture.componentRef.setInput(<span class="str">'id'</span>, <span class="str">'KHO-0001'</span>);</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Thêm một lớp trung gian</b> cho việc vốn chỉ một dòng — với màn nhỏ là thừa.</li>
+        <li><b>Ràng buộc theo tên ngầm.</b> Input phải trùng tên tham số route, gõ lệch là im lặng không có dữ liệu.</li>
+        <li><b>Không phải cấu hình mặc định:</b> quên bật <code>withComponentInputBinding()</code> là mọi input route đều rỗng.</li>
+        <li><b>Provider theo route dễ bị nhân bản</b> nếu khai nhầm cấp.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>{ path: <span class="str">':khoId'</span>, component: ChiTietKhoComponent }
+export class ChiTietKhoComponent { id = input.required&lt;string&gt;(); }
+<span class="cm">// tên lệch (khoId ≠ id) → input không bao giờ nhận giá trị</span>
+<span class="cm">// và lỗi chỉ lộ ra lúc chạy, không có cảnh báo biên dịch</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>ActivatedRoute</td><td>Đối tượng mô tả route đang hoạt động.</td></tr>
+      <tr><td>InjectionToken</td><td>Token tự tạo để cung cấp một giá trị qua DI.</td></tr>
+      <tr><td>useFactory</td><td>Provider tạo giá trị bằng một hàm.</td></tr>
+      <tr><td>withComponentInputBinding</td><td>Bơm tham số route thẳng vào input cùng tên.</td></tr>
+      <tr><td>toSignal</td><td>Chuyển observable thành signal.</td></tr>
+    </tbody>
+  </table></div>
+</section>

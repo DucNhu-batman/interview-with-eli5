@@ -1,0 +1,70 @@
+<!--meta
+title: Day 41 — Jira Clone 02: dựng layout với Flexbox và Tailwind
+eyebrow: Angular · Day 41
+short: Day 41
+lede: Bố cục ba khu (sidebar, header, nội dung) bằng Flexbox, và cách dùng utility class mà không biến template thành bãi rác.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Khung xương của mọi ứng dụng quản trị</h2></div>
+  <p>Gần như mọi app nội bộ đều cùng một bố cục: thanh bên trái, thanh trên, phần nội dung cuộn được ở giữa. Flexbox làm việc này gọn hơn hẳn <code>position: absolute</code>.</p>
+<pre><code>&lt;div class="flex h-screen overflow-hidden"&gt;
+  &lt;aside class="w-64 shrink-0 border-r border-E4E7EC overflow-y-auto"&gt;…&lt;/aside&gt;
+  &lt;div class="flex-1 flex flex-col min-w-0"&gt;         <span class="cm">// min-w-0 rất quan trọng</span>
+    &lt;header class="h-16 shrink-0 border-b border-E4E7EC"&gt;…&lt;/header&gt;
+    &lt;main class="flex-1 overflow-y-auto p-6"&gt;&lt;router-outlet /&gt;&lt;/main&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+  <div class="callout">
+    <p><strong><code>min-w-0</code> là mẹo phải nhớ:</strong> mặc định một flex item không co nhỏ hơn nội dung của nó, nên một cái bảng rộng sẽ đẩy phình cả bố cục. Thêm <code>min-w-0</code> cho phép nó co lại và tự sinh thanh cuộn ngang bên trong.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của Tailwind</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Không phải nghĩ tên class</b> và không sợ đè style của nơi khác.</li>
+        <li><b>Style nằm ngay cạnh markup,</b> sửa một chỗ là xong, không nhảy file.</li>
+        <li><b>Ràng buộc theo token:</b> khoảng cách, màu, cỡ chữ lấy từ một bảng chung nên giao diện đồng đều.</li>
+        <li><b>CSS xuất ra rất nhỏ</b> vì chỉ giữ những class thật sự dùng.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Đổi màu theo trạng thái, không cần viết file SCSS nào</span>
+&lt;span class="px-2 py-1 rounded-full text-custom-12"
+      [class.bg-success-50]="row.active"
+      [class.text-error-700]="!row.active"&gt;…&lt;/span&gt;</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Template dài và khó đọc</b> khi một thẻ mang hai chục class.</li>
+        <li><b>Lặp lại nhiều</b> nếu không tách thành component dùng chung.</li>
+        <li><b>Dễ hardcode giá trị</b> bằng cú pháp ngoặc vuông, phá vỡ hệ token.</li>
+        <li><b>Người mới phải học một bộ từ vựng nữa</b> ngoài CSS.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// ✗ hardcode — theme đổi là sai, và không ai tìm ra chỗ này</span>
+&lt;p class="text-[#98A2B3] text-[12px] border-[#C6C7C4]"&gt;
+
+<span class="cm">// ✓ dùng token đã khai trong tailwind.config.js</span>
+&lt;p class="text-gray-400 text-custom-12 border-C6C7C4"&gt;</code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>Flexbox</td><td>Mô hình bố cục một chiều của CSS.</td></tr>
+      <tr><td>utility class</td><td>Class tiện ích, mỗi class làm đúng một việc.</td></tr>
+      <tr><td>min-w-0</td><td>Cho phép flex item co nhỏ hơn nội dung của nó.</td></tr>
+      <tr><td>design token</td><td>Giá trị thiết kế đặt tên sẵn, dùng chung toàn hệ thống.</td></tr>
+      <tr><td>purge / content scan</td><td>Quét template để chỉ giữ class thật sự dùng.</td></tr>
+    </tbody>
+  </table></div>
+</section>

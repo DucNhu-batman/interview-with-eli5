@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="vi" data-track="js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>null và undefined — hai kiểu rỗng khác nhau</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><a href="index.html">JavaScript</a><span>/</span><span class="now">null vs undefined</span></nav>
+<header class="hero col">
+<p class="eyebrow">JavaScript · Bài 13</p>
+<h1>null và undefined — hai kiểu rỗng khác nhau</h1>
+<p class="lede">undefined là máy nói "chưa có ai gán vào đây". null là người viết nói "chỗ này cố ý để trống". Hai câu khác nhau, và JavaScript đối xử với chúng khác nhau ở đúng những chỗ bạn không ngờ nhất — tham số mặc định, JSON, và phép so sánh.</p>
+</header>
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Ô chưa ai điền, và ô bị gạch chéo</h2></div>
+  <p>Hãy nghĩ tới một tờ khai giấy. Ô "Số điện thoại phụ" <strong>bỏ trắng</strong> — không ai biết là người khai quên, hay không có, hay chưa tới lượt điền. Đó là <span class="gl" data-gl="Chưa xác định — giá trị máy tự điền vào chỗ không ai gán gì" tabindex="0"><code>undefined</code></span>. Còn ô bị người khai <strong>gạch chéo</strong> — rõ ràng có người đã đọc ô đó và quyết định "không có gì ở đây". Đó là <span class="gl" data-gl="Rỗng có chủ ý — chỉ xuất hiện khi người viết hoặc máy chủ đặt vào" tabindex="0"><code>null</code></span>.</p>
+  <p>Khác biệt không nằm ở giá trị, mà nằm ở <strong>ai tạo ra nó</strong>. <code>undefined</code> do <em>máy</em> sinh ra, tự động, ở những chỗ không ai gán gì cả. <code>null</code> thì không bao giờ tự xuất hiện — nó chỉ có mặt khi một người gõ nó ra, hoặc khi máy chủ gửi nó về.</p>
+<pre><code><span class="kw">let</span> a;                       <span class="cm">// máy tự điền</span>
+console.log(a);              <span class="out">// undefined</span>
+
+<span class="kw">let</span> b = <span class="kw">null</span>;                <span class="cm">// người viết chủ động khai</span>
+console.log(b);              <span class="out">// null</span>
+
+<span class="cm">// Đây là chỗ khác biệt trở thành thông tin có ích khi tìm lỗi:</span>
+<span class="cm">// gặp undefined ngoài ý muốn → thường là LỖI của bạn (quên gán, sai tên thuộc tính).</span>
+<span class="cm">// gặp null ngoài ý muốn     → thường là DỮ LIỆU (máy chủ trả về đúng như vậy).</span></code></pre>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> <code>undefined</code> là "chưa có", <code>null</code> là "cố ý không có". Trong 90% <span class="gl" data-gl="source code" tabindex="0">mã nguồn</span> bạn không cần phân biệt — <code>??</code> và <code>?.</code> gom cả hai lại. Rắc rối chỉ nổ ra ở đúng 10% còn lại: <span class="gl" data-gl="default parameter" tabindex="0">tham số mặc định</span>, <span class="gl" data-gl="Định dạng trao đổi dữ liệu dạng chữ — không có khái niệm undefined" tabindex="0"><code>JSON</code></span>, và toán tử so sánh.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Một bên có năm cửa tự sinh, một bên chỉ có hai</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 300" role="img" aria-label="Sơ đồ hai cột. Cột trái liệt kê năm nơi undefined tự xuất hiện mà không ai gán: biến khai báo chưa gán, tham số thiếu khi gọi hàm, thuộc tính không tồn tại, hàm không có lệnh return, và phần tử mảng bị bỏ trống. Cột phải liệt kê hai nguồn duy nhất của null: lập trình viên tự gán, và dữ liệu JSON do máy chủ trả về.">
+        <g>
+          <rect x="0" y="30" width="348" height="250" rx="12" fill="var(--surface-2)"></rect>
+          <text x="16" y="58" font-size="12.5" font-weight="700" fill="var(--accent)" font-family="monospace">undefined — máy tự sinh</text>
+
+          <rect x="16" y="76" width="316" height="30" rx="7" fill="var(--surface)"></rect>
+          <text x="28" y="95" font-size="11" fill="currentColor" font-family="monospace">let a;  →  biến chưa gán</text>
+          <rect x="16" y="116" width="316" height="30" rx="7" fill="var(--surface)"></rect>
+          <text x="28" y="135" font-size="11" fill="currentColor" font-family="monospace">f()  →  tham số thiếu</text>
+          <rect x="16" y="156" width="316" height="30" rx="7" fill="var(--surface)"></rect>
+          <text x="28" y="175" font-size="11" fill="currentColor" font-family="monospace">obj.khongCo  →  thuộc tính lạ</text>
+          <rect x="16" y="196" width="316" height="30" rx="7" fill="var(--surface)"></rect>
+          <text x="28" y="215" font-size="11" fill="currentColor" font-family="monospace">hàm không có return</text>
+          <rect x="16" y="236" width="316" height="30" rx="7" fill="var(--surface)"></rect>
+          <text x="28" y="255" font-size="11" fill="currentColor" font-family="monospace">[1, , 3]  →  ô mảng trống</text>
+        </g>
+
+        <g>
+          <rect x="372" y="30" width="348" height="250" rx="12" fill="var(--surface-2)"></rect>
+          <text x="388" y="58" font-size="12.5" font-weight="700" fill="var(--good)" font-family="monospace">null — người gõ ra</text>
+
+          <rect x="388" y="76" width="316" height="30" rx="7" fill="var(--surface)"></rect>
+          <text x="400" y="95" font-size="11" fill="currentColor" font-family="monospace">x = null  →  bạn tự gán</text>
+          <rect x="388" y="116" width="316" height="30" rx="7" fill="var(--surface)"></rect>
+          <text x="400" y="135" font-size="11" fill="currentColor" font-family="monospace">JSON máy chủ trả về</text>
+
+          <text x="388" y="180" font-size="11" fill="currentColor" opacity=".75" font-family="monospace">Hết. Không có cửa thứ ba.</text>
+          <text x="388" y="200" font-size="11" fill="currentColor" opacity=".75" font-family="monospace">null không bao giờ tự</text>
+          <text x="388" y="216" font-size="11" fill="currentColor" opacity=".75" font-family="monospace">xuất hiện — nên gặp nó</text>
+          <text x="388" y="232" font-size="11" fill="currentColor" opacity=".75" font-family="monospace">là có người cố ý.</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>Đếm số cửa vào là cách nhanh nhất để đoán một giá trị rỗng đến từ đâu.</figcaption>
+  </figure>
+  <p class="col">Nhớ danh sách bên trái là đủ để không bao giờ phải đoán. Và nhớ một điều nữa: <strong>biến chưa khai báo</strong> hoàn toàn <em>không phải</em> <span class="gl" data-gl="Chưa xác định — giá trị máy tự điền vào chỗ không ai gán gì" tabindex="0"><code>undefined</code></span> — truy cập nó ném <span class="gl" data-gl="Lỗi tham chiếu — trình chạy không tìm thấy cái tên đó" tabindex="0"><code>ReferenceError</code></span> (lỗi tham chiếu — trình chạy không tìm thấy cái tên đó). Đây là chỗ rất nhiều người nói sai.</p>
+<pre><code><span class="kw">let</span> daKhaiBao;
+console.log(daKhaiBao);       <span class="out">// undefined — hợp lệ</span>
+
+console.log(chuaKhaiBao);     <span class="cm">// ✗ ReferenceError: chuaKhaiBao is not defined</span>
+
+<span class="cm">// Chỉ typeof là không ném — đó là ngoại lệ duy nhất của ngôn ngữ.</span>
+console.log(<span class="kw">typeof</span> chuaKhaiBao);   <span class="out">// 'undefined'</span></code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Mười chỗ hai đứa cư xử khác nhau</h2></div>
+  <p class="col">Bảng này là toàn bộ phần cần thuộc. Mọi lỗi liên quan tới rỗng trong JavaScript đều nằm ở một trong các dòng dưới đây.</p>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Tình huống</th><th><span class="gl" data-gl="Chưa xác định — giá trị máy tự điền vào chỗ không ai gán gì" tabindex="0"><code>undefined</code></span></th><th><span class="gl" data-gl="Rỗng có chủ ý — chỉ xuất hiện khi người viết hoặc máy chủ đặt vào" tabindex="0"><code>null</code></span></th></tr></thead>
+    <tbody>
+      <tr><td><span class="gl" data-gl="Toán tử trả về tên kiểu của một giá trị, dưới dạng chuỗi" tabindex="0"><code>typeof</code></span></td><td><code>'undefined'</code></td><td><code>'object'</code> — <span class="no">bug từ 1995</span>, không sửa được</td></tr>
+      <tr><td>So sánh lỏng với nhau (<code>==</code>)</td><td colspan="2"><span class="yes">true</span> — <code>null == undefined</code> là <em>true</em></td></tr>
+      <tr><td>So sánh chặt với nhau (<code>===</code>)</td><td colspan="2"><span class="no">false</span> — khác kiểu, khác giá trị</td></tr>
+      <tr><td>So sánh với <code>0</code> bằng <code>==</code></td><td><code>false</code></td><td><code>false</code> — <span class="no">nhưng</span> <code>null &gt;= 0</code> lại là <code>true</code></td></tr>
+      <tr><td>Ép sang số: <code>Number(x)</code></td><td><span class="gl" data-gl="Không phải số — kết quả của phép tính số học không hợp lệ" tabindex="0"><code>NaN</code></span></td><td><code>0</code></td></tr>
+      <tr><td>Phép cộng: <code>x + 1</code></td><td><code>NaN</code></td><td><code>1</code></td></tr>
+      <tr><td>Tham số mặc định <code>f(a = 1)</code></td><td><span class="yes">Có</span> dùng mặc định</td><td><span class="no">Không</span> — giữ nguyên <code>null</code></td></tr>
+      <tr><td>Giá trị mặc định khi <span class="gl" data-gl="destructuring" tabindex="0">tháo cấu trúc</span></td><td><span class="yes">Có</span> dùng mặc định</td><td><span class="no">Không</span></td></tr>
+      <tr><td><span class="gl" data-gl="Đổi giá trị JavaScript thành chuỗi JSON để gửi đi" tabindex="0"><code>JSON.stringify</code></span> trong đối tượng</td><td><span class="no">Bị bỏ hẳn khoá</span></td><td>Giữ nguyên <code>null</code></td></tr>
+      <tr><td><code>JSON.stringify</code> trong mảng</td><td>Đổi thành <code>null</code></td><td>Giữ nguyên <code>null</code></td></tr>
+      <tr><td>Toán tử <code>??</code> và <code>?.</code></td><td colspan="2"><span class="yes">Coi như nhau</span> — cả hai đều là "rỗng"</td></tr>
+      <tr><td>Ép sang boolean (<code>if</code>)</td><td colspan="2"><span class="no">false</span> — cả hai đều là <span class="gl" data-gl="falsy" tabindex="0">giá trị giả</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag bad">Bẫy nổi tiếng nhất</span>
+      <h3><code>null</code> vừa không bằng 0, vừa lớn hơn hoặc bằng 0</h3>
+      <p>Hai toán tử này chạy hai luật <span class="gl" data-gl="coercion" tabindex="0">ép kiểu</span> khác nhau. <code>==</code> có luật riêng cho rỗng; <code>&gt;=</code> thì ép thẳng sang số, mà <code>Number(null)</code> là <code>0</code>.</p>
+<pre><code><span class="kw">null</span> == <span class="kw">0</span>;    <span class="out">// false</span>
+<span class="kw">null</span> &gt; <span class="kw">0</span>;     <span class="out">// false</span>
+<span class="kw">null</span> &gt;= <span class="kw">0</span>;    <span class="out">// true  ← không ai đoán được</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag warn">Hay cắn ở dự án thật</span>
+      <h3>Tham số mặc định không ăn <code>null</code></h3>
+      <p>Máy chủ trả <code>null</code> cho trường trống, bạn tưởng mặc định sẽ đỡ. Không hề — mặc định chỉ kích hoạt với <code>undefined</code>.</p>
+<pre><code><span class="kw">function</span> chao(ten = <span class="str">'khách'</span>) {
+  <span class="kw">return</span> <span class="str">'Chào '</span> + ten;
+}
+chao();               <span class="out">// 'Chào khách'</span>
+chao(undefined);      <span class="out">// 'Chào khách'</span>
+chao(<span class="kw">null</span>);           <span class="out">// 'Chào null'  ✗</span>
+
+<span class="cm">// Cách chữa: đưa về undefined trước, hoặc dùng ??</span>
+chao(tuMayChu ?? undefined);</code></pre>
+    </div>
+    <div class="card">
+      <span class="tag warn">Mất dữ liệu âm thầm</span>
+      <h3><span class="gl" data-gl="Định dạng trao đổi dữ liệu dạng chữ — không có khái niệm undefined" tabindex="0"><code>JSON</code></span> không biết <code>undefined</code> là gì</h3>
+      <p>Chuẩn JSON chỉ có <code>null</code>. Gửi đi rồi nhận về là đối tượng đã đổi hình dạng — và không có lỗi nào được ném ra.</p>
+<pre><code>JSON.stringify({ a: undefined, b: <span class="kw">null</span> });
+<span class="out">// '{"b":null}'   ← mất hẳn khoá a</span>
+
+JSON.stringify([undefined, <span class="kw">null</span>]);
+<span class="out">// '[null,null]'  ← đổi thành null</span>
+
+JSON.stringify(undefined);
+<span class="out">// undefined      ← không phải chuỗi!</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của việc có hai kiểu rỗng</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Biết ngay lỗi đến từ đâu.</b> <span class="gl" data-gl="Chưa xác định — giá trị máy tự điền vào chỗ không ai gán gì" tabindex="0"><code>undefined</code></span> bất ngờ là lỗi <span class="gl" data-gl="source code" tabindex="0">mã nguồn</span>; <span class="gl" data-gl="Rỗng có chủ ý — chỉ xuất hiện khi người viết hoặc máy chủ đặt vào" tabindex="0"><code>null</code></span> bất ngờ là dữ liệu máy chủ. Tiết kiệm nửa thời gian tìm lỗi.</li>
+        <li><b>Phân biệt "chưa gửi" với "gửi giá trị trống".</b> Trong một <span class="gl" data-gl="call" tabindex="0">lời gọi</span> <span class="gl" data-gl="PATCH" tabindex="0">cập nhật một phần</span>, bỏ khoá đi và gửi <code>null</code> là hai ý định khác nhau — và <span class="gl" data-gl="Đổi giá trị JavaScript thành chuỗi JSON để gửi đi" tabindex="0"><code>JSON.stringify</code></span> diễn đạt đúng cả hai.</li>
+        <li><b><code>null</code> là cách nói "đừng dùng mặc định".</b> Truyền <code>null</code> vào tham số có giá trị mặc định là cố tình từ chối nó.</li>
+        <li><b><code>??</code> và <code>?.</code> gom cả hai.</b> Phần lớn mã nguồn không cần quan tâm khác biệt — chỉ cần một toán tử.</li>
+        <li><b><span class="gl" data-gl="Bản JavaScript có khai báo kiểu, bắt lỗi ngay lúc biên dịch" tabindex="0">TypeScript</span> bắt được cả hai lúc biên dịch.</b> Bật <span class="gl" data-gl="Tuỳ chọn TypeScript buộc xử lý mọi chỗ có thể rỗng trước khi chạy" tabindex="0"><code>strictNullChecks</code></span> là mọi chỗ rỗng đều phải xử lý trước khi chạy.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Hai ý định, hai cách gửi</p>
+<pre><code><span class="cm">// "Đừng đụng tới ghi chú" — khoá biến mất khỏi JSON</span>
+{ ten: <span class="str">'An'</span>, ghiChu: undefined }
+<span class="out">// gửi đi: {"ten":"An"}</span>
+
+<span class="cm">// "Xoá ghi chú đi" — gửi null rõ ràng</span>
+{ ten: <span class="str">'An'</span>, ghiChu: <span class="kw">null</span> }
+<span class="out">// gửi đi: {"ten":"An","ghiChu":null}</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b><code>typeof null</code> trả về <code>'object'</code>.</b> Một lỗi từ bản JavaScript đầu tiên, sửa thì vỡ nửa web nên vĩnh viễn nằm đó. Kiểm tra kiểu bằng <span class="gl" data-gl="Toán tử trả về tên kiểu của một giá trị, dưới dạng chuỗi" tabindex="0"><code>typeof</code></span> là sai ngay từ dòng đầu.</li>
+        <li><b>Hai cách kiểm tra cho hai kết quả.</b> <code>null == undefined</code> đúng nhưng <code>null === undefined</code> sai — người đọc mã phải tự nhớ bạn đang dùng cái nào.</li>
+        <li><b>Toán tử so sánh không nhất quán.</b> <code>null == 0</code> sai mà <code>null &gt;= 0</code> đúng. Không có cách nào suy luận ra, chỉ có học thuộc.</li>
+        <li><b>Tham số mặc định bỏ qua <code>null</code>.</b> Lỗi kinh điển khi nối máy chủ: trường trống trả về <code>null</code>, mặc định không chạy, giá trị <code>null</code> chui thẳng vào giao diện.</li>
+        <li><b>Đi vòng qua <span class="gl" data-gl="Định dạng trao đổi dữ liệu dạng chữ — không có khái niệm undefined" tabindex="0">JSON</span> là mất dữ liệu.</b> Đối tượng gửi đi và đối tượng nhận về không còn giống nhau, mà không có cảnh báo nào.</li>
+        <li><b>Hai thế giới quen hai loại khác nhau.</b> Backend hay dùng <code>null</code>, mã JavaScript hay sinh <code>undefined</code> — không chuẩn hoá ở ranh giới là cả hai lẫn lộn khắp nơi.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ba cái bẫy hay gặp nhất</p>
+<pre><code><span class="cm">// ✗ tưởng lọc được null</span>
+<span class="kw">if</span> (<span class="kw">typeof</span> x === <span class="str">'object'</span>) { ... }   <span class="cm">// null lọt vào đây</span>
+
+<span class="cm">// ✗ tưởng mặc định sẽ đỡ</span>
+<span class="kw">const</span> { trang = <span class="kw">1</span> } = { trang: <span class="kw">null</span> };
+console.log(trang);                  <span class="out">// null, không phải 1</span>
+
+<span class="cm">// ✗ tưởng gửi đi rồi nhận về là như cũ</span>
+<span class="kw">const</span> goc = { a: undefined };
+<span class="kw">const</span> sau = JSON.parse(JSON.stringify(goc));
+console.log(<span class="str">'a'</span> <span class="kw">in</span> goc, <span class="str">'a'</span> <span class="kw">in</span> sau);  <span class="out">// true false</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> đặt một quy ước và giữ nó. Trong mã của mình, <em>chỉ sinh <code>undefined</code></em> — đừng gán <code>null</code> tay. Coi <code>null</code> là thứ chỉ tồn tại ở ranh giới với máy chủ, và chuẩn hoá nó ngay tại tầng gọi dịch vụ bằng <code>?? undefined</code>. Kiểm tra rỗng thì viết <code>x == null</code> — đây là đúng một chỗ nên dùng <code>==</code>, vì nó bắt gọn cả hai trong một phép so sánh, và mọi bộ kiểm mã nguồn đều cho phép ngoại lệ này. Đừng bao giờ dùng <code>typeof</code> để bắt <code>null</code>. Và bật <code>strictNullChecks</code> để trình <span class="gl" data-gl="compile" tabindex="0">biên dịch</span> làm phần việc ghi nhớ thay bạn.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> Cả hai đều là giá trị rỗng, nhưng khác nhau ở nguồn gốc. <span class="gl" data-gl="Chưa xác định — giá trị máy tự điền vào chỗ không ai gán gì" tabindex="0"><code>undefined</code></span> do máy sinh tự động — biến chưa gán, tham số thiếu, <span class="gl" data-gl="property" tabindex="0">thuộc tính</span> không tồn tại, hàm không return. <span class="gl" data-gl="Rỗng có chủ ý — chỉ xuất hiện khi người viết hoặc máy chủ đặt vào" tabindex="0"><code>null</code></span> thì không bao giờ tự xuất hiện, nó chỉ có khi người viết gán hoặc máy chủ trả về, và mang nghĩa "cố ý để trống". Về hành vi thì <code>null == undefined</code> đúng nhưng <code>===</code> sai; <code>typeof null</code> trả <code>'object'</code> vì một lỗi cũ của ngôn ngữ; và quan trọng nhất trong thực tế là <span class="gl" data-gl="default parameter" tabindex="0">tham số mặc định</span> chỉ kích hoạt với <code>undefined</code>, không với <code>null</code>.</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Khác nhau giữa <code>null</code> và <code>undefined</code>?</h3>
+      <p>Đừng chỉ nói "một cái là chưa gán, một cái là rỗng". Trả lời ba tầng: <em>ý nghĩa</em> (chưa có vs cố ý không có), <em>ai sinh ra</em> (máy vs người), và <em>hành vi khác nhau ở đâu</em> (mặc định, <span class="gl" data-gl="Định dạng trao đổi dữ liệu dạng chữ — không có khái niệm undefined" tabindex="0">JSON</span>, <span class="gl" data-gl="coercion" tabindex="0">ép kiểu</span>). Tầng thứ ba là tầng phân biệt ứng viên.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>typeof null</code> trả về gì?</h3>
+      <p><code>'object'</code>. Lý do: bản JavaScript đầu tiên lưu giá trị kèm một thẻ kiểu, và <code>null</code> có thẻ trùng với đối tượng. Sửa thì vỡ vô số trang web đang chạy nên nó được giữ nguyên vĩnh viễn. Hệ quả thực dụng: muốn bắt <code>null</code> thì viết <code>x === null</code>, đừng dùng <span class="gl" data-gl="Toán tử trả về tên kiểu của một giá trị, dưới dạng chuỗi" tabindex="0"><code>typeof</code></span>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>null == 0</code> và <code>null &gt;= 0</code> cho ra gì?</h3>
+      <p><code>false</code> và <code>true</code>. Vì <code>==</code> có luật riêng cho rỗng — <code>null</code> chỉ lỏng-bằng <code>undefined</code> và chính nó, không ép sang số. Còn toán tử so sánh lớn-bé thì ép thẳng sang số, mà <code>Number(null)</code> là <code>0</code>. Hai toán tử, hai luật.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Trong dự án của bạn, hai cái này được xử lý thế nào?</h3>
+      <p>Đây là câu hỏi về kinh nghiệm, không phải về ngôn ngữ. Trả lời bằng một quy ước cụ thể: mã nội bộ chỉ sinh <code>undefined</code>, <code>null</code> chỉ được chấp nhận ở tầng gọi máy chủ và bị chuẩn hoá ngay tại đó, kiểm tra rỗng thống nhất bằng <code>x == null</code>, và bật <span class="gl" data-gl="Tuỳ chọn TypeScript buộc xử lý mọi chỗ có thể rỗng trước khi chạy" tabindex="0"><code>strictNullChecks</code></span>. Kể kèm một lỗi thật đã gặp thì càng tốt.</p>
+    </div>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "<code>undefined</code> là biến chưa được khai báo." Sai. Biến chưa khai báo mà đem ra dùng thì ném <span class="gl" data-gl="Lỗi tham chiếu — trình chạy không tìm thấy cái tên đó" tabindex="0"><code>ReferenceError</code></span> chứ không cho ra <code>undefined</code>. <code>undefined</code> là biến <em>đã</em> khai báo nhưng chưa gán giá trị. Ngoại lệ duy nhất là <code>typeof</code> — nó không ném lỗi với tên chưa tồn tại, và chính ngoại lệ đó khiến nhiều người nhớ nhầm suốt nhiều năm.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>undefined</td><td>Chưa xác định — giá trị máy tự điền vào chỗ không ai gán gì.</td></tr>
+      <tr><td>null</td><td>Rỗng có chủ ý — giá trị chỉ xuất hiện khi người viết hoặc máy chủ đặt vào.</td></tr>
+      <tr><td>typeof</td><td>Toán tử trả về tên kiểu của một giá trị, dưới dạng chuỗi.</td></tr>
+      <tr><td>ReferenceError</td><td>Lỗi tham chiếu — trình chạy không tìm thấy cái tên bạn vừa dùng.</td></tr>
+      <tr><td>ép kiểu / coercion</td><td>Việc JavaScript tự đổi giá trị sang kiểu khác để thực hiện phép tính.</td></tr>
+      <tr><td>giá trị giả / falsy</td><td>Giá trị bị coi là sai khi đặt trong <code>if</code> — gồm cả <code>null</code> và <code>undefined</code>.</td></tr>
+      <tr><td>NaN</td><td>Không phải số — kết quả của phép tính số học không hợp lệ.</td></tr>
+      <tr><td>== (so sánh lỏng)</td><td>So sánh có ép kiểu; riêng với rỗng nó chạy một luật đặc biệt.</td></tr>
+      <tr><td>=== (so sánh chặt)</td><td>So sánh không ép kiểu — khác kiểu là sai ngay.</td></tr>
+      <tr><td>?? (nullish coalescing)</td><td>Toán tử lấy vế phải khi vế trái là <code>null</code> hoặc <code>undefined</code>.</td></tr>
+      <tr><td>?. (optional chaining)</td><td>Truy cập thuộc tính an toàn — gặp rỗng thì dừng, trả về <code>undefined</code>.</td></tr>
+      <tr><td>tham số mặc định</td><td>Giá trị hàm tự dùng khi lời gọi không truyền gì — chỉ kích hoạt với <code>undefined</code>.</td></tr>
+      <tr><td>tháo cấu trúc / destructuring</td><td>Cú pháp lấy nhiều thuộc tính ra biến riêng trong một dòng.</td></tr>
+      <tr><td>JSON</td><td>Định dạng trao đổi dữ liệu dạng chữ giữa máy chủ và trình duyệt; nó không có khái niệm <code>undefined</code>.</td></tr>
+      <tr><td>JSON.stringify</td><td>Hàm đổi giá trị JavaScript thành chuỗi JSON để gửi đi.</td></tr>
+      <tr><td>JSON.parse</td><td>Hàm đọc chuỗi JSON nhận về và dựng lại thành giá trị JavaScript.</td></tr>
+      <tr><td>strictNullChecks</td><td>Tuỳ chọn của TypeScript buộc phải xử lý mọi chỗ có thể rỗng trước khi chạy.</td></tr>
+      <tr><td>TypeScript</td><td>Bản JavaScript có khai báo kiểu, kiểm tra lỗi ngay lúc biên dịch.</td></tr>
+      <tr><td>biên dịch / compile</td><td>Bước đổi mã nguồn sang dạng chạy được, cũng là lúc bắt lỗi kiểu.</td></tr>
+      <tr><td>API</td><td>Giao diện lập trình — địa chỉ máy chủ mà mã nguồn gọi tới để lấy hoặc gửi dữ liệu.</td></tr>
+      <tr><td>backend</td><td>Phần chạy trên máy chủ — nơi giữ dữ liệu và trả về JSON.</td></tr>
+      <tr><td>cập nhật một phần / PATCH</td><td>Lời gọi chỉ gửi những trường thật sự thay đổi, thay vì gửi cả bản ghi.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<nav class="pager"><a class="prev" href="closure-var-settimeout.html"><span class="dir">← Bài trước</span><span class="nm">Closure qua vòng lặp for + var + setTimeout</span></a></nav>
+<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 13/13</p></footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!--meta
+title: Day 16 — Dependency Injection, phần 2
+eyebrow: Angular · Day 16
+short: Day 16
+lede: InjectionToken, useClass/useValue/useFactory và cây injector nhiều tầng — phần "nâng cao" mà mọi cấu hình runtime của ứng dụng đều dựa vào.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Bốn kiểu công thức</h2></div>
+  <p>Provider không nhất thiết là "tạo một object từ class". Có bốn dạng, mỗi dạng giải một bài toán:</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Dạng</th><th>Ý nghĩa</th><th>Dùng khi</th></tr></thead>
+    <tbody>
+      <tr><td>useClass</td><td>Tạo bằng class này</td><td>Thay bản thật bằng bản giả/bản khác</td></tr>
+      <tr><td>useValue</td><td>Trả về đúng giá trị này</td><td>Cấu hình, hằng số, đối tượng có sẵn</td></tr>
+      <tr><td>useFactory</td><td>Gọi hàm để tạo</td><td>Cần rẽ nhánh theo môi trường hoặc dữ liệu</td></tr>
+      <tr><td>useExisting</td><td>Dùng lại bản của token khác</td><td>Đặt bí danh cho một service đã có</td></tr>
+    </tbody>
+  </table></div>
+<pre><code><span class="cm">// Token cho thứ không phải class (chuỗi, object cấu hình)</span>
+export <span class="kw">const</span> API_URL = <span class="kw">new</span> InjectionToken&lt;string&gt;(<span class="str">'API_URL'</span>);
+
+bootstrapApplication(App, {
+  providers: [
+    { provide: API_URL, useValue: <span class="str">'https://api.example.com'</span> },
+    { provide: LogService, useClass: environment.production ? LogRong : LogDayDu },
+    { provide: CacheService, useFactory: () =&gt; <span class="kw">new</span> CacheService(inject(API_URL)) },
+  ],
+});</code></pre>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Cơ chế</p><h2>Cây injector — ai gần hơn thì thắng</h2></div>
+  <p>Injector xếp thành cây: gốc ứng dụng → route → component → directive. Khi một component hỏi một token, Angular tìm từ injector <em>gần nhất</em> đi ngược lên. Ai khai gần hơn thì bản đó được dùng.</p>
+  <p>Nhờ vậy có thể khai một service riêng cho một nhánh route (mỗi lần vào màn là một bản mới, thoát màn là bị huỷ) — đúng mô hình facade theo màn hình mà dự án đang dùng.</p>
+  <div class="callout bad">
+    <p><strong>Bẫy hay gặp:</strong> khai cùng một service ở cả <code>root</code> và <code>providers</code> của component sẽ tạo ra <em>hai bản khác nhau</em>. Hai nơi tưởng dùng chung state hoá ra mỗi nơi một kho — bug rất khó nhìn ra.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Cấu hình theo môi trường</b> mà không rải <code>if (production)</code> khắp code.</li>
+        <li><b>Vòng đời đúng nhu cầu.</b> State theo màn hình sống và chết cùng màn hình đó.</li>
+        <li><b>Token cho mọi thứ,</b> kể cả chuỗi và object thuần — vẫn giữ được kiểm tra kiểu.</li>
+        <li><b>Thay thế hiện thực</b> cho test hoặc cho một khách hàng riêng mà không sửa code dùng.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Đổi hiện thực theo môi trường, code dùng không đổi một dòng</span>
+{ provide: LogService, useClass: environment.production ? LogRong : LogDayDu }
+
+<span class="cm">// Và state sống đúng bằng vòng đời màn hình:</span>
+{ path: <span class="str">'kho'</span>, providers: [KhoStore], children: [...] }
+<span class="cm">// rời khỏi /kho → KhoStore bị huỷ, không còn dữ liệu thừa</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Cây injector khó hình dung.</b> Không có gì hiển thị bản nào đang được dùng, phải suy luận.</li>
+        <li><b>Nhân bản ngoài ý muốn</b> khi khai provider ở nhiều tầng.</li>
+        <li><b><code>useFactory</code> dễ bị lạm dụng</b> thành nơi nhét logic khởi tạo phức tạp.</li>
+        <li><b>Nhiều khái niệm cho một việc đơn giản</b> — người mới thấy nặng nề so với việc chỉ <code>new</code> một object.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&#64;Injectable({ providedIn: <span class="str">'root'</span> }) <span class="kw">class</span> GioHangStore {}
+
+&#64;Component({ providers: [GioHangStore] })   <span class="cm">// ✗ khai lại lần nữa</span>
+<span class="kw">class</span> ManGioHang {}
+<span class="cm">// → Header đọc bản ở root, màn giỏ hàng ghi vào bản riêng của nó</span>
+<span class="cm">// → thêm sản phẩm mà số trên header không nhúc nhích. Không lỗi nào được ném.</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>InjectionToken</td><td>Token tự tạo cho giá trị không phải class.</td></tr>
+      <tr><td>useClass / useValue</td><td>Tạo bằng class chỉ định / trả về giá trị có sẵn.</td></tr>
+      <tr><td>useFactory</td><td>Gọi một hàm để tạo phụ thuộc.</td></tr>
+      <tr><td>injector tree</td><td>Cây bộ tiêm phân tầng theo cấu trúc ứng dụng.</td></tr>
+      <tr><td>scope</td><td>Phạm vi sống của một bản service.</td></tr>
+      <tr><td>environment</td><td>File cấu hình theo môi trường (dev/prod).</td></tr>
+    </tbody>
+  </table></div>
+</section>

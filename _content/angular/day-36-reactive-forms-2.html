@@ -1,0 +1,98 @@
+<!--meta
+title: Day 36 — Reactive Forms, phần 2
+eyebrow: Angular · Day 36
+short: Day 36
+lede: FormArray cho danh sách động, validator cấp nhóm cho luật liên trường, và cách bật/tắt luật khi form đổi hình theo lựa chọn của người dùng.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Danh sách động</p><h2>FormArray</h2></div>
+  <p><code>FormArray</code> là một danh sách control thêm bớt được lúc chạy — đúng cho những màn "thêm dòng chi tiết".</p>
+<pre><code><span class="kw">readonly</span> form = <span class="kw">this</span>.fb.group({
+  ten: [<span class="str">''</span>, Validators.required],
+  dongs: <span class="kw">this</span>.fb.array([<span class="kw">this</span>.taoDong()]),
+});
+<span class="kw">get</span> dongs() { <span class="kw">return</span> <span class="kw">this</span>.form.controls.dongs; }
+taoDong() { <span class="kw">return</span> <span class="kw">this</span>.fb.group({ sp: [<span class="kw">null</span>, Validators.required], sl: [1] }); }
+themDong() { <span class="kw">this</span>.dongs.push(<span class="kw">this</span>.taoDong()); }
+xoaDong(i: number) { <span class="kw">this</span>.dongs.removeAt(i); }</code></pre>
+<pre><code>&lt;div formArrayName="dongs"&gt;
+  &#64;for (d of dongs.controls; track d; let i = $index) {
+    &lt;div [formGroupName]="i"&gt;
+      &lt;input formControlName="sl" /&gt;
+      &lt;button type="button" (click)="xoaDong(i)"&gt;Xoá&lt;/button&gt;
+    &lt;/div&gt;
+  }
+&lt;/div&gt;</code></pre>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Luật liên trường</p><h2>Validator ở cấp nhóm và luật đổi theo điều kiện</h2></div>
+<pre><code><span class="cm">// Ngày kết thúc phải sau ngày bắt đầu — luật của cả nhóm, không của một ô</span>
+<span class="kw">const</span> khoangNgay: ValidatorFn = (g) =&gt; {
+  <span class="kw">const</span> { tuNgay, denNgay } = (g <span class="kw">as</span> FormGroup).value;
+  <span class="kw">return</span> tuNgay &amp;&amp; denNgay &amp;&amp; denNgay &lt; tuNgay ? { khoangNgay: <span class="kw">true</span> } : <span class="kw">null</span>;
+};
+
+<span class="cm">// Đổi luật khi người dùng chọn loại khác</span>
+<span class="kw">this</span>.form.controls.loai.valueChanges.subscribe((loai) =&gt; {
+  <span class="kw">const</span> c = <span class="kw">this</span>.form.controls.maSoThue;
+  loai === <span class="str">'DOANH_NGHIEP'</span> ? c.addValidators(Validators.required) : c.clearValidators();
+  c.updateValueAndValidity();        <span class="cm">// BẮT BUỘC, nếu không luật mới không có hiệu lực</span>
+});</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Form đổi hình theo dữ liệu</b> mà vẫn giữ được một nguồn sự thật duy nhất.</li>
+        <li><b>Luật liên trường đặt đúng chỗ</b> — ở nhóm, không phải nhét vào một ô bất kỳ.</li>
+        <li><b>Thêm/xoá dòng an toàn,</b> trạng thái hợp lệ của cả form tự cập nhật theo.</li>
+        <li><b>Tái sử dụng nhóm con:</b> một <code>FormGroup</code> địa chỉ dùng lại ở nhiều form.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Thêm 3 dòng, form tự biết còn thiếu dữ liệu</span>
+themDong(); themDong();
+expect(form.valid).toBe(<span class="kw">false</span>);      <span class="cm">// dòng mới chưa chọn sản phẩm</span>
+
+<span class="cm">// Xoá dòng lỗi, form hợp lệ trở lại — không cần cờ thủ công nào</span>
+xoaDong(2);
+expect(form.valid).toBe(<span class="kw">true</span>);</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Quên <code>updateValueAndValidity()</code></b> là luật mới không chạy — bug im lặng hay gặp nhất.</li>
+        <li><b>Template lồng ba tầng</b> (<code>formArrayName</code> → <code>formGroupName</code> → <code>formControlName</code>) rất dễ sai.</li>
+        <li><b>Track theo <code>$index</code> trong <code>FormArray</code></b> làm ô nhập giữ sai giá trị khi xoá dòng giữa.</li>
+        <li><b>Nhiều <code>valueChanges</code> lồng nhau</b> có thể tạo vòng cập nhật vô tận.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>c.addValidators(Validators.required);
+<span class="cm">// thiếu dòng dưới → form vẫn báo hợp lệ dù ô đang rỗng</span>
+<span class="cm">// c.updateValueAndValidity();</span>
+
+<span class="cm">// Vòng lặp vô tận:</span>
+a.valueChanges.subscribe((v) =&gt; b.setValue(v));
+b.valueChanges.subscribe((v) =&gt; a.setValue(v));   <span class="cm">// ✗ đứng máy</span>
+<span class="cm">// chữa: setValue(v, { emitEvent: false })</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>FormArray</td><td>Danh sách control thêm/bớt được lúc chạy.</td></tr>
+      <tr><td>cross-field validator</td><td>Validator liên trường, đặt ở cấp nhóm.</td></tr>
+      <tr><td>updateValueAndValidity</td><td>Bắt control tính lại trạng thái hợp lệ.</td></tr>
+      <tr><td>emitEvent: false</td><td>Đổi giá trị mà không phát sự kiện — tránh vòng lặp.</td></tr>
+      <tr><td>patchValue / setValue</td><td>Gán một phần / gán toàn bộ giá trị form.</td></tr>
+    </tbody>
+  </table></div>
+</section>

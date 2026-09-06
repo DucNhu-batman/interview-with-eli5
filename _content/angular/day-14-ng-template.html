@@ -1,0 +1,80 @@
+<!--meta
+title: Day 14 — ng-template, ngTemplateOutlet và ng-container
+eyebrow: Angular · Day 14
+short: Day 14
+lede: Ba thẻ không hề xuất hiện trong HTML cuối cùng, nhưng là nền tảng của mọi component linh hoạt: khuôn chờ, ống dẫn khuôn và thẻ bọc vô hình.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Ba vai trò khác nhau</h2></div>
+  <ol class="steps">
+    <li><span><b><code>&lt;ng-template&gt;</code></b> — khuôn chờ. Angular đọc nhưng <em>không vẽ</em>, cho tới khi có ai đó ra lệnh. Đây chính là thứ mà <code>*ngIf</code>/<code>@if</code> tạo ra bên dưới.</span></li>
+    <li><span><b><code>[ngTemplateOutlet]</code></b> — cái ống: chỉ vào một khuôn và bảo "vẽ nó ở đây", kèm dữ liệu ngữ cảnh nếu cần.</span></li>
+    <li><span><b><code>&lt;ng-container&gt;</code></b> — thẻ bọc vô hình: gom nhóm phần tử để gắn directive mà không sinh thêm thẻ thật trong DOM.</span></li>
+  </ol>
+<pre><code>&lt;ng-template #dongTrong let-ten="ten"&gt;
+  &lt;p class="empty"&gt;Không có {{ ten }} nào&lt;/p&gt;
+&lt;/ng-template&gt;
+
+&lt;ng-container [ngTemplateOutlet]="dongTrong"
+              [ngTemplateOutletContext]="{ ten: 'sản phẩm' }" /&gt;
+
+&lt;ng-container &#64;if (dangTai()) &gt;…&lt;/ng-container&gt;   <span class="cm">// bọc mà không thêm div</span></code></pre>
+  <div class="callout">
+    <p><strong>Vì sao quan trọng:</strong> nhận một <code>TemplateRef</code> làm đầu vào là cách để component dùng chung (bảng, dialog, filter) cho phép nơi sử dụng tự định nghĩa cách vẽ từng ô — chính là cơ chế mà <code>iam-table</code> trong dự án này dùng cho các cột tuỳ biến.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Vẽ khi cần, không vẽ thì không tốn.</b> Khác <code>ng-content</code>, khuôn chỉ được dựng lúc thực sự dùng.</li>
+        <li><b>Vẽ được nhiều lần</b> ở nhiều chỗ, mỗi lần một bộ dữ liệu khác nhau.</li>
+        <li><b>Component dùng chung linh hoạt tối đa:</b> khung lo logic, nơi dùng lo hình hài.</li>
+        <li><b><code>ng-container</code> giữ DOM sạch</b>, tránh những <code>div</code> thừa phá vỡ flex/grid.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Bảng dùng chung, mỗi màn tự quyết cách vẽ ô</span>
+&lt;ng-template #cotTrangThai let-row="rowData"&gt;
+  &lt;iam-badge-status [props]="{ value: row.active }" /&gt;
+&lt;/ng-template&gt;
+&lt;iam-table [columns]="cols()" /&gt;
+<span class="cm">// Khung bảng không biết gì về nghiệp vụ, vẫn vẽ đúng badge.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Khó đọc.</b> Nhìn template không đoán ra thứ tự vẽ; người mới rất dễ lạc.</li>
+        <li><b>Ngữ cảnh yếu về kiểu.</b> <code>let-x</code> mặc định là <code>any</code>, phải khai thêm mới có kiểm tra kiểu.</li>
+        <li><b>Thời điểm sẵn sàng dễ sai.</b> Khuôn lấy qua truy vấn chỉ có sau khi view dựng xong — nguồn của lỗi "template rỗng".</li>
+        <li><b>Lạm dụng thành mê cung.</b> Ba bốn khuôn lồng nhau còn khó theo dõi hơn viết thẳng.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>tpl = viewChild&lt;TemplateRef&lt;unknown&gt;&gt;(<span class="str">'cotTrangThai'</span>);
+ngOnInit() { <span class="kw">this</span>.cauHinh.set(taoCot(<span class="kw">this</span>.tpl())); }
+<span class="cm">// ✗ tpl() còn undefined ở ngOnInit → cột rơi về kiểu chữ thường,</span>
+<span class="cm">// giao diện "chạy" nhưng sai, không lỗi nào được ném ra</span>
+
+&lt;ng-template let-x="item"&gt;{{ x.tenn }}&lt;/ng-template&gt;
+<span class="cm">// ✗ x là any → gõ sai tên trường vẫn biên dịch trót lọt</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>ng-template</td><td>Khuôn chờ — HTML chỉ được vẽ khi có lệnh.</td></tr>
+      <tr><td>TemplateRef</td><td>Tham chiếu tới một khuôn, truyền được như dữ liệu.</td></tr>
+      <tr><td>ngTemplateOutlet</td><td>Directive vẽ một khuôn tại vị trí chỉ định.</td></tr>
+      <tr><td>context</td><td>Ngữ cảnh — dữ liệu truyền vào khuôn khi vẽ.</td></tr>
+      <tr><td>ng-container</td><td>Thẻ bọc vô hình, không sinh phần tử DOM.</td></tr>
+      <tr><td>ViewContainerRef</td><td>Vị trí trong view nơi có thể chèn khuôn/component lúc chạy.</td></tr>
+    </tbody>
+  </table></div>
+</section>

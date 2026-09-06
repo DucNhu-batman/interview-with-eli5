@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="vi" data-track="angular">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 53 — Pure hay impure: công tắc quyết định pipe chạy bao nhiêu lần</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><a href="index.html">Angular</a><span>/</span><span class="now">Day 53</span></nav>
+<header class="hero col">
+<p class="eyebrow">Angular · Day 53</p>
+<h1>Day 53 — Pure hay impure: công tắc quyết định pipe chạy bao nhiêu lần</h1>
+<p class="lede">async không phải là "loại pipe impure" — nó chỉ là một pipe cụ thể được khai impure. Hiểu đúng cái công tắc pure: false để biết pipe nào rẻ và pipe nào làm giật cả bảng 500 dòng.</p>
+</header>
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Một cái công tắc, không phải một cái tên</h2></div>
+  <p>Hình dung hai người đánh máy. Người thứ nhất có trí nhớ: bạn đưa lại đúng tờ giấy hôm qua, anh ta không gõ lại, chỉ rút bản đã đánh máy trong ngăn kéo đưa cho bạn. Người thứ hai không nhớ gì: cứ hỏi là gõ lại từ đầu, kể cả khi tờ giấy y hệt lần trước.</p>
+  <p>Trong Angular, chọn người nào là một dòng khai báo. <strong>pure</strong> (thuần) là mặc định; <strong>impure</strong> (không thuần) là khi bạn tự tay bật <code>pure: false</code>:</p>
+<pre><code>&#64;Pipe({ name: <span class="str">'rutGon'</span> })                    <span class="cm">// pure — mặc định, có trí nhớ</span>
+&#64;Pipe({ name: <span class="str">'loc'</span>, pure: <span class="kw">false</span> })          <span class="cm">// impure — gõ lại mỗi lần được hỏi</span></code></pre>
+  <p><em>pure</em> và <em>impure</em> là <strong>tính chất</strong> gắn lên một pipe bất kỳ, giống như “có bảo hành / không bảo hành” gắn lên món hàng. Chúng không phải tên của pipe nào cả.</p>
+  <div class="callout">
+    <p><strong>Vì thế <code>async</code> không phải là “pipe impure”.</strong> <code>async</code> là <em>một</em> pipe cụ thể Angular viết sẵn, và nó tình cờ được khai <code>pure: false</code>. Quan hệ là <em>async nằm trong nhóm impure</em>, chứ không phải <em>impure nghĩa là async</em> — hệt như “con mèo là động vật” không có nghĩa “động vật là con mèo”.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Cái cổng gác đứng trước transform()</h2></div>
+  <p class="col">Mỗi <strong>chu kỳ dò thay đổi</strong> (change detection — vòng Angular quét xem dữ liệu có đổi để vẽ lại giao diện), khi chạy tới chỗ <code>{{ x | myPipe: a }}</code>, Angular làm một trong hai việc:</p>
+  <ol class="steps col">
+    <li><b>Pipe pure</b> — so <code>x</code> và <code>a</code> với lần chạy trước bằng phép so sánh đồng nhất (<code>===</code>, đúng cùng một ô nhớ). Giống hệt thì Angular <em>không gọi</em> <code>transform()</code>, mà lấy kết quả đã nhớ sẵn trong ô nhớ của view (khối giao diện) ra dùng lại.</li>
+    <li><b>Pipe impure</b> — bỏ qua hẳn bước so sánh, gọi <code>transform()</code> luôn, mọi lúc.</li>
+  </ol>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 290" role="img" aria-label="Hai làn ngang biểu diễn sáu chu kỳ dò thay đổi liên tiếp. Làn pure chỉ có hai chu kỳ gọi transform, bốn chu kỳ còn lại dùng lại kết quả cũ. Làn impure gọi transform ở cả sáu chu kỳ.">
+        <defs>
+          <marker id="ar53" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+
+        <text x="180" y="26" font-size="11" fill="var(--muted)">6 chu kỳ dò thay đổi liên tiếp, đầu vào chỉ thật sự đổi ở chu kỳ 1 và 4</text>
+        <line x1="600" y1="22" x2="690" y2="22" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#ar53)"></line>
+
+        <text x="14" y="66" font-size="12.5" font-weight="700" fill="currentColor">pure</text>
+        <text x="14" y="86" font-size="11" fill="var(--muted)">mặc định</text>
+        <line x1="180" y1="72" x2="690" y2="72" stroke="var(--line)" stroke-width="2"></line>
+        <circle cx="200" cy="72" r="10" fill="var(--accent)"></circle>
+        <circle cx="290" cy="72" r="6.5" fill="var(--surface-2)" stroke="var(--line)" stroke-width="2"></circle>
+        <circle cx="380" cy="72" r="6.5" fill="var(--surface-2)" stroke="var(--line)" stroke-width="2"></circle>
+        <circle cx="470" cy="72" r="10" fill="var(--accent)"></circle>
+        <circle cx="560" cy="72" r="6.5" fill="var(--surface-2)" stroke="var(--line)" stroke-width="2"></circle>
+        <circle cx="650" cy="72" r="6.5" fill="var(--surface-2)" stroke="var(--line)" stroke-width="2"></circle>
+        <text x="180" y="112" font-size="11.5" font-weight="700" fill="currentColor">2 / 6 chu kỳ gọi transform()</text>
+        <text x="180" y="130" font-size="11" fill="var(--muted)">4 chu kỳ còn lại: lấy kết quả đã nhớ ra dùng lại, không tính gì</text>
+
+        <text x="14" y="186" font-size="12.5" font-weight="700" fill="currentColor">impure</text>
+        <text x="14" y="206" font-size="11" fill="var(--muted)">pure: false</text>
+        <line x1="180" y1="192" x2="690" y2="192" stroke="var(--line)" stroke-width="2"></line>
+        <circle cx="200" cy="192" r="10" fill="var(--accent)"></circle>
+        <circle cx="290" cy="192" r="10" fill="var(--accent)"></circle>
+        <circle cx="380" cy="192" r="10" fill="var(--accent)"></circle>
+        <circle cx="470" cy="192" r="10" fill="var(--accent)"></circle>
+        <circle cx="560" cy="192" r="10" fill="var(--accent)"></circle>
+        <circle cx="650" cy="192" r="10" fill="var(--accent)"></circle>
+        <text x="180" y="232" font-size="11.5" font-weight="700" fill="currentColor">6 / 6 chu kỳ gọi transform()</text>
+        <text x="180" y="250" font-size="11" fill="var(--muted)">không có cổng gác, không có ô nhớ — cứ hỏi là chạy</text>
+
+        <text x="14" y="278" font-size="11.5" font-weight="700" fill="var(--accent)">async nằm ở làn dưới — nhưng mỗi lần chạy của nó chỉ là đọc lại một biến đã cất sẵn.</text>
+      </svg>
+    </div>
+    <figcaption>Chấm đặc = một lần <code>transform()</code> thật sự chạy. Cùng một khối lượng công việc, làn dưới trả giá gấp ba.</figcaption>
+  </figure>
+  <div class="board col">
+    <p><strong>“Mỗi chu kỳ” là chu kỳ của khối giao diện chứa nó, không phải của cả ứng dụng.</strong> Nếu pipe impure nằm trong một component khai <code>OnPush</code> và component đó không bị đánh dấu bẩn, khối đó không được kiểm tra — pipe cũng không chạy. Nói cách khác, <code>OnPush</code> có giảm được thiệt hại, nhưng nó là cái phanh, không phải cái sửa.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Pipe sẵn có của Angular: cái nào thuần, cái nào không</h2></div>
+  <p class="col">Tra thẳng trong <code>@angular/common</code> bản 21.2.5 mà dự án đang dùng — chỉ đúng bốn pipe được khai <code>pure: false</code>:</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Pipe</th><th>Loại · vì sao</th></tr></thead>
+    <tbody>
+      <tr><td>date, currency, number, percent</td><td><span class="yes">pure</span> — cùng một giá trị vào thì luôn ra cùng một chuỗi. Nhớ được thì nhớ.</td></tr>
+      <tr><td>uppercase, lowercase, titlecase</td><td><span class="yes">pure</span> — như trên, thuần tuý biến đổi chuỗi.</td></tr>
+      <tr><td>async</td><td><span class="no">impure</span> — đầu vào là <em>cùng một</em> luồng từ đầu tới cuối, tham chiếu không bao giờ đổi. Nếu thuần thì giá trị mới phát ra sẽ chẳng bao giờ lên tới màn hình.</td></tr>
+      <tr><td>json, keyvalue, slice</td><td><span class="no">impure</span> — nhận object hoặc mảng, mà người ta hay sửa <em>bên trong</em> chúng chứ không tạo cái mới. Thuần thì sẽ mù trước những thay đổi đó.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="col">Nhìn cột phải sẽ thấy quy luật: pipe được cho impure không phải vì nó “nặng”, mà vì <strong>đầu vào của nó đổi ruột mà không đổi vỏ</strong> — cổng gác so sánh tham chiếu sẽ không bao giờ mở.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">So sánh</p><h2>Cùng là impure, vì sao async rẻ mà pipe lọc thì đắt</h2></div>
+  <p class="col">Đây là ruột thật của <code>async</code>, rút gọn từ mã nguồn Angular. Để ý: mỗi chu kỳ nó <em>không tính gì cả</em>.</p>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Impure nhưng rẻ</span>
+      <h3><code>async</code> — mỗi chu kỳ chỉ đọc một biến</h3>
+<pre><code>transform(obj) {
+  <span class="kw">if</span> (!<span class="kw">this</span>._obj) {         <span class="cm">// lần đầu:</span>
+    <span class="kw">this</span>._subscribe(obj);      <span class="cm">// đăng ký ĐÚNG MỘT LẦN</span>
+    <span class="kw">return</span> <span class="kw">this</span>._latestValue;
+  }
+  <span class="kw">return</span> <b><span class="kw">this</span>._latestValue</b>;   <span class="cm">// mọi lần sau: đọc 1 biến</span>
+}
+<span class="cm">// Luồng phát giá trị mới → _latestValue = value</span>
+<span class="cm">//                        → markForCheck() báo Angular vẽ lại</span>
+<span class="cm">// Component chết → ngOnDestroy() tự huỷ đăng ký</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag bad">Impure và đắt</span>
+      <h3>Pipe lọc tự viết — mỗi chu kỳ làm lại từ đầu</h3>
+<pre><code>&#64;Pipe({ name: <span class="str">'loc'</span>, pure: <span class="kw">false</span> })
+export class LocPipe <span class="kw">implements</span> PipeTransform {
+  transform(ds: Row[], tuKhoa: string) {
+    <span class="kw">return</span> <b>ds.filter</b>((r) =&gt;      <span class="cm">// quét lại CẢ 1.000 dòng</span>
+      r.ten.toLowerCase().includes(tuKhoa));
+  }
+}
+<span class="cm">// Không có ô nhớ, không có gì để dùng lại.</span>
+<span class="cm">// Nhân thêm số lần chu kỳ chạy → giao diện giật.</span></code></pre>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Câu đúng không phải “impure là chậm”, mà “impure là bị gọi lại rất nhiều lần”.</strong> Chậm hay không nằm ở chỗ bạn viết gì trong <code>transform()</code>. <code>async</code> impure mà rẻ vì nó chỉ đọc một biến; pipe lọc impure thì đắt vì nó quét lại cả danh sách.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của việc bật pure: false</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Thấy được thay đổi bên trong</b> object và mảng, kể cả khi tham chiếu giữ nguyên.</li>
+        <li><b>Là cách duy nhất cho dữ liệu “sống”</b> — luồng, thời gian trôi, dữ liệu tự cập nhật.</li>
+        <li><b>Giữ template khai báo,</b> không phải nhét vòng lặp và điều kiện vào giữa HTML.</li>
+        <li><b>Rẻ khi transform() rẻ.</b> <code>async</code>, <code>keyvalue</code>, <code>slice</code> dùng thoải mái, đừng né vì cái nhãn impure.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>&lt;p&gt;{{ (nguoiDung$ | async)?.ten }}&lt;/p&gt;
+<span class="cm">// impure nên bắt được mọi giá trị mới của luồng,</span>
+<span class="cm">// mà vẫn tự huỷ đăng ký khi rời màn.</span>
+
+&#64;for (m of cauHinh | keyvalue; track m.key) { … }
+<span class="cm">// sửa một khoá bên trong object → giao diện vẫn cập nhật</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Không có ô nhớ.</b> Mọi chu kỳ đều tính lại từ đầu, không có gì được dùng lại.</li>
+        <li><b>Chi phí nhân với số dòng.</b> Đặt trong <code>&#64;for</code> 500 dòng là 500 lần mỗi chu kỳ.</li>
+        <li><b>Không đo được bằng mắt.</b> Code nhìn vô hại, chỉ hồ sơ hiệu năng mới lộ ra.</li>
+        <li><b>Dễ hiểu nhầm cả hai chiều:</b> tưởng impure luôn chậm nên né cả <code>async</code>, hoặc tưởng đã impure thì tha hồ tính toán.</li>
+        <li><b>Che mất chỗ đúng để tính.</b> Lọc và sắp xếp là việc của tầng dữ liệu, không phải của giao diện.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// ✗ Đắt: 500 dòng × mỗi chu kỳ dò thay đổi</span>
+&#64;for (r of ds() | loc: tuKhoa(); track r.id) { … }
+
+<span class="cm">// ✓ Rẻ: tính đúng một lần khi ds hoặc tuKhoa đổi</span>
+<span class="kw">readonly</span> dsLoc = computed(() =&gt;
+  <span class="kw">this</span>.ds().filter((r) =&gt; r.ten.includes(<span class="kw">this</span>.tuKhoa())));
+&#64;for (r of dsLoc(); track r.id) { … }</code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Ba luật sống chung.</strong> Một: cần lọc hay sắp xếp thì dùng <code>computed()</code> hoặc làm ở facade, đừng viết pipe impure. Hai: muốn pipe thuần nhìn thấy thay đổi thì <em>đổi vỏ</em> — <code>ds.set([...ds(), moi])</code> thay vì <code>ds().push(moi)</code>. Ba: <code>async</code>, <code>keyvalue</code>, <code>slice</code>, <code>json</code> cứ dùng bình thường — chúng impure nhưng phần việc mỗi lần chạy gần như bằng không.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Đọc thêm</p><h2>Ba bài cùng chủ đề</h2></div>
+  <div class="board">
+    <p><a href="day-18-pipes.html">Day 18 — Pipes</a> · pipe là gì, cách tự viết một cái cho riêng mình.</p>
+    <p><a href="day-49-zonejs-change-detection.html">Day 49 — Zone.js và change detection</a> · cái chu kỳ nói suốt bài này do đâu mà chạy, và chạy bao nhiêu lần.</p>
+    <p><a href="day-52-closure-rxjs-pipe-memory-leak.html">Day 52 — Closure gặp .pipe()</a> · chữ “pipe” còn một nghĩa thứ hai bên RxJS. Đó mới là chỗ rò rỉ bộ nhớ — còn template pipe trong bài này thì không.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>pipe</td><td>Ống lọc — hàm nhỏ định dạng giá trị ngay trên giao diện, viết sau dấu <code>|</code>.</td></tr>
+      <tr><td>pure pipe</td><td>Pipe thuần — có ô nhớ, chỉ chạy lại khi đối số đổi.</td></tr>
+      <tr><td>impure pipe</td><td>Pipe không thuần — không nhớ gì, chạy lại mỗi chu kỳ dò thay đổi.</td></tr>
+      <tr><td>transform()</td><td>Hàm duy nhất của một pipe, nơi việc biến đổi thật sự xảy ra.</td></tr>
+      <tr><td>PipeTransform</td><td>Giao ước bắt buộc mọi pipe phải có hàm <code>transform</code>.</td></tr>
+      <tr><td>change detection</td><td>Chu kỳ dò thay đổi — vòng Angular quét dữ liệu để vẽ lại giao diện.</td></tr>
+      <tr><td>OnPush</td><td>Chế độ chỉ kiểm tra component khi nó bị đánh dấu bẩn, thay vì kiểm tra mọi lúc.</td></tr>
+      <tr><td>markForCheck()</td><td>Lệnh báo Angular “khối này có thay đổi, chu kỳ tới nhớ ghé qua”.</td></tr>
+      <tr><td>tham chiếu</td><td>Địa chỉ ô nhớ của object hay mảng — đổi ruột không làm đổi tham chiếu.</td></tr>
+      <tr><td>so sánh đồng nhất</td><td>Phép <code>===</code> — hỏi “có phải đúng cùng một ô nhớ không”, không so từng phần tử.</td></tr>
+      <tr><td>Observable</td><td>Luồng dữ liệu — nguồn phát giá trị nhiều lần theo thời gian.</td></tr>
+      <tr><td>subscribe / unsubscribe</td><td>Đăng ký nhận dữ liệu từ luồng / huỷ đăng ký đó.</td></tr>
+      <tr><td>signal</td><td>Ô dữ liệu biết tự báo khi giá trị đổi, nền tảng phản ứng mới của Angular.</td></tr>
+      <tr><td>computed()</td><td>Signal dẫn xuất — tự tính lại đúng một lần khi nguồn của nó đổi.</td></tr>
+      <tr><td>facade</td><td>Lớp dịch vụ gom state và logic của một màn, để component chỉ lo hiển thị.</td></tr>
+      <tr><td>ngOnDestroy</td><td>Hàm Angular gọi lúc huỷ, chỗ để dọn dẹp đăng ký còn treo.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<nav class="pager"><a class="prev" href="day-52-closure-rxjs-pipe-memory-leak.html"><span class="dir">← Bài trước</span><span class="nm">Day 52 — Closure gặp .pipe(): vì sao quên huỷ là rò rỉ bộ nhớ</span></a><a class="next" href="day-54-interface-vs-type.html"><span class="dir">Bài tiếp →</span><span class="nm">Day 54 — interface hay type: bốn khác biệt thật, còn lại là phong cách</span></a></nav>
+<footer class="page-foot col"><p>Sổ tay eli5 · Angular · trang 53/55</p></footer>
+</div>
+</body>
+</html>

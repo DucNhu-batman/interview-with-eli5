@@ -1,0 +1,423 @@
+<!--meta
+title: Day 55 — Đi qua hay kiểm tra: Zone.js và tối ưu mà signal bật lên
+eyebrow: Angular · Day 55
+short: Đi qua hay kiểm tra
+lede: Dò thay đổi có hai câu chuyện tách rời: ai đánh thức Angular dậy, và Angular phải soát bao nhiêu chỗ sau khi tỉnh. Zone.js trả lời câu đầu một cách rất ồn ào; signal trả lời câu sau bằng một lá cờ mà ít người biết tên.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Ba trạng thái của một nút trong cây</h2></div>
+  <p>Cả bài này chỉ nói về một <strong>cây component</strong> (các thành phần giao diện lồng nhau tạo thành hình cây) và ba việc có thể xảy ra với mỗi nút trong một <strong>chu kỳ dò thay đổi</strong> (change detection — lượt Angular soát lại xem có gì cần vẽ lại không).</p>
+  <ol class="steps">
+    <li><strong>Bị kiểm tra.</strong> Angular tính lại mọi biểu thức trong <strong>template</strong> (mẫu giao diện — phần HTML của component) của nút này, so với giá trị cũ, khác thì cập nhật <strong>DOM</strong> (cây phần tử thật trình duyệt đang hiển thị). Đây là phần <em>tốn tiền</em>.</li>
+    <li><strong>Chỉ đi qua.</strong> Angular bước ngang qua nút này để xuống con của nó, không tính lại biểu thức nào. Gần như <em>miễn phí</em>.</li>
+    <li><strong>Bỏ qua hẳn.</strong> Angular không thèm bước vào nhánh này, cả nhánh con bên dưới cũng không.</li>
+  </ol>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> mọi chuyện nằm ở ranh giới giữa hai trạng thái đầu. Trước khi có <strong>signal</strong> (tín hiệu — ô giá trị phản ứng của Angular, đọc ở đâu thì Angular ghi nhớ chỗ đó phụ thuộc vào nó), tổ tiên của một nút thay đổi <em>buộc phải bị kiểm tra</em>. Có signal, chúng chỉ cần <em>bị đi qua</em>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Zone.js: cái chuông không biết ai bấm</h2></div>
+  <p class="col">Angular không tự biết dữ liệu của bạn vừa đổi. Nó cần ai đó vỗ vai. Người vỗ vai mặc định là <strong>Zone.js</strong> — thư viện <strong>vá đè</strong> (monkey-patch — thay hàm gốc của trình duyệt bằng bản của mình) gần như mọi <strong>API</strong> (giao diện lập trình — các hàm trình duyệt bày sẵn cho mã của bạn gọi) <strong>bất đồng bộ</strong> (việc không xong ngay: hẹn giờ, gọi mạng, chờ người dùng bấm).</p>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 290" role="img" aria-label="Zone.js vá đè các API bất đồng bộ như setTimeout, sự kiện chuột, Promise và XHR. Mỗi khi một tác vụ trong số đó xong, Zone gọi tick và Angular kiểm tra lại toàn bộ tám nút của cây component, kể cả những nút không liên quan gì tới thay đổi.">
+        <defs>
+          <marker id="cdz1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <rect x="14" y="38" width="118" height="34" rx="8" fill="var(--surface-2)"></rect>
+        <text x="73" y="60" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">setTimeout</text>
+        <rect x="14" y="86" width="118" height="34" rx="8" fill="var(--surface-2)"></rect>
+        <text x="73" y="108" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">click, scroll</text>
+        <rect x="14" y="134" width="118" height="34" rx="8" fill="var(--surface-2)"></rect>
+        <text x="73" y="156" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">Promise</text>
+        <rect x="14" y="182" width="118" height="34" rx="8" fill="var(--surface-2)"></rect>
+        <text x="73" y="204" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">XHR, rAF</text>
+
+        <path d="M136 55 L166 100" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".5" marker-end="url(#cdz1)"></path>
+        <path d="M136 103 L166 116" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".5" marker-end="url(#cdz1)"></path>
+        <path d="M136 151 L166 138" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".5" marker-end="url(#cdz1)"></path>
+        <path d="M136 199 L166 154" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".5" marker-end="url(#cdz1)"></path>
+
+        <rect x="172" y="66" width="88" height="118" rx="12" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="2"></rect>
+        <text x="216" y="118" text-anchor="middle" font-size="12.5" font-family="monospace" font-weight="700" fill="var(--bad)">Zone.js</text>
+        <text x="216" y="137" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".8">đã vá đè</text>
+
+        <path d="M264 125 L316 125" fill="none" stroke="var(--bad)" stroke-width="1.8" marker-end="url(#cdz1)" color="var(--bad)"></path>
+        <text x="266" y="116" font-size="10" fill="var(--bad)">“có gì đó xong rồi”</text>
+
+        <rect x="322" y="106" width="96" height="38" rx="10" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+        <text x="370" y="130" text-anchor="middle" font-size="12" font-family="monospace" fill="currentColor">tick()</text>
+
+        <path d="M422 125 L462 92" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#cdz1)"></path>
+
+        <line x1="530" y1="72" x2="486" y2="142" stroke="currentColor" stroke-opacity=".35" stroke-width="1.4"></line>
+        <line x1="530" y1="72" x2="590" y2="142" stroke="currentColor" stroke-opacity=".35" stroke-width="1.4"></line>
+        <line x1="486" y1="142" x2="460" y2="212" stroke="currentColor" stroke-opacity=".35" stroke-width="1.4"></line>
+        <line x1="486" y1="142" x2="514" y2="212" stroke="currentColor" stroke-opacity=".35" stroke-width="1.4"></line>
+        <line x1="590" y1="142" x2="564" y2="212" stroke="currentColor" stroke-opacity=".35" stroke-width="1.4"></line>
+        <line x1="590" y1="142" x2="620" y2="212" stroke="currentColor" stroke-opacity=".35" stroke-width="1.4"></line>
+        <line x1="460" y1="212" x2="460" y2="258" stroke="currentColor" stroke-opacity=".35" stroke-width="1.4"></line>
+
+        <circle cx="530" cy="72" r="14" fill="var(--accent)"></circle>
+        <circle cx="486" cy="142" r="14" fill="var(--accent)"></circle>
+        <circle cx="590" cy="142" r="14" fill="var(--accent)"></circle>
+        <circle cx="460" cy="212" r="14" fill="var(--accent)"></circle>
+        <circle cx="514" cy="212" r="14" fill="var(--accent)"></circle>
+        <circle cx="564" cy="212" r="14" fill="var(--accent)"></circle>
+        <circle cx="620" cy="212" r="14" fill="var(--accent)"></circle>
+        <circle cx="460" cy="258" r="14" fill="var(--accent)"></circle>
+
+        <text x="654" y="140" font-size="13" font-family="monospace" font-weight="700" fill="var(--accent)">8/8</text>
+        <text x="654" y="158" font-size="10.5" fill="currentColor" opacity=".75">nút bị</text>
+        <text x="654" y="173" font-size="10.5" fill="currentColor" opacity=".75">kiểm tra</text>
+
+        <text x="14" y="248" font-size="10.5" fill="currentColor" opacity=".75">Zone chỉ biết “một tác vụ bất đồng bộ vừa xong”. Nó không biết dữ liệu nào đổi,</text>
+        <text x="14" y="266" font-size="10.5" fill="currentColor" opacity=".75">nên Angular buộc phải đi soát tất cả.</text>
+      </svg>
+    </div>
+    <figcaption>Toàn bộ vấn đề của Zone.js gói trong một hình: <b>tín hiệu không mang thông tin</b>. Chuông kêu nhưng không nói ai bấm, nên Angular phải đi gõ cửa từng nhà.</figcaption>
+  </figure>
+  <ol class="steps">
+    <li><strong>Kích hoạt quá tay.</strong> Vòng lặp vẽ bản đồ gọi <code>requestAnimationFrame</code> (API trình duyệt gọi lại hàm của bạn trước mỗi khung hình) 60 lần mỗi giây → 60 chu kỳ dò thay đổi mỗi giây, dù trên màn hình chẳng có chữ nào đổi. Kéo chuột qua bản đồ cũng vậy.</li>
+    <li><strong>Không vá được <code>async</code>/<code>await</code> gốc.</strong> Zone chỉ vá được <code>Promise</code> (lời hứa — vật đại diện cho một kết quả sẽ có trong tương lai) mà nó thay thế; cú pháp <code>async/await</code> chạy thẳng bằng mã máy của trình duyệt thì nằm ngoài tầm với.</li>
+    <li><strong><span class="gl" data-gl="stack trace" tabindex="0">Vết ngăn xếp lỗi</span> dài lê thê.</strong> Mọi lời gọi bất đồng bộ bị bọc thêm mấy lớp của Zone, nên khi lỗi xảy ra bạn phải lội qua chúng để tìm dòng thật.</li>
+    <li><strong>Thư viện bên thứ ba không biết gì về Zone.</strong> Một thư viện bản đồ hay biểu đồ tự gắn hàng chục hàm nghe sự kiện — mỗi cái là một cái chuông bạn không cố ý treo.</li>
+    <li><strong>Tốn thêm vài chục KB</strong> tải về trước khi ứng dụng chạy được dòng đầu tiên.</li>
+  </ol>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cách chữa</p><h2>Chạy bên ngoài zone</h2></div>
+  <p class="col"><code>NgZone.runOutsideAngular()</code> nói: “đoạn mã này cứ chạy, nhưng đừng rung chuông.” Mọi tác vụ bất đồng bộ đăng ký bên trong nó sẽ không kích hoạt chu kỳ dò thay đổi nào.</p>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 240" role="img" aria-label="Ở trên: sự kiện di chuột phát sáu mươi lần mỗi giây bên trong zone, mỗi lần kích hoạt một chu kỳ dò thay đổi. Ở dưới: cùng nguồn đó đăng ký bên ngoài zone, mọi sự kiện bị chặn ở ranh giới zone, chỉ khi gọi ngZone.run mới có đúng một chu kỳ.">
+        <defs>
+          <marker id="cdz2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <text x="14" y="24" font-size="11" font-weight="700" fill="var(--bad)" font-family="monospace">TRONG ZONE</text>
+        <rect x="14" y="36" width="140" height="44" rx="10" fill="var(--surface-2)"></rect>
+        <text x="84" y="55" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">pointermove</text>
+        <text x="84" y="71" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".75">60 lần / giây</text>
+
+        <path d="M160 46 L322 46" fill="none" stroke="var(--bad)" stroke-width="1.2" opacity=".75"></path>
+        <path d="M160 54 L322 54" fill="none" stroke="var(--bad)" stroke-width="1.2" opacity=".75"></path>
+        <path d="M160 62 L322 62" fill="none" stroke="var(--bad)" stroke-width="1.2" opacity=".75"></path>
+        <path d="M160 70 L322 70" fill="none" stroke="var(--bad)" stroke-width="1.8" marker-end="url(#cdz2)" color="var(--bad)"></path>
+        <text x="206" y="36" font-size="10.5" font-family="monospace" fill="var(--bad)">× 60</text>
+
+        <rect x="328" y="36" width="96" height="44" rx="10" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.8"></rect>
+        <text x="376" y="63" text-anchor="middle" font-size="12" font-family="monospace" fill="currentColor">tick()</text>
+
+        <text x="442" y="54" font-size="12" fill="var(--bad)">60 chu kỳ CD mỗi giây</text>
+        <text x="442" y="72" font-size="10.5" fill="currentColor" opacity=".75">màn hình không đổi một chữ nào</text>
+
+        <line x1="0" y1="106" x2="720" y2="106" stroke="currentColor" stroke-opacity=".16"></line>
+
+        <text x="14" y="136" font-size="11" font-weight="700" fill="var(--good)" font-family="monospace">NGOÀI ZONE</text>
+        <rect x="14" y="148" width="140" height="44" rx="10" fill="var(--surface-2)"></rect>
+        <text x="84" y="167" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">pointermove</text>
+        <text x="84" y="183" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".75">60 lần / giây</text>
+
+        <path d="M160 158 L228 158" fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="1.2"></path>
+        <path d="M160 170 L228 170" fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="1.2"></path>
+        <path d="M160 182 L228 182" fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="1.2"></path>
+
+        <line x1="240" y1="122" x2="240" y2="228" stroke="var(--good)" stroke-width="2" stroke-dasharray="6 5"></line>
+        <text x="248" y="132" font-size="10.5" fill="var(--good)">ranh giới zone</text>
+        <path d="M234 152 L246 164 M246 152 L234 164" stroke="var(--good)" stroke-width="2"></path>
+        <path d="M234 164 L246 176 M246 164 L234 176" stroke="var(--good)" stroke-width="2"></path>
+        <path d="M234 176 L246 188 M246 176 L234 188" stroke="var(--good)" stroke-width="2"></path>
+
+        <rect x="14" y="206" width="204" height="24" rx="8" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.5"></rect>
+        <text x="116" y="223" text-anchor="middle" font-size="10.5" font-family="monospace" fill="currentColor">ngZone.run(…) khi cần vẽ lại</text>
+        <path d="M224 218 L322 218 L322 186" fill="none" stroke="var(--good)" stroke-width="1.8" marker-end="url(#cdz2)" color="var(--good)"></path>
+
+        <rect x="328" y="148" width="96" height="44" rx="10" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.8"></rect>
+        <text x="376" y="175" text-anchor="middle" font-size="12" font-family="monospace" fill="currentColor">tick()</text>
+
+        <text x="442" y="166" font-size="12" fill="var(--good)">1 chu kỳ, đúng lúc cần</text>
+        <text x="442" y="184" font-size="10.5" fill="currentColor" opacity=".75">60 lần kia vẫn chạy, chỉ là im lặng</text>
+      </svg>
+    </div>
+    <figcaption>Mã vẫn chạy đủ 60 lần — bạn không tắt tính năng nào. Bạn chỉ tháo cái chuông ra khỏi nó, rồi tự tay rung một tiếng khi thật sự có gì để vẽ lại.</figcaption>
+  </figure>
+<pre><code><span class="cm">// map-layer.component.ts — bản đồ OpenLayers, ca kinh điển</span>
+<span class="kw">private readonly</span> zone = inject(NgZone);
+
+ngAfterViewInit() {
+  <span class="kw">this</span>.zone.runOutsideAngular(() =&gt; {
+    <span class="cm">// 60 lần/giây — ghi thẳng vào DOM, không cần Angular biết</span>
+    <span class="kw">this</span>.map.on(<span class="str">'pointermove'</span>, (e) =&gt; {
+      <span class="kw">this</span>.toaDoLabel.nativeElement.textContent = format(e.coordinate);
+    });
+
+    <span class="cm">// hiếm khi xảy ra — cần Angular vẽ lại, nên quay vào zone</span>
+    <span class="kw">this</span>.map.on(<span class="str">'singleclick'</span>, (e) =&gt; {
+      <span class="kw">this</span>.zone.run(() =&gt; <span class="kw">this</span>.selected.set(featureAt(e)));
+    });
+  });
+}</code></pre>
+  <div class="callout bad col">
+    <p><strong>Cái bẫy của <code>runOutsideAngular</code>:</strong> quên <code>zone.run()</code> ở chỗ <em>thật sự</em> cần cập nhật giao diện thì dữ liệu đổi mà màn hình đứng im — và không có lỗi nào báo. Đó là kiểu lỗi tốn nửa ngày. Dùng signal cho phần trạng thái sẽ tránh được bẫy này, vì signal tự đánh thức Angular mà không cần đến zone.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">So sánh</p><h2>Đi qua, chứ không kiểm tra</h2></div>
+  <p class="col"><strong>OnPush</strong> (chiến lược “chỉ soát khi có lý do”) đã cắt được rất nhiều việc. Nhưng khi một nút sâu trong cây báo “tôi bẩn rồi”, cách báo duy nhất hồi đó là <code>markForCheck()</code> — và nó đánh dấu bẩn <em>toàn bộ đường đi từ nút đó lên tận gốc</em>. Mỗi tổ tiên trên đường ấy đều bị <b>kiểm tra</b>, dù trong nó chẳng có gì đổi; nó chỉ có tội là nằm trên đường đi.</p>
+  <p class="col">Signal đổi luật. Khi template đọc một signal, Angular ghi nhớ <em>chính xác</em> <strong>view</strong> (bản thể hiện của một template khi chạy — đơn vị Angular đánh dấu bẩn hay sạch) nào phụ thuộc vào signal đó. Signal đổi giá trị → chỉ view ấy bị đánh dấu bẩn; tổ tiên nhận một lá cờ khác hẳn: <b>“có con cần refresh”</b>. Lá cờ đó nói “bước qua tôi để xuống dưới”, không nói “kiểm tra tôi”.</p>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 356" role="img" aria-label="Hai cây component giống hệt nhau, cùng một nút lá thay đổi. Cây bên trái dùng markForCheck: nút lá và cả hai tổ tiên trên đường lên gốc đều bị kiểm tra, tổng cộng ba nút. Cây bên phải dùng signal: chỉ nút lá bị kiểm tra, hai tổ tiên chỉ bị đi qua chứ không tính lại biểu thức nào.">
+        <defs>
+          <marker id="cdz3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+
+        <line x1="360" y1="20" x2="360" y2="292" stroke="currentColor" stroke-opacity=".16"></line>
+
+        <text x="16" y="28" font-size="11.5" font-weight="700" fill="currentColor" font-family="monospace">markForCheck()</text>
+        <text x="16" y="45" font-size="10.5" fill="currentColor" opacity=".75">async pipe, RxJS, mã cũ</text>
+
+        <line x1="185" y1="84" x2="133" y2="156" stroke="var(--accent)" stroke-width="2"></line>
+        <line x1="185" y1="84" x2="243" y2="156" stroke="currentColor" stroke-opacity=".22" stroke-width="1.4"></line>
+        <line x1="133" y1="156" x2="102" y2="228" stroke="var(--accent)" stroke-width="2"></line>
+        <line x1="133" y1="156" x2="162" y2="228" stroke="currentColor" stroke-opacity=".22" stroke-width="1.4"></line>
+        <line x1="243" y1="156" x2="214" y2="228" stroke="currentColor" stroke-opacity=".22" stroke-width="1.4"></line>
+        <line x1="243" y1="156" x2="276" y2="228" stroke="currentColor" stroke-opacity=".22" stroke-width="1.4"></line>
+
+        <circle cx="185" cy="84" r="15" fill="var(--accent)"></circle>
+        <circle cx="133" cy="156" r="15" fill="var(--accent)"></circle>
+        <circle cx="102" cy="228" r="15" fill="var(--accent)"></circle>
+        <circle cx="243" cy="156" r="15" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="2"></circle>
+        <circle cx="162" cy="228" r="15" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="2"></circle>
+        <circle cx="214" cy="228" r="15" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="2"></circle>
+        <circle cx="276" cy="228" r="15" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="2"></circle>
+
+        <text x="102" y="262" text-anchor="middle" font-size="10.5" fill="var(--accent)">nút đổi</text>
+        <text x="212" y="100" font-size="10.5" fill="currentColor" opacity=".78">tổ tiên bị</text>
+        <text x="212" y="115" font-size="10.5" fill="currentColor" opacity=".78">bôi bẩn theo</text>
+
+        <text x="16" y="288" font-size="12.5" font-family="monospace" font-weight="700" fill="var(--accent)">3 nút bị kiểm tra</text>
+        <text x="180" y="288" font-size="10.5" fill="currentColor" opacity=".75">2 trong đó không có gì đổi</text>
+
+        <text x="392" y="28" font-size="11.5" font-weight="700" fill="var(--accent)" font-family="monospace">signal()</text>
+        <text x="392" y="45" font-size="10.5" fill="currentColor" opacity=".75">Angular biết đúng view nào phụ thuộc</text>
+
+        <line x1="545" y1="84" x2="493" y2="156" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 4"></line>
+        <line x1="545" y1="84" x2="603" y2="156" stroke="currentColor" stroke-opacity=".22" stroke-width="1.4"></line>
+        <line x1="493" y1="156" x2="462" y2="228" stroke="var(--accent)" stroke-width="2"></line>
+        <line x1="493" y1="156" x2="522" y2="228" stroke="currentColor" stroke-opacity=".22" stroke-width="1.4"></line>
+        <line x1="603" y1="156" x2="574" y2="228" stroke="currentColor" stroke-opacity=".22" stroke-width="1.4"></line>
+        <line x1="603" y1="156" x2="636" y2="228" stroke="currentColor" stroke-opacity=".22" stroke-width="1.4"></line>
+
+        <circle cx="545" cy="84" r="15" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="4 3"></circle>
+        <circle cx="493" cy="156" r="15" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="4 3"></circle>
+        <circle cx="462" cy="228" r="15" fill="var(--accent)"></circle>
+        <circle cx="603" cy="156" r="15" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="2"></circle>
+        <circle cx="522" cy="228" r="15" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="2"></circle>
+        <circle cx="574" cy="228" r="15" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="2"></circle>
+        <circle cx="636" cy="228" r="15" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="2"></circle>
+
+        <path d="M562 94 L602 112" fill="none" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#cdz3)"></path>
+        <text x="576" y="110" font-size="10.5" fill="var(--accent)">chỉ đi qua</text>
+        <text x="462" y="262" text-anchor="middle" font-size="10.5" fill="var(--accent)">nút đổi</text>
+
+        <text x="392" y="288" font-size="12.5" font-family="monospace" font-weight="700" fill="var(--accent)">1 nút bị kiểm tra</text>
+        <text x="556" y="288" font-size="10.5" fill="currentColor" opacity=".75">2 nút chỉ bị bước qua</text>
+
+        <line x1="0" y1="312" x2="720" y2="312" stroke="currentColor" stroke-opacity=".16"></line>
+        <circle cx="26" cy="334" r="8" fill="var(--accent)"></circle>
+        <text x="42" y="338" font-size="10.5" fill="currentColor" opacity=".8">bị kiểm tra</text>
+        <circle cx="160" cy="334" r="8" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="4 3"></circle>
+        <text x="176" y="338" font-size="10.5" fill="currentColor" opacity=".8">chỉ đi qua</text>
+        <circle cx="290" cy="334" r="8" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="2"></circle>
+        <text x="306" y="338" font-size="10.5" fill="currentColor" opacity=".8">bỏ qua hẳn</text>
+      </svg>
+    </div>
+    <figcaption>Cùng một cây, cùng một nút đổi. Khác biệt duy nhất là <b>hai vòng tròn ở giữa đặc hay rỗng</b> — và đó chính là tối ưu hoá mà signal bật lên.</figcaption>
+  </figure>
+  <div class="cards">
+    <div class="card">
+      <h3>Đường cũ — tổ tiên bị kiểm tra</h3>
+<pre><code><span class="cm">// async pipe gọi markForCheck() bên trong</span>
+&#123;&#123; data$ | async &#125;&#125;
+
+<span class="cm">// hoặc tự gọi tay</span>
+<span class="kw">this</span>.cdr.markForCheck();
+
+<span class="out">// → mọi tổ tiên bị đánh dấu Dirty
+//   → tính lại biểu thức của từng cái</span></code></pre>
+    </div>
+    <div class="card">
+      <h3>Đường mới — tổ tiên chỉ bị đi qua</h3>
+<pre><code>@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+<span class="kw">export class</span> RowComponent {
+  <span class="kw">readonly</span> qty = signal(<span class="kw">0</span>);
+}
+
+<span class="cm">// → chỉ view này Dirty
+//   → tổ tiên nhận cờ “có con cần refresh”</span></code></pre>
+    </div>
+  </div>
+  <div class="callout col">
+    <p><strong>Chi tiết khiến người phỏng vấn gật đầu:</strong> <code>async</code> pipe (ống nối tự đăng ký luồng và tự dọn ngay trong template) đến hôm nay vẫn đi đường cũ — nó gọi <code>markForCheck()</code>. Nên trong cùng một màn, chuyển một chỗ từ <code>data$ | async</code> sang <code>toSignal(data$)</code> (hàm biến một luồng RxJS thành signal) là đã đổi từ “bôi bẩn cả đường” sang “chỉ đi qua”, mà không sửa một dòng template nào khác.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Luật dùng</p><h2>Chỉ ăn khi cả cây là OnPush</h2></div>
+  <p class="col">Lá cờ “chỉ đi qua” chỉ có tác dụng với những nút <em>được phép bỏ qua</em>. Một tổ tiên để mặc định <code>ChangeDetectionStrategy.Default</code> thì mỗi chu kỳ vẫn bị kiểm tra hết, bất kể bạn dùng signal hay không. Đó là lý do người ta luôn nói <b>“signals + OnPush”</b> chứ không nói mình “signals”.</p>
+  <ol class="steps">
+    <li><strong>Một nút Default nằm giữa đường</strong> làm hỏng chuỗi: nó bị kiểm tra, và nó cũng buộc Angular đi xuống kiểm tra con nó theo cách cũ.</li>
+    <li><strong>Vẫn còn Zone.js</strong> thì mỗi tác vụ bất đồng bộ vẫn kéo cả cây vào một chu kỳ — signal chỉ giúp phần <em>trong</em> chu kỳ rẻ đi, không giảm được <em>số lượng</em> chu kỳ.</li>
+    <li><strong>Bỏ Zone.js đi</strong> thì signal trở thành nguồn đánh thức chính, và lúc đó số chu kỳ mới thật sự tụt xuống. Hai câu chuyện gặp nhau ở đây — xem <a href="day-51-zoneless.html">Day 51</a>.</li>
+  </ol>
+<pre><code><span class="cm">// app.config.ts — từ Angular 20 đã ổn định</span>
+bootstrapApplication(AppComponent, {
+  providers: [
+    provideZonelessChangeDetection(),   <span class="cm">// bỏ zone.js khỏi polyfills luôn</span>
+  ],
+});</code></pre>
+  <div class="callout good col">
+    <p><strong>Và <code>runOutsideAngular</code> thì sao?</strong> Ở chế độ zoneless nó gần như không còn việc để làm — vì không có cái chuông nào để tháo. Đoạn <code>pointermove</code> bản đồ ở trên tự nhiên hết ồn, không cần bọc gì cả. Hãy xem <code>runOutsideAngular</code> là <em>thuốc giảm đau</em> cho giai đoạn còn Zone.js, không phải kiến trúc lâu dài.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Ba thời kỳ, cùng một cái cây</h2></div>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Thời kỳ</th><th>Ai đánh thức</th><th>Tổ tiên của nút đổi</th><th>Việc bạn phải làm</th></tr></thead>
+    <tbody>
+      <tr><td>Zone + Default</td><td>Mọi tác vụ bất đồng bộ</td><td><span class="no">Bị kiểm tra</span> — cùng với cả cây</td><td>Gần như không kiểm soát được</td></tr>
+      <tr><td>Zone + OnPush</td><td>Mọi tác vụ bất đồng bộ</td><td><span class="no">Bị kiểm tra</span> (đường lên gốc bị bôi bẩn)</td><td><code>markForCheck</code>, <code>runOutsideAngular</code>, so tham chiếu thủ công</td></tr>
+      <tr><td>Signal + OnPush</td><td>Tác vụ bất đồng bộ, nhưng phần soát rẻ hơn nhiều</td><td><span class="yes">Chỉ bị đi qua</span></td><td>Dùng signal thay cho thuộc tính thường</td></tr>
+      <tr><td>Zoneless + Signal</td><td>Chỉ signal, sự kiện template, <code>markForCheck</code></td><td><span class="yes">Chỉ bị đi qua</span></td><td>Đừng để trạng thái nằm ngoài signal</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của đường signal + OnPush + zoneless</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Tổ tiên chỉ bị đi qua</b> — một nút lá đổi không kéo theo cả đường lên gốc bị tính lại.</li>
+        <li><b>Số chu kỳ tụt hẳn khi bỏ Zone:</b> chỉ signal, sự kiện template và <code>markForCheck</code> mới đánh thức Angular.</li>
+        <li><b>Hết cần <code>runOutsideAngular</code></b> cho bản đồ, biểu đồ, animation — nguồn ồn tự nhiên im.</li>
+        <li><b>Nhẹ hơn vài chục KB</b> vì gỡ được zone.js khỏi <span class="gl" data-gl="Đoạn mã nạp trước để bù tính năng trình duyệt còn thiếu" tabindex="0">polyfill</span>.</li>
+        <li><b>Vết ngăn xếp sạch</b>, gỡ lỗi bất đồng bộ dễ hơn hẳn.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Bảng 500 dòng, mỗi dòng là một component OnPush.</span>
+<span class="cm">// Sửa số lượng ở dòng thứ 300:</span>
+row.qty.set(<span class="kw">12</span>);
+<span class="out">// cũ:  300 tổ tiên + chính nó bị kiểm tra
+// mới: 1 nút bị kiểm tra, phần còn lại chỉ bị đi qua</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Mọi trạng thái phải nằm trong signal.</b> Một thuộc tính thường đổi giá trị thì không ai đánh thức Angular — màn hình đứng im, không lỗi nào báo.</li>
+        <li><b>Thư viện cũ không biết signal:</b> hàm gọi lại của chúng phải tự <code>markForCheck</code> hoặc ghi vào signal.</li>
+        <li><b>Chỉ ăn khi cả cây OnPush</b> — một nút <code>Default</code> giữa đường là mất sạch phần lợi.</li>
+        <li><b>Lỗi mới khó đoán:</b> trước kia lỗi là “chạy quá nhiều lần”, giờ lỗi là “không chạy lần nào”.</li>
+        <li><b>Mã cũ phải rà lại</b>: <code>setTimeout</code> cập nhật thuộc tính, <code>subscribe</code> gán thẳng vào biến — trước Zone che cho, giờ thì không.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// ✗ zoneless: đổi rồi mà màn hình đứng im</span>
+setTimeout(() =&gt; { <span class="kw">this</span>.tieuDe = <span class="str">'Đã lưu'</span>; }, <span class="kw">500</span>);
+
+<span class="cm">// ✓ để trạng thái trong signal</span>
+tieuDe = signal(<span class="str">''</span>);
+setTimeout(() =&gt; <span class="kw">this</span>.tieuDe.set(<span class="str">'Đã lưu'</span>), <span class="kw">500</span>);</code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> đi theo thứ tự — đặt <code>OnPush</code> cho toàn bộ component mới, chuyển trạng thái sang <code>signal</code> / <code>toSignal</code>, gỡ dần <code>async</code> pipe ở chỗ nóng, rồi mới bật <code>provideZonelessChangeDetection()</code>. Bật zoneless khi cây còn nửa <code>Default</code> và trạng thái còn nằm ngoài signal là cách nhanh nhất để có một màn hình đứng im mà không ai biết vì sao.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> Dò thay đổi có hai câu hỏi tách rời. <em>Ai đánh thức Angular</em> — mặc định là Zone.js, nó vá đè mọi API bất đồng bộ nhưng tín hiệu nó gửi không mang thông tin, chỉ là “có gì đó vừa xong”, nên Angular phải soát cả cây. <em>Soát bao nhiêu chỗ</em> — <code>markForCheck</code> đánh dấu bẩn cả đường lên gốc nên tổ tiên bị kiểm tra oan; signal thì Angular biết đúng view nào phụ thuộc, tổ tiên chỉ nhận cờ “có con cần refresh” và <b>bị đi qua chứ không bị kiểm tra</b>. Hai câu chuyện gặp nhau ở zoneless: bỏ Zone rồi thì signal thành nguồn đánh thức chính.</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>OnPush hoạt động thế nào?</h3>
+      <p>Đừng dừng ở “chỉ chạy khi input đổi”. Nói được bốn cái kích hoạt: <code>input</code> đổi <em>tham chiếu</em>, sự kiện phát ra từ trong template, <code>markForCheck()</code>, và <code>async</code> pipe. Kể đủ bốn là chứng minh mình đã đọc, chứ không phải nghe kể lại.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Dùng signal thì nhanh hơn ở chỗ nào?</h3>
+      <p>Trả lời “signal nhanh hơn” là cụt. Ý ăn điểm: signal không giảm <em>số</em> chu kỳ khi còn Zone.js — nó làm <em>trong</em> mỗi chu kỳ rẻ đi, vì tổ tiên chỉ bị đi qua thay vì bị kiểm tra. Muốn giảm số chu kỳ thì phải bỏ Zone.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Vậy cứ bọc <code>runOutsideAngular</code> cho chắc?</h3>
+      <p>Không. Cái giá là quên <code>zone.run()</code> ở chỗ thật sự cần vẽ lại thì màn hình đứng im mà không lỗi nào báo. Và ở zoneless nó gần như vô nghĩa — không còn chuông nào để tháo. Gọi nó là thuốc giảm đau giai đoạn, không phải kiến trúc.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3><code>async</code> pipe có được hưởng tối ưu của signal không?</h3>
+      <p>Không — và rất ít người biết. <code>async</code> pipe vẫn gọi <code>markForCheck()</code>, tức vẫn bôi bẩn cả đường lên gốc. Đổi một chỗ nóng từ <code>data$ | async</code> sang <code>toSignal(data$)</code> là chuyển sang đường “chỉ đi qua” mà không sửa gì khác trong template.</p>
+    </div>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> “Bật <code>OnPush</code> với dùng signal là hết lo hiệu năng.” Sai ở hai chỗ. Một nút để <code>Default</code> nằm giữa đường là mất sạch phần lợi — lá cờ “chỉ đi qua” chỉ có tác dụng với nút được phép bỏ qua. Và chừng nào Zone.js còn đó thì mỗi <code>setTimeout</code>, mỗi lần kéo chuột vẫn kéo cả cây vào một chu kỳ; signal không cứu được điều đó.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>change detection</td><td>Dò thay đổi — việc Angular soát lại xem có gì trên màn hình cần vẽ lại không.</td></tr>
+      <tr><td>chu kỳ CD / tick</td><td>Một lượt soát từ gốc cây xuống, tức một lần <code>ApplicationRef.tick()</code>.</td></tr>
+      <tr><td>cây component</td><td>Các thành phần giao diện lồng nhau tạo thành hình cây, gốc là component khởi động ứng dụng.</td></tr>
+      <tr><td>template</td><td>Mẫu giao diện — phần HTML của component, nơi chứa biểu thức Angular phải tính lại.</td></tr>
+      <tr><td>view</td><td>Bản thể hiện của một template khi chạy; đơn vị mà Angular đánh dấu bẩn hay sạch.</td></tr>
+      <tr><td>DOM</td><td>Cây phần tử thật mà trình duyệt đang hiển thị.</td></tr>
+      <tr><td>API</td><td>Giao diện lập trình — các hàm trình duyệt hoặc thư viện bày sẵn cho mã của bạn gọi.</td></tr>
+      <tr><td>Promise</td><td>Lời hứa — vật đại diện cho một kết quả sẽ có trong tương lai; nền của <code>async/await</code>.</td></tr>
+      <tr><td>XHR</td><td><code>XMLHttpRequest</code> — cách gọi máy chủ đời cũ mà Zone.js vá đè để biết khi nào có phản hồi.</td></tr>
+      <tr><td>input</td><td>Dữ liệu cha truyền xuống con. OnPush chỉ soát lại khi <em>tham chiếu</em> của nó đổi.</td></tr>
+      <tr><td>Zone.js</td><td>Thư viện vá đè các API bất đồng bộ để báo cho Angular “có gì đó vừa xong”.</td></tr>
+      <tr><td>monkey-patch</td><td>Vá đè — thay hàm gốc của trình duyệt bằng bản của mình để chèn thêm hành vi.</td></tr>
+      <tr><td>bất đồng bộ</td><td>Việc không xong ngay: hẹn giờ, gọi mạng, chờ người dùng bấm.</td></tr>
+      <tr><td>NgZone</td><td>Lớp bọc Zone.js của Angular; nơi có <code>run()</code> và <code>runOutsideAngular()</code>.</td></tr>
+      <tr><td>runOutsideAngular</td><td>Chạy một đoạn mã sao cho tác vụ bất đồng bộ trong đó không kích hoạt chu kỳ CD.</td></tr>
+      <tr><td>requestAnimationFrame</td><td>API trình duyệt gọi lại hàm của bạn trước mỗi khung hình, khoảng 60 lần mỗi giây.</td></tr>
+      <tr><td>OnPush</td><td>Chiến lược “chỉ soát khi có lý do”: input đổi tham chiếu, có sự kiện, hoặc bị đánh dấu bẩn.</td></tr>
+      <tr><td>Default (CheckAlways)</td><td>Chiến lược mặc định: soát mọi chu kỳ, không cần lý do.</td></tr>
+      <tr><td>dirty (bẩn)</td><td>Cờ đánh dấu “view này cần tính lại biểu thức”.</td></tr>
+      <tr><td>“có con cần refresh”</td><td>Cờ khác hẳn dirty: “bước qua tôi để xuống dưới, đừng tính lại tôi”. Chính là <em>đi qua</em>.</td></tr>
+      <tr><td>markForCheck()</td><td>Đánh dấu bẩn view hiện tại <b>và mọi tổ tiên</b> lên tới gốc.</td></tr>
+      <tr><td>signal</td><td>Tín hiệu — ô giá trị phản ứng của Angular; đọc ở đâu thì Angular ghi nhớ chỗ đó phụ thuộc vào nó.</td></tr>
+      <tr><td>toSignal()</td><td>Hàm biến một luồng RxJS thành signal, tự huỷ theo vòng đời component.</td></tr>
+      <tr><td>async pipe</td><td>Ống nối tự đăng ký luồng và tự dọn trong template. Vẫn dùng <code>markForCheck()</code>.</td></tr>
+      <tr><td>zoneless</td><td>Chế độ chạy không có Zone.js; Angular chỉ tỉnh khi có tín hiệu mang thông tin.</td></tr>
+      <tr><td>provideZonelessChangeDetection()</td><td>Hàm bật chế độ zoneless, ổn định từ Angular 20.</td></tr>
+      <tr><td>polyfill</td><td>Đoạn mã nạp trước để bù tính năng trình duyệt thiếu; zone.js nằm ở đây.</td></tr>
+      <tr><td>tham chiếu</td><td>“Địa chỉ” của một đối tượng. OnPush so địa chỉ chứ không so từng trường bên trong.</td></tr>
+      <tr><td>vết ngăn xếp</td><td>Stack trace — danh sách các lời gọi hàm dẫn tới chỗ lỗi.</td></tr>
+    </tbody>
+  </table></div>
+</section>

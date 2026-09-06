@@ -1,0 +1,133 @@
+<!--meta
+title: Hoisting — kéo khai báo lên đầu
+eyebrow: JavaScript · Bài 2
+short: Hoisting
+lede: Gọi hàm ở dòng 1 mà hàm viết ở dòng 50 vẫn chạy được. Đọc biến trước khi khai báo thì lúc ra undefined, lúc lại lỗi. Cả hai đều do JavaScript đọc code làm hai lượt.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>JavaScript đọc code hai lượt</h2></div>
+  <p>Trước khi chạy một dòng nào, JavaScript quét trước cả khối code để <strong>đăng ký tên</strong> — mọi biến và hàm được khai báo trong đó đều được ghi vào sổ. Xong lượt quét, nó mới chạy từ trên xuống.</p>
+  <p>Hiệu ứng nhìn từ bên ngoài giống như các khai báo bị “kéo lên đầu”, nên người ta gọi là hoisting (nâng khai báo lên đầu phạm vi). Thực tế không có dòng code nào bị di chuyển cả — chỉ là cái tên đã có mặt trong sổ trước khi tới lượt chạy.</p>
+  <div class="callout">
+    <p><strong>Chỉ khai báo được nâng, giá trị thì không.</strong> Đây là câu tóm gọn cả bài: cái tên có sẵn từ đầu, còn giá trị chỉ xuất hiện đúng dòng bạn gán.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Hai lượt đó làm gì</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 250" role="img" aria-label="Lượt một đăng ký tên biến và hàm vào sổ; lượt hai chạy code và mới gán giá trị.">
+        <defs><marker id="h1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 10,5 0,10" fill="#C87518"></polygon></marker></defs>
+        <rect x="20" y="30" width="310" height="200" rx="14" fill="var(--surface-2)"></rect>
+        <text x="38" y="56" font-size="12.5" font-weight="700" fill="currentColor">LƯỢT 1 — đăng ký tên</text>
+        <rect x="38" y="72" width="274" height="34" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="52" y="94" font-size="12" fill="currentColor" font-family="monospace">var soLuong  →  undefined</text>
+        <rect x="38" y="114" width="274" height="34" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="52" y="136" font-size="12" fill="currentColor" font-family="monospace">let gia      →  chưa khởi tạo (TDZ)</text>
+        <rect x="38" y="156" width="274" height="34" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="52" y="178" font-size="12" fill="currentColor" font-family="monospace">function tinh → sẵn sàng chạy</text>
+        <line x1="336" y1="130" x2="386" y2="130" stroke="var(--accent)" stroke-width="2" marker-end="url(#h1)"></line>
+        <rect x="394" y="30" width="306" height="200" rx="14" fill="var(--surface-2)"></rect>
+        <text x="412" y="56" font-size="12.5" font-weight="700" fill="currentColor">LƯỢT 2 — chạy từng dòng</text>
+        <text x="412" y="88" font-size="12" fill="currentColor" font-family="monospace">soLuong = 3   ← lúc này mới có giá trị</text>
+        <text x="412" y="116" font-size="12" fill="currentColor" font-family="monospace">gia = 1000    ← rời khỏi TDZ</text>
+        <text x="412" y="144" font-size="12" fill="currentColor" font-family="monospace">tinh()        ← gọi lúc nào cũng được</text>
+        <text x="412" y="186" font-size="11.5" fill="var(--accent)" font-weight="700">Đọc biến trước lượt 2 =</text>
+        <text x="412" y="204" font-size="11.5" fill="var(--accent)" font-weight="700">undefined (var) hoặc lỗi (let/const)</text>
+      </svg>
+    </div>
+    <figcaption>Tên có mặt từ lượt 1; giá trị chỉ xuất hiện ở lượt 2, đúng dòng gán.</figcaption>
+  </figure>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Bảng tra</p><h2>Mỗi cách khai báo hoisting một kiểu</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Khai báo</th><th>Được nâng?</th><th>Đọc trước khi khai báo</th></tr></thead>
+    <tbody>
+      <tr><td>var</td><td><span class="yes">Có</span></td><td>Ra <code>undefined</code>, không báo lỗi — nguy hiểm nhất</td></tr>
+      <tr><td>let / const</td><td><span class="yes">Có</span> (nhưng chưa khởi tạo)</td><td><code>ReferenceError</code> — đang ở TDZ</td></tr>
+      <tr><td>function abc(){}</td><td><span class="yes">Có, cả thân hàm</span></td><td>Gọi được bình thường</td></tr>
+      <tr><td>const abc = () =&gt; {}</td><td>Theo luật của <code>const</code></td><td><code>ReferenceError</code></td></tr>
+      <tr><td>var abc = function(){}</td><td>Chỉ nâng tên biến</td><td><code>abc is not a function</code></td></tr>
+      <tr><td>class Abc {}</td><td><span class="yes">Có</span> (nhưng chưa khởi tạo)</td><td><code>ReferenceError</code> — cũng ở TDZ</td></tr>
+    </tbody>
+  </table></div>
+<pre><code>console.log(a);   <span class="cm">// undefined  — tên đã có, giá trị chưa</span>
+<span class="kw">var</span> a = 1;
+
+console.log(b);   <span class="cm">// ReferenceError: Cannot access 'b' before initialization</span>
+<span class="kw">let</span> b = 2;
+
+chao();           <span class="cm">// 'xin chào' — hàm khai báo được nâng trọn vẹn</span>
+<span class="kw">function</span> chao() { console.log(<span class="str">'xin chào'</span>); }
+
+chao2();          <span class="cm">// TypeError: chao2 is not a function</span>
+<span class="kw">var</span> chao2 = <span class="kw">function</span> () {};</code></pre>
+  <p><strong>TDZ</strong> (Temporal Dead Zone — vùng chết tạm thời) là quãng từ đầu khối tới dòng khai báo <code>let/const</code>. Trong quãng đó cái tên đã tồn tại nhưng bị khoá: chạm vào là lỗi ngay. Đây là tính năng cố ý, không phải bug — nó biến một lỗi âm thầm thành một lỗi ồn ào.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Viết theo lối kể chuyện.</b> Đặt logic chính lên đầu file, các hàm phụ trợ xuống dưới — vẫn chạy đúng.</li>
+        <li><b>Đệ quy tương hỗ.</b> Hàm A gọi B, B gọi lại A, không cần lo hàm nào định nghĩa trước.</li>
+        <li><b>TDZ bắt lỗi sớm.</b> Với <code>let/const</code>, hoisting biến việc dùng biến quá sớm thành lỗi rõ ràng thay vì <code>undefined</code> trôi nổi.</li>
+        <li><b>Giải thích được nhiều bug cũ.</b> Hiểu hoisting là đọc được code JavaScript đời cũ mà không hoang mang.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Logic chính đọc trước, chi tiết để dưới — vẫn chạy đúng</span>
+<span class="kw">const</span> hoaDon = tinhTong(gioHang);
+console.log(dinhDang(hoaDon));
+
+<span class="kw">function</span> tinhTong(ds) { <span class="kw">return</span> ds.reduce((a, x) =&gt; a + x.gia, 0); }
+<span class="kw">function</span> dinhDang(n) { <span class="kw">return</span> n.toLocaleString(<span class="str">'vi-VN'</span>) + <span class="str">' đ'</span>; }</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b><code>undefined</code> im lặng.</b> Với <code>var</code>, lỗi không nổ ngay mà lan xuống dưới rồi mới vỡ ở chỗ khác — cực khó lần.</li>
+        <li><b>Khuyến khích code lộn xộn.</b> "Chạy được là được" khiến thứ tự khai báo bị buông lỏng.</li>
+        <li><b>Ảo giác về vị trí.</b> Nhiều người tin rằng code thực sự bị di chuyển lên đầu — hiểu sai bản chất dẫn tới suy luận sai.</li>
+        <li><b>Nhân đôi luật.</b> Bốn cách khai báo hoisting bốn kiểu; phải nhớ bảng trên mới đọc code nhanh được.</li>
+        <li><b>Trong khối <code>if</code>, hàm khai báo hành xử khác nhau</b> giữa strict mode và sloppy mode, giữa các trình duyệt cũ.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="kw">var</span> daDangNhap = <span class="kw">true</span>;
+
+<span class="kw">function</span> kiemTra() {
+  <span class="kw">if</span> (!daDangNhap) {            <span class="cm">// ✗ đọc biến CỤC BỘ, đang là undefined</span>
+    <span class="kw">return</span> <span class="str">'chặn'</span>;               <span class="cm">// → luôn chặn, kể cả người đã đăng nhập</span>
+  }
+  <span class="kw">var</span> daDangNhap = <span class="kw">false</span>;      <span class="cm">// khai báo bị nâng lên đầu hàm</span>
+}
+kiemTra();                     <span class="out">// 'chặn' — không có lỗi nào được báo</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> luôn khai báo trước khi dùng, bỏ hẳn <code>var</code>, và bật quy tắc <code>no-use-before-define</code> trong ESLint. Làm được ba điều đó thì hoisting gần như không còn cắn bạn nữa — nhưng vẫn phải hiểu để đọc code người khác.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>hoisting</td><td>Nâng khai báo — tên biến/hàm được đăng ký trước khi code chạy.</td></tr>
+      <tr><td>TDZ</td><td>Temporal Dead Zone — vùng chết tạm thời: tên đã có nhưng chưa được phép dùng.</td></tr>
+      <tr><td>function declaration</td><td>Hàm khai báo — dạng <code>function abc() {}</code>, được nâng cả thân hàm.</td></tr>
+      <tr><td>function expression</td><td>Hàm biểu thức — gán hàm vào một biến, chỉ nâng theo biến đó.</td></tr>
+      <tr><td>undefined</td><td>Giá trị mặc định của một biến đã khai báo nhưng chưa gán gì.</td></tr>
+      <tr><td>ReferenceError</td><td>Lỗi tham chiếu — dùng tên chưa tồn tại hoặc đang bị khoá trong TDZ.</td></tr>
+      <tr><td>TypeError</td><td>Lỗi kiểu — dùng một giá trị theo cách nó không hỗ trợ (gọi thứ không phải hàm).</td></tr>
+      <tr><td>strict mode</td><td>Chế độ nghiêm ngặt — xem bài tiếp theo.</td></tr>
+      <tr><td>sloppy mode</td><td>Chế độ mặc định (không nghiêm ngặt) của JavaScript.</td></tr>
+    </tbody>
+  </table></div>
+</section>

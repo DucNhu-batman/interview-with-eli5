@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="vi" data-track="angular">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sổ tay Angular 55 ngày</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><span class="now">Angular</span></nav>
+<header class="hero col"><p class="eyebrow">56 bài</p><h1>Sổ tay Angular 55 ngày</h1><p class="lede">Lộ trình 55 bài từ dựng môi trường tới rò rỉ bộ nhớ — mỗi bài một trang, luôn kèm phần được gì / mất gì.</p></header>
+<section class="grp">
+<h2>Cơ bản về Angular &amp; Directives</h2>
+<p class="grp-note">Dựng môi trường, data binding và các directive nền tảng. · Day 1–9</p>
+<ul class="idx">
+<li><a href="day-01-moi-truong.html"><span class="n">Angular · Day 1</span><span class="t">Day 1 — Dựng môi trường làm việc</span><span class="d">Node, package manager và Angular CLI: ba thứ phải có trước khi gõ dòng code đầu tiên, và lý do phiên bản của chúng lại quan trọng đến thế.</span></a></li>
+<li><a href="day-02-cau-truc-app.html"><span class="n">Angular · Day 2</span><span class="t">Day 2 — Khám phá cấu trúc ứng dụng</span><span class="d">Từ index.html tới màn hình đầu tiên: chuỗi mắt xích main.ts → bootstrap → component gốc → template, và mỗi file trong thư mục dự án làm gì.</span></a></li>
+<li><a href="day-03-data-binding.html"><span class="n">Angular · Day 3</span><span class="t">Day 3 — Data Binding</span><span class="d">Bốn cách nối dữ liệu giữa lớp TypeScript và template — nội suy, thuộc tính, sự kiện và hai chiều. Toàn bộ giao diện Angular dựng trên bốn cú pháp này.</span></a></li>
+<li><a href="day-04-ngif.html"><span class="n">Angular · Day 4</span><span class="t">Day 4 — Structural Directive: NgIf / @if</span><span class="d">Hiện hay không hiện một khối giao diện. Điểm mấu chốt: NgIf không ẩn phần tử — nó tháo hẳn khỏi cây DOM.</span></a></li>
+<li><a href="day-05-ngfor.html"><span class="n">Angular · Day 5</span><span class="t">Day 5 — Structural Directive: NgForOf / @for</span><span class="d">Lặp một khuôn giao diện theo danh sách. Và trackBy — thứ quyết định giữa việc vẽ lại một dòng hay vẽ lại cả nghìn dòng.</span></a></li>
+<li><a href="day-06-class-style.html"><span class="n">Angular · Day 6</span><span class="t">Day 6 — Attribute Directive: Class và Style</span><span class="d">NgClass, NgStyle và cách gán class/style theo điều kiện — cùng lý do vì sao ngày nay nên dùng cú pháp [class.abc] gọn hơn.</span></a></li>
+<li><a href="day-07-input.html"><span class="n">Angular · Day 7</span><span class="t">Day 7 — Truyền dữ liệu từ cha xuống con (@Input)</span><span class="d">Component con nhận dữ liệu qua "cổng vào". Cách khai báo cũ (@Input) và cách mới bằng signal (input()), kèm những bẫy về đối tượng dùng chung.</span></a></li>
+<li><a href="day-08-output.html"><span class="n">Angular · Day 8</span><span class="t">Day 8 — Cha lắng nghe sự kiện của con (@Output)</span><span class="d">Con không được sửa dữ liệu của cha, nhưng được phép hô lên. Đó là output — cổng ra của component.</span></a></li>
+<li><a href="day-09-two-way-binding.html"><span class="n">Angular · Day 9</span><span class="t">Day 9 — Two-way binding tự viết</span><span class="d">[(abc)] không phải phép màu: nó chỉ là quy ước đặt tên. Hiểu quy ước đó là bạn tự làm được liên kết hai chiều cho component của mình.</span></a></li>
+</ul>
+</section><section class="grp">
+<h2>Thành phần nâng cao &amp; TypeScript</h2>
+<p class="grp-note">Truy vấn view/content, kiểu dữ liệu, projection, DI, pipe. · Day 10–18</p>
+<ul class="idx">
+<li><a href="day-10-viewchild.html"><span class="n">Angular · Day 10</span><span class="t">Day 10 — Template variable, ViewChild và ViewChildren</span><span class="d">Khi cần cầm tận tay một phần tử hoặc một component con trong template của mình — và vì sao ở dự án này phải dùng viewChild() dạng signal.</span></a></li>
+<li><a href="day-11-typescript-data-type.html"><span class="n">Angular · Day 11</span><span class="t">Day 11 — Kiểu dữ liệu TypeScript</span><span class="d">TypeScript là JavaScript có nhãn dán. Nhãn không tồn tại lúc chạy — nhưng nó bắt lỗi trước khi code kịp ra khỏi máy bạn.</span></a></li>
+<li><a href="day-12-typescript-advanced-type.html"><span class="n">Angular · Day 12</span><span class="t">Day 12 — Kiểu nâng cao trong TypeScript</span><span class="d">Union là HOẶC, Intersection là VÀ, Conditional là TUỲ. Ba phép ghép này biến hệ thống kiểu từ mấy cái nhãn rời rạc thành thứ tự mô tả được cả dữ liệu biến hình.</span></a></li>
+<li><a href="day-13-content-projection.html"><span class="n">Angular · Day 13</span><span class="t">Day 13 — Content Projection</span><span class="d">Cho phép người dùng component tự quyết định phần ruột bên trong — cách dựng những component khung như card, dialog, panel.</span></a></li>
+<li><a href="day-14-ng-template.html"><span class="n">Angular · Day 14</span><span class="t">Day 14 — ng-template, ngTemplateOutlet và ng-container</span><span class="d">Ba thẻ không hề xuất hiện trong HTML cuối cùng, nhưng là nền tảng của mọi component linh hoạt: khuôn chờ, ống dẫn khuôn và thẻ bọc vô hình.</span></a></li>
+<li><a href="day-15-di-1.html"><span class="n">Angular · Day 15</span><span class="t">Day 15 — Dependency Injection, phần 1</span><span class="d">Component không tự đi tạo thứ nó cần, mà khai ra là được đưa tận tay. Đó là toàn bộ ý tưởng của DI — và là lý do code Angular test được.</span></a></li>
+<li><a href="day-16-di-2.html"><span class="n">Angular · Day 16</span><span class="t">Day 16 — Dependency Injection, phần 2</span><span class="d">InjectionToken, useClass/useValue/useFactory và cây injector nhiều tầng — phần "nâng cao" mà mọi cấu hình runtime của ứng dụng đều dựa vào.</span></a></li>
+<li><a href="day-17-contentchild.html"><span class="n">Angular · Day 17</span><span class="t">Day 17 — ContentChild và ContentChildren</span><span class="d">Cầm lấy những gì người khác chiếu vào component của mình — cơ chế đứng sau mọi bộ tab, accordion và bảng có cột tuỳ biến.</span></a></li>
+<li><a href="day-18-pipes.html"><span class="n">Angular · Day 18</span><span class="t">Day 18 — Pipes</span><span class="d">Biến dữ liệu thô thành thứ người đọc hiểu ngay trong template — và ranh giới sống còn giữa pipe thuần và pipe không thuần.</span></a></li>
+</ul>
+</section><section class="grp">
+<h2>Lập trình phản ứng &amp; RxJS</h2>
+<p class="grp-note">Observable và bộ toán tử dùng hằng ngày trong Angular. · Day 19–26</p>
+<ul class="idx">
+<li><a href="day-19-rxjs-observable.html"><span class="n">Angular · Day 19</span><span class="t">Day 19 — Reactive Programming, RxJS và Observable</span><span class="d">Thay vì hỏi "dữ liệu đâu rồi?", bạn đăng ký nhận tin và mô tả sẵn sẽ làm gì khi tin tới. Đó là lập trình phản ứng.</span></a></li>
+<li><a href="day-20-rxjs-creation.html"><span class="n">Angular · Day 20</span><span class="t">Day 20 — RxJS Creation Operators</span><span class="d">Cách tạo ra một luồng từ con số không: từ giá trị có sẵn, từ sự kiện DOM, từ đồng hồ, hay từ một Promise.</span></a></li>
+<li><a href="day-21-rxjs-transformation.html"><span class="n">Angular · Day 21</span><span class="t">Day 21 — RxJS Transformation Operators</span><span class="d">map, switchMap, mergeMap, concatMap, exhaustMap — chọn sai một cái là sinh ra bug đua nhau hoặc gọi API trùng.</span></a></li>
+<li><a href="day-22-rxjs-filtering.html"><span class="n">Angular · Day 22</span><span class="t">Day 22 — RxJS Filtering Operators</span><span class="d">Lọc bớt để chỉ giữ những gì đáng xử lý — và bộ ba filter, debounceTime, takeUntil mà màn hình nào cũng cần.</span></a></li>
+<li><a href="day-23-rxjs-combination.html"><span class="n">Angular · Day 23</span><span class="t">Day 23 — RxJS Combination Operators</span><span class="d">Khi màn hình cần nhiều nguồn dữ liệu cùng lúc: chờ tất cả, ghép giá trị mới nhất, hay nối đuôi nhau.</span></a></li>
+<li><a href="day-24-rxjs-error-handling.html"><span class="n">Angular · Day 24</span><span class="t">Day 24 — Xử lý lỗi và toán tử điều kiện</span><span class="d">Trong RxJS, một lỗi giết chết cả luồng. catchError, retry và các toán tử điều kiện là cách giữ cho màn hình sống sót.</span></a></li>
+<li><a href="day-25-rxjs-higher-order.html"><span class="n">Angular · Day 25</span><span class="t">Day 25 — Higher Order Observables và Utility Operators</span><span class="d">Luồng của luồng, cùng nhóm toán tử tiện ích (tap, delay, shareReplay) mà bạn sẽ dùng hằng ngày để gỡ lỗi và tối ưu.</span></a></li>
+<li><a href="day-26-rxjs-subject.html"><span class="n">Angular · Day 26</span><span class="t">Day 26 — Subject và Multicasting</span><span class="d">Subject vừa là cái vòi vừa là người bơm nước. Nó là cách các phần rời rạc của ứng dụng nói chuyện với nhau — và cũng là chỗ dễ bị lạm dụng nhất.</span></a></li>
+</ul>
+</section><section class="grp">
+<h2>Định tuyến hệ thống — Angular Router</h2>
+<p class="grp-note">Route, lazy loading, guard và resolver. · Day 27–32</p>
+<ul class="idx">
+<li><a href="day-27-router.html"><span class="n">Angular · Day 27</span><span class="t">Day 27 — Angular Router</span><span class="d">Biến thanh địa chỉ thành bảng điều khiển của ứng dụng: URL nào thì vẽ component nào, và làm sao truyền dữ liệu qua đường dẫn.</span></a></li>
+<li><a href="day-28-router-feature-modules.html"><span class="n">Angular · Day 28</span><span class="t">Day 28 — Feature routes, route con và service theo route</span><span class="d">Chia bảng route theo tính năng, lồng route con vào layout, và gắn service sống đúng bằng vòng đời một khu vực màn hình.</span></a></li>
+<li><a href="day-29-router-lazy-loading.html"><span class="n">Angular · Day 29</span><span class="t">Day 29 — Lazy Loading</span><span class="d">Đừng bắt người dùng tải cả toà nhà chỉ để vào một căn phòng. Tải tính năng theo nhu cầu là cách giảm thời gian mở app nhanh nhất.</span></a></li>
+<li><a href="day-30-guards-resolvers-1.html"><span class="n">Angular · Day 30</span><span class="t">Day 30 — Guards và Resolvers, phần 1</span><span class="d">Người gác cửa của route: cho vào, chặn lại, hay đá sang chỗ khác. Bắt đầu với canActivate và canMatch.</span></a></li>
+<li><a href="day-31-guards-resolvers-2.html"><span class="n">Angular · Day 31</span><span class="t">Day 31 — Guards và Resolvers, phần 2</span><span class="d">canDeactivate — người gác ở chiều ra. Đây là thứ đứng sau hộp thoại "Bạn có chắc muốn rời khỏi trang khi chưa lưu?".</span></a></li>
+<li><a href="day-32-guards-resolvers-3.html"><span class="n">Angular · Day 32</span><span class="t">Day 32 — Guards và Resolvers, phần 3</span><span class="d">Resolver lấy dữ liệu trước khi màn hình xuất hiện. Rất gọn — nhưng đổi lại là một quãng "đứng hình" mà người dùng không hiểu chuyện gì đang xảy ra.</span></a></li>
+</ul>
+</section><section class="grp">
+<h2>Làm việc với biểu mẫu — Forms</h2>
+<p class="grp-note">Template-driven, reactive form và async validator. · Day 33–37</p>
+<ul class="idx">
+<li><a href="day-33-template-driven-forms-1.html"><span class="n">Angular · Day 33</span><span class="t">Day 33 — Template-driven Forms, phần 1</span><span class="d">Form khai ngay trong HTML: gắn ngModel, Angular tự dựng cấu trúc form phía sau. Nhanh nhất cho form nhỏ.</span></a></li>
+<li><a href="day-34-template-driven-forms-2.html"><span class="n">Angular · Day 34</span><span class="t">Day 34 — Template-driven Forms, phần 2</span><span class="d">Nhóm control, validator tự viết dạng directive, và các mẹo hiển thị lỗi cho tử tế trong form kiểu template.</span></a></li>
+<li><a href="day-35-reactive-forms-1.html"><span class="n">Angular · Day 35</span><span class="t">Day 35 — Reactive Forms, phần 1</span><span class="d">Form được dựng bằng TypeScript: bạn nắm trong tay đối tượng form, đọc được, sửa được, test được — cách làm chuẩn cho mọi form nghiệp vụ.</span></a></li>
+<li><a href="day-36-reactive-forms-2.html"><span class="n">Angular · Day 36</span><span class="t">Day 36 — Reactive Forms, phần 2</span><span class="d">FormArray cho danh sách động, validator cấp nhóm cho luật liên trường, và cách bật/tắt luật khi form đổi hình theo lựa chọn của người dùng.</span></a></li>
+<li><a href="day-37-async-validator.html"><span class="n">Angular · Day 37</span><span class="t">Day 37 — Async Validator</span><span class="d">Kiểm tra hợp lệ bằng cách hỏi máy chủ — "mã này có ai dùng chưa?" — mà không làm nghẽn ô nhập của người dùng.</span></a></li>
+</ul>
+</section><section class="grp">
+<h2>Chủ đề nâng cao &amp; thực hành</h2>
+<p class="grp-note">Dynamic component, micro frontend, CDK, directive nâng cao, change detection, render hook, zoneless, rò rỉ bộ nhớ, kiểu dữ liệu TypeScript. · Day 38–55</p>
+<ul class="idx">
+<li><a href="day-38-dynamic-component.html"><span class="n">Angular · Day 38</span><span class="t">Day 38 — Dynamic Component</span><span class="d">Tạo component bằng code lúc chạy, không khai sẵn trong template — nền tảng của mọi hệ thống dialog, toast và màn hình cấu hình được.</span></a></li>
+<li><a href="day-39-micro-frontends.html"><span class="n">Angular · Day 39</span><span class="t">Day 39 — Micro Frontends</span><span class="d">Chia một ứng dụng lớn thành nhiều ứng dụng nhỏ do các đội khác nhau phát hành độc lập — được rất nhiều, nhưng phải trả giá bằng hạ tầng.</span></a></li>
+<li><a href="day-40-jira-clone-01.html"><span class="n">Angular · Day 40</span><span class="t">Day 40 — Jira Clone 01: kế hoạch và khởi tạo dự án</span><span class="d">Trước khi gõ dòng code đầu tiên: chốt phạm vi, vẽ cây màn hình, thống nhất cấu trúc thư mục và quy ước đặt tên.</span></a></li>
+<li><a href="day-41-jira-clone-02.html"><span class="n">Angular · Day 41</span><span class="t">Day 41 — Jira Clone 02: dựng layout với Flexbox và Tailwind</span><span class="d">Bố cục ba khu (sidebar, header, nội dung) bằng Flexbox, và cách dùng utility class mà không biến template thành bãi rác.</span></a></li>
+<li><a href="day-42-cdk-coercion.html"><span class="n">Angular · Day 42</span><span class="t">Day 42 — Angular CDK Coercion</span><span class="d">Người dùng component viết disabled="false" — chuỗi "false" là giá trị đúng trong JavaScript. Coercion là lớp ép kiểu để đầu vào luôn đúng như bạn nghĩ.</span></a></li>
+<li><a href="day-43-disabled-control-directive.html"><span class="n">Angular · Day 43</span><span class="t">Day 43 — Directive vô hiệu hoá control của reactive form</span><span class="d">Angular cảnh báo khi bạn dùng [disabled] trên một control có formControlName. Bài này giải thích vì sao, và cách viết directive để làm đúng.</span></a></li>
+<li><a href="day-44-observable-output.html"><span class="n">Angular · Day 44</span><span class="t">Day 44 — Observable cho @Output</span><span class="d">Output không nhất thiết phải là EventEmitter. Cho nó một observable đã qua xử lý là bạn có sẵn chống dội, lọc và gộp ngay tại cổng ra.</span></a></li>
+<li><a href="day-45-unsubscribe.html"><span class="n">Angular · Day 45</span><span class="t">Day 45 — Huỷ đăng ký một Subscription</span><span class="d">Quên huỷ đăng ký là cách rò rỉ bộ nhớ phổ biến nhất trong Angular. Bốn cách xử lý, xếp từ tốt nhất tới nên tránh.</span></a></li>
+<li><a href="day-46-js-widget-embedded-script.html"><span class="n">Angular · Day 46</span><span class="t">Day 46 — JavaScript Widget và Embedded Script</span><span class="d">Đóng gói một phần ứng dụng Angular thành đoạn script nhúng được vào bất kỳ trang web nào — và cái giá phải trả về kích thước lẫn cách ly.</span></a></li>
+<li><a href="day-47-composition-datasource-directive.html"><span class="n">Angular · Day 47</span><span class="t">Day 47 — Ghép nguồn dữ liệu cho form bằng Directive</span><span class="d">Thay vì mỗi màn tự gọi API đổ dữ liệu cho dropdown, hãy để một directive lo: gắn thuộc tính là ô select tự có dữ liệu.</span></a></li>
+<li><a href="day-48-di-activatedroute.html"><span class="n">Angular · Day 48</span><span class="t">Day 48 — Dùng DI để lấy dữ liệu từ ActivatedRoute</span><span class="d">Component không cần biết ActivatedRoute tồn tại. Gói việc đọc tham số route vào một provider, và component chỉ việc nhận dữ liệu đã sẵn sàng.</span></a></li>
+<li><a href="day-49-zonejs-change-detection.html"><span class="n">Angular · Day 49</span><span class="t">Day 49 — Zone.js: một việc xong là quét cả cây</span><span class="d">Angular không tự biết dữ liệu vừa đổi. Zone.js "vá" đè lên mọi API bất đồng bộ của trình duyệt để báo cho nó biết — và mỗi lần báo là một lần quét toàn bộ cây component. eventCoalescing can thiệp đúng vào chỗ đếm số lần báo đó.</span></a></li>
+<li><a href="day-50-after-next-render.html"><span class="n">Angular · Day 50</span><span class="t">Day 50 — afterNextRender: đợi vẽ xong rồi hãy đo</span><span class="d">Thẻ HTML chỉ có số đo thật sau khi Angular dựng xong toàn bộ cây component. afterNextRender là cái hẹn giờ chuẩn để đo, để ghi và để trao thẻ cho thư viện ngoài — chạy đúng một lần, và không bao giờ chạy trên máy chủ.</span></a></li>
+<li><a href="day-51-zoneless.html"><span class="n">Angular · Day 51</span><span class="t">Day 51 — Zoneless: bỏ người canh cửa, chuyển sang tự khai báo</span><span class="d">Zoneless không phải là "chạy nhanh hơn một chút". Nó đổi hẳn câu hỏi Angular đang trả lời: từ "vừa có việc gì xong?" sang "ai vừa báo là có thay đổi?". Bài này đi tới tận bộ hẹn giờ bên trong — đủ sâu để ngồi trả lời phỏng vấn senior.</span></a></li>
+<li><a href="day-52-closure-rxjs-pipe-memory-leak.html"><span class="n">Angular · Day 52</span><span class="t">Day 52 — Closure gặp .pipe(): vì sao quên huỷ là rò rỉ bộ nhớ</span><span class="d">Mỗi callback bạn viết trong .pipe() và .subscribe() đều lặng lẽ mang theo một cái ba lô — biến bên ngoài và cả component. Ba lô đó chỉ được bỏ xuống khi bạn huỷ đăng ký.</span></a></li>
+<li><a href="day-53-pure-vs-impure-pipe.html"><span class="n">Angular · Day 53</span><span class="t">Day 53 — Pure hay impure: công tắc quyết định pipe chạy bao nhiêu lần</span><span class="d">async không phải là "loại pipe impure" — nó chỉ là một pipe cụ thể được khai impure. Hiểu đúng cái công tắc pure: false để biết pipe nào rẻ và pipe nào làm giật cả bảng 500 dòng.</span></a></li>
+<li><a href="day-54-interface-vs-type.html"><span class="n">Angular · Day 54</span><span class="t">Day 54 — interface hay type: bốn khác biệt thật, còn lại là phong cách</span><span class="d">TypeScript cho bạn hai cách đặt tên cho một kiểu. Chúng giống nhau tới chín phần mười. Bốn chỗ khác nhau còn lại mới là thứ quyết định bạn chọn cái nào — và là thứ người phỏng vấn muốn nghe.</span></a></li>
+<li><a href="day-55-cd-signals-zone.html"><span class="n">Angular · Day 55</span><span class="t">Day 55 — Đi qua hay kiểm tra: Zone.js và tối ưu mà signal bật lên</span><span class="d">Dò thay đổi có hai câu chuyện tách rời: ai đánh thức Angular dậy, và Angular phải soát bao nhiêu chỗ sau khi tỉnh. Zone.js trả lời câu đầu một cách rất ồn ào; signal trả lời câu sau bằng một lá cờ mà ít người biết tên.</span></a></li>
+</ul>
+</section><section class="grp">
+<h2>Bài đứng riêng</h2>
+<p class="grp-note">Trang tự dựng ngoài lộ trình đánh số ngày — không sinh từ _content/.</p>
+<ul class="idx">
+<li><a href="vong-doi-component-angular.html"><span class="n">Angular · Ngoài lộ trình</span><span class="t">Vòng đời của một Component</span><span class="d">Tám hook Angular tự gọi, thứ tự chạy, hook nào đã bị signal thay và hook nào vẫn còn chỗ đứng — kèm bộ câu hỏi phỏng vấn.</span></a></li>
+</ul>
+</section>
+</div>
+</body>
+</html>

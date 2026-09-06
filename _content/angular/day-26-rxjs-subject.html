@@ -1,0 +1,87 @@
+<!--meta
+title: Day 26 — Subject và Multicasting
+eyebrow: Angular · Day 26
+short: Day 26
+lede: Subject vừa là cái vòi vừa là người bơm nước. Nó là cách các phần rời rạc của ứng dụng nói chuyện với nhau — và cũng là chỗ dễ bị lạm dụng nhất.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Vừa phát vừa nhận</h2></div>
+  <p>Observable thường là <em>unicast</em> (đơn hướng): mỗi người đăng ký nhận một lần chạy riêng. <strong>Subject</strong> là <em>multicast</em> (đa hướng): một lần phát, tất cả người đang nghe cùng nhận — giống một đài phát thanh.</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Loại</th><th>Người đăng ký sau nhận được gì</th><th>Dùng khi</th></tr></thead>
+    <tbody>
+      <tr><td>Subject</td><td>Chỉ giá trị phát từ lúc đăng ký trở đi</td><td>Sự kiện thuần tuý (đóng dialog, refresh)</td></tr>
+      <tr><td>BehaviorSubject</td><td>Giá trị hiện tại ngay khi đăng ký</td><td>State: người dùng đăng nhập, bộ lọc hiện tại</td></tr>
+      <tr><td>ReplaySubject(n)</td><td>n giá trị gần nhất</td><td>Lịch sử ngắn, log</td></tr>
+      <tr><td>AsyncSubject</td><td>Chỉ giá trị cuối, khi luồng hoàn tất</td><td>Hiếm dùng</td></tr>
+    </tbody>
+  </table></div>
+<pre><code>&#64;Injectable({ providedIn: <span class="str">'root'</span> })
+export class BoLocService {
+  <span class="kw">private</span> _boLoc = <span class="kw">new</span> BehaviorSubject&lt;BoLoc&gt;({ tuKhoa: <span class="str">''</span>, trang: 1 });
+  <span class="kw">readonly</span> boLoc$ = <span class="kw">this</span>._boLoc.asObservable();   <span class="cm">// chỉ đọc với bên ngoài</span>
+
+  capNhat(p: Partial&lt;BoLoc&gt;) {
+    <span class="kw">this</span>._boLoc.next({ ...<span class="kw">this</span>._boLoc.value, ...p });
+  }
+}</code></pre>
+  <div class="callout">
+    <p><strong>Luôn giữ Subject ở chế độ riêng tư</strong> và chỉ lộ ra bản <code>asObservable()</code>. Nếu để lộ, bất kỳ nơi nào cũng gọi được <code>next()</code> — state của bạn có hàng chục người ghi mà không ai biết ai.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Nối các phần không liên quan trên cây component</b> mà không phải chuyền input/output qua chục tầng.</li>
+        <li><b><code>BehaviorSubject</code> là kho state đơn giản nhất</b> — có sẵn giá trị hiện tại, ai vào sau cũng đồng bộ ngay.</li>
+        <li><b>Một lần chạy cho nhiều người nghe,</b> tránh gọi API lặp.</li>
+        <li><b>Dễ chuyển sang signal</b> khi muốn hiện đại hoá dần.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="kw">private</span> _boLoc = <span class="kw">new</span> BehaviorSubject&lt;BoLoc&gt;({ trang: 1 });
+<span class="kw">readonly</span> boLoc$ = <span class="kw">this</span>._boLoc.asObservable();
+<span class="cm">// Header đổi bộ lọc → bảng ở nhánh component hoàn toàn khác cập nhật ngay,</span>
+<span class="cm">// không phải chuyền input/output qua 4 tầng trung gian.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Rất dễ thành state toàn cục hỗn loạn.</b> Nhiều nơi cùng <code>next()</code> thì không lần ra ai đã đổi dữ liệu.</li>
+        <li><b>Không tự dọn.</b> Subject trong service <code>root</code> sống suốt đời ứng dụng, giữ luôn mọi thứ nó tham chiếu.</li>
+        <li><b>Thứ tự phát khó kiểm soát</b> khi nhiều luồng phụ thuộc nhau.</li>
+        <li><b>Ngày nay thường thừa.</b> Với state trong một màn hình, <code>signal</code> đơn giản và an toàn hơn nhiều.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="kw">readonly</span> boLoc = <span class="kw">new</span> BehaviorSubject&lt;BoLoc&gt;({ trang: 1 });  <span class="cm">// ✗ để lộ</span>
+<span class="cm">// Bất kỳ component nào cũng gọi được boLoc.next(...)</span>
+<span class="cm">// → 7 chỗ cùng ghi, khi dữ liệu sai không ai biết ai vừa đổi</span>
+
+<span class="cm">// Và Subject trong service root sống suốt đời ứng dụng:</span>
+_duLieu.next(mangHaiTrieuDong);
+<span class="cm">// → BehaviorSubject giữ luôn giá trị cuối, bộ nhớ không được thu hồi</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Chọn thế nào:</strong> state cục bộ của màn hình → <code>signal</code>. State chia sẻ giữa nhiều màn → service với <code>signal</code> hoặc <code>BehaviorSubject</code>. Sự kiện thoáng qua (đã lưu xong, hãy tải lại) → <code>Subject</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>Subject</td><td>Vừa là luồng vừa là nơi phát giá trị vào luồng.</td></tr>
+      <tr><td>multicast / unicast</td><td>Một lần chạy cho nhiều người nghe / mỗi người một lần chạy riêng.</td></tr>
+      <tr><td>BehaviorSubject</td><td>Subject luôn giữ giá trị hiện tại.</td></tr>
+      <tr><td>ReplaySubject</td><td>Subject phát lại n giá trị gần nhất cho người mới.</td></tr>
+      <tr><td>asObservable()</td><td>Trả về bản chỉ đọc của Subject.</td></tr>
+      <tr><td>state</td><td>Trạng thái — dữ liệu ứng dụng đang giữ.</td></tr>
+    </tbody>
+  </table></div>
+</section>

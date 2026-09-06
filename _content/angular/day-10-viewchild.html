@@ -1,0 +1,84 @@
+<!--meta
+title: Day 10 — Template variable, ViewChild và ViewChildren
+eyebrow: Angular · Day 10
+short: Day 10
+lede: Khi cần cầm tận tay một phần tử hoặc một component con trong template của mình — và vì sao ở dự án này phải dùng viewChild() dạng signal.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Đặt tên cho một phần tử rồi cầm lấy nó</h2></div>
+  <p><strong>Template variable</strong> (biến template) là cái nhãn <code>#ten</code> gắn vào một phần tử. Trong template, dùng nhãn đó là gọi được luôn:</p>
+<pre><code>&lt;input #oTim (keyup.enter)="tim(oTim.value)" /&gt;
+&lt;button (click)="oTim.focus()"&gt;Tìm&lt;/button&gt;</code></pre>
+  <p>Còn khi cần dùng từ <em>lớp TypeScript</em>, phải khai một view query (truy vấn view):</p>
+<pre><code>export class ManTimKiem {
+  oTim = viewChild&lt;ElementRef&lt;HTMLInputElement&gt;&gt;(<span class="str">'oTim'</span>);
+  cacDong = viewChildren(DongKetQua);
+  bang = viewChild.required(IamTable);
+
+  focus() { <span class="kw">this</span>.oTim()?.nativeElement.focus(); }
+}</code></pre>
+  <div class="callout bad">
+    <p><strong>Quy ước của dự án này:</strong> code mới <strong>không</strong> dùng decorator <code>@ViewChild</code>/<code>@ViewChildren</code> nữa mà dùng signal query <code>viewChild()</code>/<code>viewChildren()</code>. Signal query không có tuỳ chọn <code>{ static: true }</code>: nó chỉ có giá trị <em>sau khi view được dựng</em>, nên mọi thiết lập từng đặt trong <code>ngOnInit</code> phải chuyển sang <code>effect()</code>, hoặc tốt hơn là để component con tự đẩy ra bằng <code>output()</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Làm được việc mà binding không làm nổi:</b> focus, cuộn tới, đo kích thước, gọi method của thư viện bên thứ ba.</li>
+        <li><b>Điều khiển component con trực tiếp</b> (mở dialog, reset bảng) mà không phải bịa thêm input.</li>
+        <li><b>Signal query gọn hơn decorator:</b> kiểu chặt hơn, đọc như mọi signal khác, tự cập nhật khi view đổi.</li>
+        <li><b><code>viewChild.required</code></b> khẳng định luôn có, khỏi phải kiểm tra <code>undefined</code>.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Việc mà data binding không làm được</span>
+oTim = viewChild&lt;ElementRef&lt;HTMLInputElement&gt;&gt;(<span class="str">'oTim'</span>);
+
+moDialog() {
+  <span class="kw">this</span>.oTim()?.nativeElement.focus();       <span class="cm">// đưa con trỏ vào ô tìm</span>
+  <span class="kw">this</span>.bang().scrollToIndex(0);             <span class="cm">// cuộn bảng về đầu</span>
+}</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Gắn chặt cha vào con.</b> Cha biết quá nhiều về cấu tạo con, đổi con là gãy cha.</li>
+        <li><b>Rỗng khi phần tử nằm trong <code>@if</code></b> hoặc chưa được vẽ — quên kiểm tra là lỗi lúc chạy.</li>
+        <li><b>Chưa sẵn sàng trong <code>ngOnInit</code></b>, dễ khiến người quen decorator viết sai chỗ.</li>
+        <li><b>Sờ thẳng vào DOM giảm tính di động</b> (SSR, môi trường không có <code>document</code>) và khó test hơn.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>ngOnInit() {
+  <span class="kw">this</span>.oTim()?.nativeElement.focus();   <span class="cm">// ✗ luôn undefined</span>
+}                                       <span class="cm">// view chưa dựng xong ở thời điểm này</span>
+
+<span class="cm">// chữa:</span>
+<span class="kw">constructor</span>() { effect(() =&gt; <span class="kw">this</span>.oTim()?.nativeElement.focus()); }
+
+<span class="cm">// Và cha gắn quá chặt vào con:</span>
+<span class="kw">this</span>.bang().internalReset();   <span class="cm">// đổi tên method trong IamTable → cha gãy</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Thứ tự ưu tiên:</strong> input/output trước → template variable trong template → view query chỉ khi thật sự cần cầm tay chỉ việc.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>template variable</td><td>Biến template — nhãn <code>#ten</code> trỏ tới phần tử/component.</td></tr>
+      <tr><td>view query</td><td>Truy vấn view — lấy phần tử trong template của chính component.</td></tr>
+      <tr><td>ElementRef</td><td>Vỏ bọc quanh phần tử DOM thật.</td></tr>
+      <tr><td>signal query</td><td>Truy vấn trả về signal (<code>viewChild()</code>, <code>viewChildren()</code>).</td></tr>
+      <tr><td>effect()</td><td>Hàm chạy lại mỗi khi signal nó đọc thay đổi.</td></tr>
+      <tr><td>SSR</td><td>Kết xuất phía máy chủ — nơi không có <code>window</code>/<code>document</code>.</td></tr>
+    </tbody>
+  </table></div>
+</section>

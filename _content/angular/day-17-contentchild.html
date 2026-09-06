@@ -1,0 +1,85 @@
+<!--meta
+title: Day 17 — ContentChild và ContentChildren
+eyebrow: Angular · Day 17
+short: Day 17
+lede: Cầm lấy những gì người khác chiếu vào component của mình — cơ chế đứng sau mọi bộ tab, accordion và bảng có cột tuỳ biến.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>View là của tôi, content là của khách</h2></div>
+  <p>Hai họ truy vấn khác nhau, rất hay bị nhầm:</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Truy vấn</th><th>Tìm ở đâu</th><th>Sẵn sàng khi</th></tr></thead>
+    <tbody>
+      <tr><td>viewChild(ren)</td><td>Trong template của chính component</td><td>Sau khi view dựng xong</td></tr>
+      <tr><td>contentChild(ren)</td><td>Trong phần được chiếu vào qua <code>ng-content</code></td><td>Sau khi content dựng xong</td></tr>
+    </tbody>
+  </table></div>
+<pre><code><span class="cm">// tabs.component.ts — khung tab đọc các tab con mà bên ngoài đặt vào</span>
+export class EsbTabs {
+  tabs = contentChildren(TabItem);
+  dangChon = signal(0);
+
+  <span class="kw">constructor</span>() {
+    effect(() =&gt; <span class="kw">this</span>.tabs().forEach((t, i) =&gt; t.hienThi.set(i === <span class="kw">this</span>.dangChon())));
+  }
+}
+
+<span class="cm">// nơi dùng</span>
+&lt;qp45-tabs&gt;
+  &lt;qp45-tab-item title="Chung"&gt;…&lt;/qp45-tab-item&gt;
+  &lt;qp45-tab-item title="Lịch sử"&gt;…&lt;/qp45-tab-item&gt;
+&lt;/qp45-tabs&gt;</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>API khai báo rất đẹp.</b> Người dùng component chỉ việc xếp các thẻ con, khung tự lo phần điều phối.</li>
+        <li><b>Khung không cần biết số lượng con.</b> Thêm bớt tab/cột không phải sửa gì trong khung.</li>
+        <li><b>Con và khung nói chuyện trực tiếp</b> mà không cần chuyền input/output qua nhiều tầng.</li>
+        <li><b>Signal query tự cập nhật</b> khi danh sách con thay đổi lúc chạy.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>&lt;qp45-tabs&gt;
+  &lt;qp45-tab-item title="Chung"&gt;…&lt;/qp45-tab-item&gt;
+  &lt;qp45-tab-item title="Lịch sử"&gt;…&lt;/qp45-tab-item&gt;
+&lt;/qp45-tabs&gt;
+<span class="cm">// Thêm tab thứ ba: chỉ cần thêm một thẻ, khung tabs không phải sửa gì.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Ràng buộc ngầm.</b> Khung chỉ chạy đúng khi con đúng loại — không khai đúng thì im lặng không hoạt động.</li>
+        <li><b>Không thấy con nằm trong <code>@if</code></b> chưa được vẽ, dễ nhầm là lỗi của truy vấn.</li>
+        <li><b>Thời điểm sẵn sàng khác view</b> — làm sai chỗ là nhận danh sách rỗng.</li>
+        <li><b>Khung nắm quá nhiều quyền</b> với thứ do người khác viết, sửa con dễ làm gãy khung.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&lt;qp45-tabs&gt;
+  &#64;if (coQuyen()) { &lt;qp45-tab-item title="Kế toán" /&gt; }
+&lt;/qp45-tabs&gt;
+<span class="cm">// ✗ lúc chưa có quyền: contentChildren() rỗng → thanh tab trống,</span>
+<span class="cm">// khung không hiểu vì sao "không có tab nào"</span>
+
+&lt;qp45-tabs&gt;&lt;div&gt;Tab 1&lt;/div&gt;&lt;/qp45-tabs&gt;
+<span class="cm">// ✗ không đúng loại TabItem → truy vấn không thấy gì, im lặng hoàn toàn</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>content query</td><td>Truy vấn phần nội dung được chiếu từ ngoài vào.</td></tr>
+      <tr><td>view query</td><td>Truy vấn phần template do chính component vẽ.</td></tr>
+      <tr><td>compound component</td><td>Component ghép — khung + các thẻ con phối hợp với nhau.</td></tr>
+      <tr><td>effect()</td><td>Hàm tự chạy lại khi signal nó đọc thay đổi.</td></tr>
+    </tbody>
+  </table></div>
+</section>

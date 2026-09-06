@@ -1,0 +1,92 @@
+<!--meta
+title: Day 3 — Data Binding
+eyebrow: Angular · Day 3
+short: Day 3
+lede: Bốn cách nối dữ liệu giữa lớp TypeScript và template — nội suy, thuộc tính, sự kiện và hai chiều. Toàn bộ giao diện Angular dựng trên bốn cú pháp này.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Bốn sợi dây nối</h2></div>
+  <p>Data binding (liên kết dữ liệu) là cơ chế giữ cho giao diện và dữ liệu luôn khớp nhau, để bạn không phải tự tay tìm phần tử DOM rồi gán <code>innerText</code>.</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Cú pháp</th><th>Chiều</th><th>Dùng khi</th></tr></thead>
+    <tbody>
+      <tr><td>{{ ten }}</td><td>Lớp → template</td><td>Hiện một giá trị thành chữ</td></tr>
+      <tr><td>[disabled]="dangLuu"</td><td>Lớp → template</td><td>Gán vào thuộc tính của phần tử/component</td></tr>
+      <tr><td>(click)="luu()"</td><td>Template → lớp</td><td>Bắt sự kiện người dùng</td></tr>
+      <tr><td>[(ngModel)]="ten"</td><td>Hai chiều</td><td>Ô nhập vừa hiện vừa nhận giá trị</td></tr>
+    </tbody>
+  </table></div>
+<pre><code>&lt;h2&gt;Xin chào {{ ten() }}&lt;/h2&gt;
+
+&lt;input [value]="ten()" (input)="ten.set($any($event.target).value)" /&gt;
+
+&lt;button [disabled]="dangLuu()" (click)="luu()"&gt;Lưu&lt;/button&gt;
+
+&lt;img [src]="anhUrl()" [alt]="ten()" /&gt;</code></pre>
+  <div class="callout">
+    <p><strong>Dấu ngoặc nói lên chiều dữ liệu:</strong> ngoặc vuông <code>[ ]</code> là dữ liệu chảy <em>vào</em> template; ngoặc tròn <code>( )</code> là sự kiện chảy <em>ra</em> lớp; <code>[( )]</code> — dân gian gọi là "hộp trong chuồng" — là cả hai.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Dễ nhầm</p><h2>Property binding không phải attribute</h2></div>
+  <p><code>[value]</code> gán vào <strong>property</strong> (thuộc tính của đối tượng DOM lúc chạy), còn <code>value="..."</code> trong HTML là <strong>attribute</strong> (thuộc tính khai trong mã nguồn, chỉ là giá trị khởi tạo). Vài thứ chỉ tồn tại dưới dạng attribute (<code>colspan</code>, <code>aria-*</code>) — khi đó phải dùng <code>[attr.colspan]</code>.</p>
+<pre><code>&lt;td [attr.colspan]="soCot()"&gt;…&lt;/td&gt;      <span class="cm">// ✓</span>
+&lt;td [colspan]="soCot()"&gt;…&lt;/td&gt;           <span class="cm">// ✗ lỗi: không có property colspan</span></code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Không phải đụng DOM bằng tay.</b> Ít code, ít lỗi, dễ kiểm thử.</li>
+        <li><b>Chống XSS sẵn.</b> Angular tự khử độc giá trị nội suy, chuỗi HTML lạ không chạy được.</li>
+        <li><b>Kiểm tra lúc build.</b> Bật strict template thì gõ sai tên thuộc tính là báo lỗi ngay khi biên dịch.</li>
+        <li><b>Đọc là hiểu.</b> Nhìn template biết ngay dữ liệu nào chảy đi đâu.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Không cần đụng DOM, và được khử độc sẵn</span>
+tenNguoiDung = signal(<span class="str">'&lt;img src=x onerror=alert(1)&gt;'</span>);
+
+&lt;p&gt;{{ tenNguoiDung() }}&lt;/p&gt;
+<span class="cm">// → hiện đúng chuỗi đó dưới dạng chữ, script KHÔNG chạy</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Gọi hàm trong template rất tốn.</b> <code>{{ tinhTong() }}</code> chạy lại mỗi chu kỳ phát hiện thay đổi — hãy dùng <code>computed()</code> hoặc pipe thuần.</li>
+        <li><b>Biểu thức phức tạp làm template khó đọc</b> và không kiểm thử được riêng.</li>
+        <li><b>Lỗi runtime khó lần.</b> Sai chính tả tên sự kiện thì không có gì báo, chỉ là nút bấm không phản ứng.</li>
+        <li><b>Nhầm property/attribute</b> là lỗi kinh điển của người mới.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&lt;td&gt;{{ tinhThanhTien(row) }}&lt;/td&gt;
+<span class="cm">// ✗ 500 dòng × mỗi chu kỳ kiểm tra = hàng nghìn lần gọi mỗi giây</span>
+<span class="cm">// chữa: computed() trong lớp, hoặc pipe thuần</span>
+
+&lt;button (clik)="luu()"&gt;Lưu&lt;/button&gt;
+<span class="cm">// ✗ gõ sai tên sự kiện: không lỗi, không cảnh báo — nút chỉ đơn giản không chạy</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>data binding</td><td>Liên kết dữ liệu giữa lớp và giao diện.</td></tr>
+      <tr><td>interpolation</td><td>Nội suy — chèn giá trị vào chữ bằng <code>{{ }}</code>.</td></tr>
+      <tr><td>property binding</td><td>Gán vào thuộc tính đối tượng DOM/component.</td></tr>
+      <tr><td>event binding</td><td>Bắt sự kiện từ template về lớp.</td></tr>
+      <tr><td>two-way binding</td><td>Liên kết hai chiều.</td></tr>
+      <tr><td>DOM</td><td>Cây đối tượng biểu diễn trang web trong trình duyệt.</td></tr>
+      <tr><td>attribute / property</td><td>Thuộc tính khai trong HTML / thuộc tính của đối tượng lúc chạy.</td></tr>
+      <tr><td>XSS</td><td>Tấn công chèn mã độc qua nội dung hiển thị.</td></tr>
+      <tr><td>change detection</td><td>Phát hiện thay đổi — chu kỳ Angular rà soát để vẽ lại.</td></tr>
+    </tbody>
+  </table></div>
+</section>

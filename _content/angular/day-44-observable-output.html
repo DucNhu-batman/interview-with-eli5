@@ -1,0 +1,82 @@
+<!--meta
+title: Day 44 — Observable cho @Output
+eyebrow: Angular · Day 44
+short: Day 44
+lede: Output không nhất thiết phải là EventEmitter. Cho nó một observable đã qua xử lý là bạn có sẵn chống dội, lọc và gộp ngay tại cổng ra.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>EventEmitter vốn dĩ là một Subject</h2></div>
+  <p><code>EventEmitter</code> kế thừa từ <code>Subject</code> của RxJS, nên bất cứ observable nào cũng đóng vai output được. Angular hiện đại có <code>outputFromObservable()</code> làm việc đó một cách chính thức.</p>
+<pre><code>export class OTimKiem {
+  <span class="kw">private</span> go$ = <span class="kw">new</span> Subject&lt;string&gt;();
+
+  <span class="cm">// Cổng ra đã được lọc sẵn: bên ngoài chỉ nhận từ khoá "đáng gọi API"</span>
+  <span class="kw">readonly</span> tim = outputFromObservable(
+    <span class="kw">this</span>.go$.pipe(
+      map((v) =&gt; v.trim()),
+      filter((v) =&gt; v.length &gt;= 2),
+      debounceTime(300),
+      distinctUntilChanged(),
+    ),
+  );
+
+  onInput(v: string) { <span class="kw">this</span>.go$.next(v); }
+}
+
+&lt;qp45-o-tim-kiem (tim)="facade.tim($event)" /&gt;</code></pre>
+  <div class="callout">
+    <p><strong>Chiều ngược lại cũng có:</strong> <code>outputToObservable(ref.instance.tim)</code> biến một output thành observable để ghép tiếp vào chuỗi RxJS ở phía cha.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Logic lọc nằm cùng chỗ với component phát ra nó,</b> mọi nơi dùng đều được hưởng.</li>
+        <li><b>Cha không phải lặp lại <code>debounceTime</code></b> ở từng màn hình.</li>
+        <li><b>Tự huỷ đăng ký</b> theo vòng đời component.</li>
+        <li><b>Test được luồng đầu ra</b> mà không cần dựng template.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Trước: mỗi màn tự lặp lại</span>
+&lt;qp45-o-tim (tim)="tk$.next($event)" /&gt;
+tk$.pipe(debounceTime(300), distinctUntilChanged()).subscribe(…);
+
+<span class="cm">// Sau: mọi màn chỉ còn một dòng, không ai quên chống dội nữa</span>
+&lt;qp45-o-tim (tim)="facade.tim($event)" /&gt;</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Hành vi bị giấu.</b> Cha thấy sự kiện tới trễ 300ms mà không hiểu vì sao — phải đọc code con.</li>
+        <li><b>Không tuỳ chỉnh được từ ngoài.</b> Màn nào muốn phản hồi tức thì thì chịu.</li>
+        <li><b>Kéo RxJS vào một component đơn giản,</b> nặng hơn mức cần thiết.</li>
+        <li><b>Luồng lỗi làm chết output.</b> Một lỗi lọt vào là cổng ra im lặng vĩnh viễn.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// Một lỗi trong pipe → output ngừng phát, không ai biết</span>
+<span class="kw">this</span>.go$.pipe(map((v) =&gt; v.toUpperCase()))   <span class="cm">// v là null → TypeError</span>
+<span class="cm">// chữa: thêm catchError, hoặc lọc null trước khi map</span>
+
+<span class="cm">// Màn "quét mã vạch" cần phản hồi tức thì</span>
+<span class="cm">// nhưng vẫn bị chờ 300ms vì luật nằm trong component con</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>outputFromObservable</td><td>Tạo output từ một observable có sẵn.</td></tr>
+      <tr><td>outputToObservable</td><td>Biến một output thành observable.</td></tr>
+      <tr><td>Subject</td><td>Vừa là luồng vừa là nơi phát giá trị.</td></tr>
+      <tr><td>debounceTime</td><td>Chờ im lặng đủ lâu mới phát giá trị cuối.</td></tr>
+    </tbody>
+  </table></div>
+</section>

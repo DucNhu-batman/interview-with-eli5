@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="vi" data-track="rxjs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>combineLatest — ai đổi thì tính lại tất cả</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><a href="index.html">RxJS</a><span>/</span><span class="now">combineLatest</span></nav>
+<header class="hero col">
+<p class="eyebrow">RxJS · Bài 6</p>
+<h1>combineLatest — ai đổi thì tính lại tất cả</h1>
+<p class="lede">Câu hỏi phỏng vấn quen thuộc, và phần lớn ứng viên chỉ trả lời được nửa đầu. Bài này trả lời như một senior: nó phát khi nào, im lặng khi nào, vì sao đôi lúc phát ra một trạng thái không có thật, và khi nào phải đổi sang zip / forkJoin / withLatestFrom.</p>
+</header>
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Bảng giá tự tính lại mỗi khi bạn đổi một ô</h2></div>
+  <p>Hình dung màn đặt áo: ba ô <strong>Size</strong>, <strong>Màu</strong>, <strong>Số lượng</strong>, và một dòng "Tạm tính" ở dưới. Khách đổi <em>bất kỳ</em> ô nào, dòng tạm tính phải chạy lại — và để tính được nó cần <em>cả ba</em> giá trị, chứ không phải riêng ô vừa đổi.</p>
+  <p>Đó chính xác là <code>combineLatest</code>. Nó nhận nhiều Observable (luồng dữ liệu — thứ lần lượt phát ra từng giá trị theo thời gian), và mỗi lần một luồng bất kỳ phát (emit — đẩy ra một giá trị mới), nó gom <strong>giá trị mới nhất của mọi luồng</strong> thành một mảng rồi đẩy ra ngoài.</p>
+<pre><code><span class="kw">import</span> { combineLatest, BehaviorSubject } <span class="kw">from</span> <span class="str">'rxjs'</span>;
+
+<span class="cm">// BehaviorSubject = luồng luôn giữ sẵn giá trị hiện tại và phát ngay khi có người nghe</span>
+<span class="kw">const</span> size$ = <span class="kw">new</span> BehaviorSubject(<span class="str">'M'</span>);
+<span class="kw">const</span> mau$  = <span class="kw">new</span> BehaviorSubject(<span class="str">'đỏ'</span>);
+<span class="kw">const</span> sl$   = <span class="kw">new</span> BehaviorSubject(<span class="kw">1</span>);
+
+<span class="cm">// subscribe = đăng ký nghe; hàm bên trong chạy lại mỗi lần luồng phát</span>
+combineLatest([size$, mau$, sl$]).subscribe(([size, mau, sl]) =&gt; {
+  console.log(size, mau, sl);
+});
+<span class="out">// 'M' 'đỏ' 1        ← lần đầu, vì cả ba đều đã có sẵn giá trị</span>
+
+mau$.next(<span class="str">'xanh'</span>);
+<span class="out">// 'M' 'xanh' 1      ← chỉ mau$ đổi, nhưng cả ba giá trị vẫn được đưa lại đủ</span></code></pre>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> <code>combineLatest</code> là một cái <b>bảng ghi tạm</b>. Mỗi luồng có một ô riêng trong bảng; luồng nào phát thì <em>ghi đè ô của nó</em>, rồi <em>chụp lại toàn bộ bảng</em> đưa ra ngoài — nhưng chỉ khi <b>mọi ô đều đã được điền ít nhất một lần</b>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Sơ đồ bi: im lặng cho tới khi đủ mặt</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 306" role="img" aria-label="Sơ đồ bi ba tầng. Tầng trên là luồng size phát ra a1 a2 a3 theo thời gian. Tầng giữa là luồng màu phát ra b1 rồi b2. Tầng dưới là kết quả của combineLatest: hoàn toàn im lặng cho tới khi luồng màu phát b1, sau đó mỗi lần bất kỳ luồng nào phát đều cho ra một mảng gồm giá trị mới nhất của cả hai luồng.">
+        <defs>
+          <marker id="clArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <g>
+          <rect x="0" y="8" width="720" height="58" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="32" font-size="12" font-weight="700" fill="currentColor" font-family="monospace">size$</text>
+          <text x="14" y="49" font-size="10" fill="currentColor" opacity=".7" font-family="monospace">luồng A</text>
+          <line x1="150" y1="40" x2="706" y2="40" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#clArrow)"></line>
+          <circle cx="200" cy="40" r="13" fill="var(--accent)"></circle><text x="200" y="45" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">a1</text>
+          <circle cx="420" cy="40" r="13" fill="var(--accent)"></circle><text x="420" y="45" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">a2</text>
+          <circle cx="600" cy="40" r="13" fill="var(--accent)"></circle><text x="600" y="45" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">a3</text>
+        </g>
+
+        <g>
+          <rect x="0" y="74" width="720" height="58" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="98" font-size="12" font-weight="700" fill="currentColor" font-family="monospace">mau$</text>
+          <text x="14" y="115" font-size="10" fill="currentColor" opacity=".7" font-family="monospace">luồng B</text>
+          <line x1="150" y1="106" x2="706" y2="106" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#clArrow)"></line>
+          <circle cx="300" cy="106" r="13" fill="var(--accent)"></circle><text x="300" y="111" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">b1</text>
+          <circle cx="520" cy="106" r="13" fill="var(--accent)"></circle><text x="520" y="111" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">b2</text>
+        </g>
+
+        <text x="150" y="152" font-size="11.5" font-weight="700" fill="var(--accent)" font-family="monospace">combineLatest([size$, mau$])</text>
+
+        <line x1="300" y1="119" x2="300" y2="196" stroke="currentColor" stroke-width="1.2" opacity=".32" stroke-dasharray="3 4"></line>
+        <line x1="420" y1="53" x2="420" y2="196" stroke="currentColor" stroke-width="1.2" opacity=".32" stroke-dasharray="3 4"></line>
+        <line x1="520" y1="119" x2="520" y2="196" stroke="currentColor" stroke-width="1.2" opacity=".32" stroke-dasharray="3 4"></line>
+        <line x1="600" y1="53" x2="600" y2="196" stroke="currentColor" stroke-width="1.2" opacity=".32" stroke-dasharray="3 4"></line>
+
+        <g>
+          <rect x="0" y="164" width="720" height="104" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="190" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">kết quả</text>
+          <text x="14" y="207" font-size="10" fill="currentColor" opacity=".7" font-family="monospace">mảng</text>
+          <line x1="150" y1="210" x2="706" y2="210" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#clArrow)"></line>
+
+          <rect x="152" y="192" width="140" height="36" rx="9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 4" opacity=".4"></rect>
+          <text x="222" y="186" font-size="10" text-anchor="middle" fill="currentColor" opacity=".75" font-family="monospace">im lặng — B chưa nói</text>
+
+          <circle cx="300" cy="210" r="13" fill="var(--good)"></circle>
+          <circle cx="420" cy="210" r="13" fill="var(--accent)"></circle>
+          <circle cx="520" cy="210" r="13" fill="var(--accent)"></circle>
+          <circle cx="600" cy="210" r="13" fill="var(--accent)"></circle>
+
+          <text x="300" y="244" font-size="10" text-anchor="middle" fill="currentColor" font-family="monospace">[a1, b1]</text>
+          <text x="420" y="244" font-size="10" text-anchor="middle" fill="currentColor" font-family="monospace">[a2, b1]</text>
+          <text x="520" y="244" font-size="10" text-anchor="middle" fill="currentColor" font-family="monospace">[a2, b2]</text>
+          <text x="600" y="244" font-size="10" text-anchor="middle" fill="currentColor" font-family="monospace">[a3, b2]</text>
+          <text x="300" y="261" font-size="9.5" text-anchor="middle" fill="var(--good)" font-family="monospace">lần phát đầu tiên</text>
+        </g>
+
+        <text x="14" y="292" font-size="11" fill="currentColor" opacity=".8">a1 rơi vào khoảng im lặng nên KHÔNG tạo ra lần phát nào — nó chỉ được ghi vào ô chờ, và xuất hiện lại ở [a1, b1].</text>
+      </svg>
+    </div>
+    <figcaption>Hai luồng phát tổng cộng 5 lần, kết quả chỉ phát 4 lần: mỗi luồng "nuốt" mất một lần phát đầu để điền ô của mình.</figcaption>
+  </figure>
+  <p class="col">Công thức đếm rất hữu ích khi đọc log: <b>N luồng phát tổng M lần thì kết quả phát nhiều nhất M − (N − 1) lần</b>. Càng nhiều luồng, càng nhiều lần phát bị "nuốt" ở đoạn đầu.</p>
+  <p class="col">Từ RxJS 7 còn có dạng đối tượng, dễ đọc hơn hẳn khi có từ ba luồng trở lên — không phải đếm vị trí trong mảng nữa:</p>
+<pre><code><span class="cm">// Dạng mảng: phải nhớ đúng thứ tự khi bóc tách (destructuring)</span>
+combineLatest([size$, mau$, sl$]).subscribe(([size, mau, sl]) =&gt; {});
+
+<span class="cm">// Dạng đối tượng: đặt tên rõ ràng, thêm bớt luồng không sợ lệch vị trí</span>
+combineLatest({ size: size$, mau: mau$, sl: sl$ }).subscribe(({ size, sl }) =&gt; {});
+
+<span class="cm">// Dạng toán tử để nối vào pipe (ống toán tử) của một luồng có sẵn</span>
+size$.pipe(combineLatestWith(mau$, sl$)).subscribe(([size, mau, sl]) =&gt; {});</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Bốn toán tử hay bị nhầm với nhau</h2></div>
+  <p class="col">Đây là câu hỏi phụ gần như chắc chắn đi kèm. Khác biệt nằm ở đúng hai chỗ: <b>lúc nào thì phát</b> và <b>phát ra cái gì</b>.</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Toán tử</th><th>Phát khi nào</th><th>Phát ra cái gì</th><th>Dùng cho</th></tr></thead>
+    <tbody>
+      <tr><td>combineLatest</td><td>Bất kỳ luồng nào phát, sau khi mọi luồng đã phát ít nhất một lần</td><td>Mảng giá trị mới nhất của tất cả</td><td>Trạng thái sống: bộ lọc + trang + sắp xếp, form tính lại tổng tiền</td></tr>
+      <tr><td>zip</td><td>Khi mọi luồng đều đã có phần tử thứ n</td><td>Bộ thứ n ghép theo thứ tự</td><td>Ghép cặp 1–1 đúng thứ tự, hiếm dùng trong giao diện</td></tr>
+      <tr><td>forkJoin</td><td>Đúng một lần, khi tất cả luồng đã hoàn thành (complete)</td><td>Giá trị cuối cùng của mỗi luồng</td><td>Gọi nhiều API song song rồi chờ đủ mới vẽ màn</td></tr>
+      <tr><td>withLatestFrom</td><td>Chỉ khi luồng chính phát</td><td>Giá trị chính + ảnh chụp giá trị mới nhất của luồng phụ</td><td>Bấm nút Lưu và cần kèm giá trị form hiện tại</td></tr>
+      <tr><td>merge</td><td>Bất kỳ luồng nào phát</td><td>Đúng giá trị đó, không gộp</td><td>Gộp nhiều nguồn sự kiện cùng kiểu vào một chỗ xử lý</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout bad col">
+    <p><b>Bẫy hay gặp nhất:</b> dùng <code>combineLatest</code> cho hai lời gọi API (giao diện lập trình — đường gọi mà máy chủ mở ra cho ứng dụng) rồi tưởng nó chỉ chạy một lần. Với <code>HttpClient</code> thì đúng là mỗi luồng chỉ phát một lần rồi hoàn thành, nên trông giống <code>forkJoin</code>. Nhưng nếu một trong hai luồng còn phát tiếp (một <code>BehaviorSubject</code>, một <code>valueChanges</code>), nhánh xử lý phía sau sẽ chạy lại nhiều lần mà bạn không lường trước. Cần "chờ đủ rồi thôi" thì dùng thẳng <code>forkJoin</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Vấn đề</p><h2>Bốn chỗ hỏng mà người phỏng vấn đang chờ nghe</h2></div>
+
+  <h3 class="col">1. Màn hình trắng vì có một luồng chưa bao giờ lên tiếng</h3>
+  <p class="col">Đây là lỗi số một. Chỉ cần <em>một</em> luồng chưa phát lần nào, toàn bộ <code>combineLatest</code> im lặng tuyệt đối — không lỗi, không log, không gì cả.</p>
+<pre><code><span class="cm">// Subject = luồng rỗng, KHÔNG có giá trị ban đầu</span>
+<span class="kw">const</span> tuKhoa$ = <span class="kw">new</span> Subject&lt;<span class="kw">string</span>&gt;();
+<span class="kw">const</span> trang$  = <span class="kw">new</span> BehaviorSubject(<span class="kw">1</span>);
+
+combineLatest([tuKhoa$, trang$]).subscribe(goiApi);
+<span class="out">// … không có gì xảy ra: bảng không bao giờ tải lần đầu</span>
+
+<span class="cm">// Chữa: cho luồng thiếu một giá trị khởi đầu</span>
+combineLatest([tuKhoa$.pipe(startWith(<span class="str">''</span>)), trang$]).subscribe(goiApi);   <b>// ✔ chạy ngay</b>
+<span class="cm">// Hoặc gốc rễ hơn: đổi Subject thành BehaviorSubject(''), khỏi phải nhớ startWith.</span></code></pre>
+  <p class="col">Trong Angular, <code>form.valueChanges</code> (luồng phát mỗi khi giá trị form đổi) cũng <b>không</b> phát giá trị hiện tại lúc mới đăng ký — nên gần như lúc nào cũng phải viết <code>form.valueChanges.pipe(startWith(form.getRawValue()))</code>.</p>
+
+  <h3 class="col">2. Glitch — một lần đổi, hai lần phát, và một trạng thái không có thật</h3>
+  <p class="col">Khi hai luồng đầu vào cùng bắt nguồn từ <em>một</em> luồng gốc (hình thoi — diamond), một thay đổi ở gốc sẽ chạy xuống theo hai nhánh, làm <code>combineLatest</code> phát <b>hai</b> lần. Lần đầu là trạng thái lai: nhánh này đã mới, nhánh kia còn cũ.</p>
+<pre><code><span class="kw">const</span> goc$  = <span class="kw">new</span> BehaviorSubject(<span class="kw">2</span>);
+<span class="kw">const</span> gap2$ = goc$.pipe(map((n) =&gt; n * <span class="kw">2</span>));
+<span class="kw">const</span> cong1$ = goc$.pipe(map((n) =&gt; n + <span class="kw">1</span>));
+
+combineLatest([gap2$, cong1$]).subscribe((v) =&gt; console.log(v));
+<span class="out">// [4, 3]</span>
+
+goc$.next(<span class="kw">10</span>);
+<span class="out">// [20, 3]   ← TRẠNG THÁI MA: 20 là của n=10, còn 3 vẫn là của n=2</span>
+<span class="out">// [20, 11]  ← lần này mới đúng</span></code></pre>
+  <p class="col">Trạng thái ma đó vô hại nếu chỉ để hiển thị, nhưng chết người nếu phía sau là <code>switchMap</code> gọi API — bạn bắn đi một yêu cầu với tham số sai, rồi mới bắn cái đúng. Ba cách chữa, theo thứ tự nên ưu tiên:</p>
+  <ol class="steps col">
+    <li><b>Đừng tách rồi ghép lại.</b> Nếu cả hai nhánh đều suy ra từ <code>goc$</code>, hãy <code>map</code> một lần từ <code>goc$</code> thay vì <code>combineLatest</code> hai nhánh con.</li>
+    <li><b>Gom lần phát trong cùng một nhịp</b> bằng <code>debounceTime(0)</code> hoặc <code>auditTime(0)</code> — bỏ lần phát trung gian, chỉ giữ lần cuối của mỗi nhịp.</li>
+    <li><b>Chặn ở cuối</b> bằng <code>distinctUntilChanged</code> — chỉ giúp khi trạng thái ma tình cờ trùng giá trị cũ, nên là biện pháp yếu nhất.</li>
+  </ol>
+
+  <h3 class="col">3. Hoàn thành và lỗi lan sang cả cụm</h3>
+  <p class="col"><em>Hoàn thành</em> (complete — luồng báo "tôi hết dữ liệu rồi, đừng chờ nữa") của một luồng con <b>không</b> làm kết quả dừng: giá trị cuối của nó vẫn nằm nguyên trong ô chờ. Kết quả chỉ hoàn thành khi <b>mọi</b> luồng đã hoàn thành. Nhưng có một ngoại lệ ác:</p>
+<pre><code><span class="cm">// EMPTY = luồng hoàn thành ngay, không phát giá trị nào</span>
+combineLatest([of(<span class="kw">1</span>), EMPTY]).subscribe({
+  next: (v) =&gt; console.log(<span class="str">'giá trị'</span>, v),
+  complete: () =&gt; console.log(<span class="str">'xong'</span>),
+});
+<span class="out">// 'xong'    ← không hề có 'giá trị': một ô vĩnh viễn không được điền</span>
+
+<span class="cm">// Lỗi thì tệ hơn: một luồng lỗi là cả cụm chết, các luồng còn lại bị huỷ đăng ký</span>
+combineLatest([
+  a$,
+  b$.pipe(catchError(() =&gt; of(<span class="kw">null</span>))),   <b>// ✔ khoanh vùng lỗi ở TỪNG nhánh</b>
+]);</code></pre>
+
+  <h3 class="col">4. Bỏ quên huỷ đăng ký</h3>
+  <p class="col"><code>combineLatest</code> giữ đăng ký tới tất cả luồng con cho tới khi bị huỷ. Trong Angular, để nó tự chết theo component thì dùng <code>takeUntilDestroyed()</code>, hoặc tốt hơn là để <code>async</code> pipe / <code>toSignal()</code> lo — xem bài <a href="take-until-destroyed.html">takeUntilDestroyed</a>.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Diễn tả đúng "trạng thái phái sinh".</b> Một dòng nói được: kết quả này phụ thuộc vào ba thứ kia, thứ nào đổi cũng tính lại.</li>
+        <li><b>Xoá sạch cờ trạng thái thủ công.</b> Không còn <code>if (daCoA &amp;&amp; daCoB)</code> rải khắp component.</li>
+        <li><b>Ghép thẳng vào một lời gọi API duy nhất.</b> Bộ lọc, phân trang, sắp xếp gom lại rồi <code>switchMap</code> — hết cảnh mỗi ô lọc gọi API riêng.</li>
+        <li><b>Không tự huỷ giữa chừng.</b> Luồng con hoàn thành xong giá trị vẫn còn, hợp với dữ liệu tải một lần trộn với dữ liệu đổi liên tục.</li>
+        <li><b>Dạng đối tượng dễ bảo trì.</b> Thêm một điều kiện lọc chỉ là thêm một khoá, không phải đánh lại chỉ số mảng.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Màn danh sách, tất cả bộ lọc gộp một chỗ</p>
+<pre><code><span class="kw">readonly</span> rows$ = combineLatest({
+  tuKhoa: <span class="kw">this</span>.tuKhoa$.pipe(
+    debounceTime(<span class="kw">300</span>), distinctUntilChanged(), startWith(<span class="str">''</span>)),
+  trang: <span class="kw">this</span>.trang$,
+  sapXep: <span class="kw">this</span>.sapXep$,
+}).pipe(
+  <span class="cm">// switchMap: có yêu cầu mới thì huỷ yêu cầu cũ đang chạy</span>
+  switchMap((q) =&gt; <span class="kw">this</span>.api.search(q)),
+  takeUntilDestroyed(),
+);</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Hỏng là hỏng im lặng.</b> Một luồng chưa phát thì cả cụm câm, không lỗi, không cảnh báo — rất tốn thời gian dò.</li>
+        <li><b>Sinh trạng thái ma.</b> Hai nhánh cùng gốc gây lần phát trung gian với dữ liệu chắp vá.</li>
+        <li><b>Số lần phát khó lường.</b> Càng nhiều luồng càng dễ phát thừa; thiếu <code>distinctUntilChanged</code> là gọi API lặp.</li>
+        <li><b>Một luồng lỗi giết cả cụm.</b> Phải tự bọc <code>catchError</code> cho từng nhánh mới sống sót.</li>
+        <li><b>Đọc mảng theo vị trí dễ sai.</b> Chèn thêm một luồng vào giữa là mọi chỗ bóc tách lệch hết.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Thiếu chống trùng thì mỗi lần phát là một lượt gọi API</p>
+<pre><code>combineLatest([tuKhoa$, trang$, sapXep$])
+  .pipe(switchMap(goiApi))
+  .subscribe();
+<span class="cm">// Người dùng bấm lại đúng trang đang đứng:</span>
+<span class="cm">// trang$ vẫn phát → cả cụm phát → API bị gọi lại y hệt.</span>
+<span class="cm">// Chữa: từng nhánh thêm distinctUntilChanged(),</span>
+<span class="cm">// hoặc cả cụm thêm distinctUntilChanged(isEqual).</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><b>Cách sống chung an toàn:</b> mỗi nhánh đưa vào <code>combineLatest</code> nên tự bảo đảm ba việc — <em>có giá trị khởi đầu</em> (<code>BehaviorSubject</code> hoặc <code>startWith</code>), <em>không phát trùng</em> (<code>distinctUntilChanged</code>), <em>không mang lỗi ra ngoài</em> (<code>catchError</code>). Làm đủ ba, phần lớn cạm bẫy của toán tử này biến mất.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Phỏng vấn</p><h2>Trả lời ngắn, như một senior</h2></div>
+  <div class="board col">
+    <h3>"combineLatest khác zip chỗ nào?"</h3>
+    <p><code>zip</code> ghép <b>theo thứ tự</b>: phần tử thứ n của luồng này với phần tử thứ n của luồng kia, ai nhanh phải đứng chờ, không giá trị nào bị bỏ. <code>combineLatest</code> ghép <b>theo thời điểm</b>: luôn lấy cái mới nhất, nên một luồng phát nhanh có thể "ghi đè" nhiều lần lên chính ô của mình mà không ai dùng tới. Giao diện gần như luôn cần vế sau — người dùng chỉ quan tâm trạng thái hiện tại, không quan tâm giá trị thứ ba của ô lọc.</p>
+  </div>
+  <div class="board col">
+    <h3>"Màn hình không hiện gì, luồng cũng không báo lỗi. Anh dò thế nào?"</h3>
+    <p>Nghi ngay có luồng chưa phát lần nào. Cách dò rẻ nhất là chèn <code>tap</code> vào <em>từng</em> nhánh trước khi đưa vào <code>combineLatest</code> rồi xem nhánh nào không in gì. Chín trên mười lần là một <code>Subject</code> đáng ra phải là <code>BehaviorSubject</code>, hoặc một <code>valueChanges</code> thiếu <code>startWith</code>.</p>
+  </div>
+  <div class="board col">
+    <h3>"Vì sao một cú bấm lại bắn hai request?"</h3>
+    <p>Đó là glitch của hình thoi: hai nhánh đầu vào cùng suy ra từ một nguồn gốc. Sửa gốc rễ là gộp hai nhánh thành một <code>map</code> từ nguồn gốc; nếu không đổi được kiến trúc thì <code>debounceTime(0)</code> để bỏ lần phát trung gian. Chỉ dựa vào <code>distinctUntilChanged</code> là chưa đủ, vì trạng thái trung gian thường vẫn khác trạng thái cũ.</p>
+  </div>
+  <div class="board col">
+    <h3>"Khi nào anh chọn withLatestFrom thay vì combineLatest?"</h3>
+    <p>Khi có một luồng đóng vai <b>người ra lệnh</b> và các luồng còn lại chỉ là <b>ngữ cảnh</b>. Ví dụ nút Lưu: chỉ lúc bấm mới được chạy, giá trị form chỉ là ảnh chụp kèm theo. Nếu dùng <code>combineLatest</code>, mỗi lần gõ vào form cũng kích hoạt hành động lưu — sai nghiệp vụ.</p>
+  </div>
+  <div class="board col">
+    <h3>"Angular hiện đại dùng signal rồi, còn cần combineLatest không?"</h3>
+    <p>Với trạng thái đồng bộ trong component thì <code>computed()</code> (giá trị dẫn xuất của signal — tự tính lại khi phụ thuộc đổi) thay được, lại còn <b>không có glitch</b> vì signal cập nhật theo lô. Nhưng <code>combineLatest</code> vẫn cần khi đầu vào là sự kiện theo thời gian: có <code>debounceTime</code>, có huỷ yêu cầu cũ bằng <code>switchMap</code>. Thực tế hay ghép cả hai: <code>toSignal(combineLatest({…}).pipe(switchMap(…)))</code> — RxJS lo phần thời gian, signal lo phần hiển thị.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ dùng trong bài</h2></div>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>Observable / luồng</td><td>Nguồn dữ liệu lần lượt đẩy ra từng giá trị theo thời gian</td></tr>
+      <tr><td>emit / phát</td><td>Luồng đẩy ra một giá trị mới cho người đang nghe</td></tr>
+      <tr><td>subscribe / đăng ký nghe</td><td>Bắt đầu lắng nghe một luồng; chưa đăng ký thì luồng chưa chạy</td></tr>
+      <tr><td>operator / toán tử</td><td>Hàm biến đổi luồng, nối vào nhau qua <code>pipe</code></td></tr>
+      <tr><td>pipe / ống toán tử</td><td>Chỗ xếp các toán tử chạy nối tiếp trên một luồng</td></tr>
+      <tr><td>marble diagram / sơ đồ bi</td><td>Cách vẽ luồng thành đường thời gian với các viên bi là giá trị</td></tr>
+      <tr><td>Subject</td><td>Luồng mà lập trình viên tự đẩy giá trị vào bằng <code>next()</code>; không có giá trị ban đầu</td></tr>
+      <tr><td>BehaviorSubject</td><td>Subject luôn giữ giá trị hiện tại và phát ngay cho người vừa đăng ký</td></tr>
+      <tr><td>complete / hoàn thành</td><td>Luồng báo hết dữ liệu, sẽ không phát gì thêm</td></tr>
+      <tr><td>EMPTY</td><td>Luồng hoàn thành ngay lập tức mà không phát giá trị nào</td></tr>
+      <tr><td>glitch / trạng thái ma</td><td>Lần phát trung gian mang dữ liệu chắp vá, không tương ứng trạng thái thật nào</td></tr>
+      <tr><td>diamond / hình thoi</td><td>Kiểu phụ thuộc mà hai nhánh cùng tách ra rồi lại nhập vào từ một nguồn gốc</td></tr>
+      <tr><td>startWith</td><td>Toán tử chèn thêm một giá trị khởi đầu trước mọi giá trị thật</td></tr>
+      <tr><td>distinctUntilChanged</td><td>Toán tử bỏ qua giá trị trùng với giá trị liền trước</td></tr>
+      <tr><td>debounceTime / auditTime</td><td>Toán tử gom nhiều lần phát sát nhau thành một, theo mốc thời gian</td></tr>
+      <tr><td>switchMap</td><td>Toán tử chuyển sang luồng con mới và huỷ luồng con đang chạy</td></tr>
+      <tr><td>catchError</td><td>Toán tử bắt lỗi của luồng và thay bằng giá trị hoặc luồng dự phòng</td></tr>
+      <tr><td>takeUntilDestroyed</td><td>Toán tử của Angular tự huỷ đăng ký khi component bị huỷ</td></tr>
+      <tr><td>forkJoin / zip / merge / withLatestFrom</td><td>Các toán tử kết hợp khác, so sánh ở bảng tra phía trên</td></tr>
+      <tr><td>API</td><td>Giao diện lập trình — đường gọi mà máy chủ mở ra cho ứng dụng</td></tr>
+      <tr><td>component</td><td>Một mảnh giao diện của Angular, gồm khuôn hiển thị và mã điều khiển</td></tr>
+      <tr><td>valueChanges</td><td>Luồng của form Angular, phát mỗi khi giá trị trong form đổi</td></tr>
+      <tr><td>async pipe</td><td>Ống của Angular tự đăng ký nghe luồng trong khuôn hiển thị và tự huỷ khi rời màn</td></tr>
+      <tr><td>signal / computed / toSignal</td><td>Cơ chế trạng thái phản ứng mới của Angular; <code>toSignal</code> đổi một luồng thành signal</td></tr>
+      <tr><td>destructuring / bóc tách</td><td>Cú pháp lấy nhanh từng phần của mảng hoặc đối tượng ra thành biến</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<nav class="pager"><a class="prev" href="take-until-destroyed.html"><span class="dir">← Bài trước</span><span class="nm">takeUntilDestroyed — huỷ đăng ký đúng lúc</span></a><a class="next" href="fork-join.html"><span class="dir">Bài tiếp →</span><span class="nm">forkJoin — chờ tất cả xong rồi mới nói</span></a></nav>
+<footer class="page-foot col"><p>Sổ tay eli5 · RxJS · trang 6/10</p></footer>
+</div>
+</body>
+</html>

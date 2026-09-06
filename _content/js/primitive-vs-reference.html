@@ -1,0 +1,165 @@
+<!--meta
+title: Primitive Types và Reference Types
+eyebrow: JavaScript · Bài 4
+short: Primitive & Reference
+lede: Vì sao copy một con số thì an toàn, còn copy một mảng thì hai biến lại sửa lẫn nhau? Vì có hai loại giá trị được cất giữ theo hai cách hoàn toàn khác nhau.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Đồ trong túi và chìa khoá kho</h2></div>
+  <p>Hình dung mỗi biến là một cái túi nhỏ.</p>
+  <p>Với <strong>primitive type</strong> (kiểu nguyên thuỷ), món đồ nhỏ gọn nên nằm gọn <em>trong</em> túi. Đưa túi cho người khác là đưa một bản sao của món đồ — họ sửa gì cũng không đụng tới của bạn.</p>
+  <p>Với <strong>reference type</strong> (kiểu tham chiếu), món đồ quá lớn nên được cất ở kho; trong túi chỉ có tấm <em>chìa khoá</em> tới kho đó. Đưa túi cho ai là đưa cho họ bản sao của chìa khoá — vẫn mở đúng cái kho ấy. Họ dọn đồ trong kho thì bạn nhìn thấy ngay.</p>
+  <p>Bảy kiểu nguyên thuỷ: <code>string</code>, <code>number</code>, <code>boolean</code>, <code>null</code>, <code>undefined</code>, <code>symbol</code>, <code>bigint</code>. Tất cả những thứ còn lại — object, array, function, <code>Date</code>, <code>Map</code>, <code>Set</code>… — đều là kiểu tham chiếu.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Trong túi có gì</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 260" role="img" aria-label="Hai biến số nguyên thuỷ chứa giá trị riêng; hai biến object cùng chứa một địa chỉ trỏ tới cùng một vùng nhớ trên heap.">
+        <defs><marker id="p1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 10,5 0,10" fill="#C87518"></polygon></marker></defs>
+        <text x="20" y="26" font-size="12.5" font-weight="700" fill="var(--good)">PRIMITIVE — giá trị nằm trong biến</text>
+        <rect x="20" y="44" width="130" height="42" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="85" y="70" font-size="12" text-anchor="middle" fill="currentColor" font-family="monospace">a = 5</text>
+        <rect x="20" y="98" width="130" height="42" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="85" y="124" font-size="12" text-anchor="middle" fill="currentColor" font-family="monospace">b = 5</text>
+        <text x="20" y="170" font-size="11.5" fill="currentColor" opacity=".75">b = a rồi b++</text>
+        <text x="20" y="190" font-size="11.5" fill="var(--good)" font-weight="700">→ a vẫn là 5</text>
+
+        <line x1="200" y1="20" x2="200" y2="240" stroke="currentColor" stroke-width="1" opacity=".2"></line>
+
+        <text x="230" y="26" font-size="12.5" font-weight="700" fill="var(--accent)">REFERENCE — biến chỉ giữ địa chỉ</text>
+        <rect x="230" y="44" width="150" height="42" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="305" y="70" font-size="12" text-anchor="middle" fill="currentColor" font-family="monospace">x = @kho1</text>
+        <rect x="230" y="98" width="150" height="42" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="305" y="124" font-size="12" text-anchor="middle" fill="currentColor" font-family="monospace">y = @kho1</text>
+        <path d="M 384 65 C 430 65 440 90 486 100" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#p1)"></path>
+        <path d="M 384 119 C 430 119 440 110 486 106" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#p1)"></path>
+        <rect x="494" y="62" width="200" height="86" rx="12" fill="var(--accent)"></rect>
+        <text x="594" y="90" font-size="12" text-anchor="middle" fill="#1A1206" font-family="monospace">kho1 (heap)</text>
+        <text x="594" y="116" font-size="13" text-anchor="middle" fill="#1A1206" font-family="monospace">{ ten: 'An' }</text>
+        <text x="230" y="180" font-size="11.5" fill="currentColor" opacity=".75">y = x rồi y.ten = 'Bình'</text>
+        <text x="230" y="200" font-size="11.5" fill="var(--accent)" font-weight="700">→ x.ten cũng thành 'Bình'</text>
+      </svg>
+    </div>
+    <figcaption>Copy biến nguyên thuỷ là copy giá trị; copy biến object chỉ là copy tấm chìa khoá tới cùng một kho.</figcaption>
+  </figure>
+  <div class="col">
+<pre><code><span class="kw">let</span> a = 5, b = a;  b++;
+console.log(a, b);            <span class="cm">// 5 6   — độc lập</span>
+
+<span class="kw">let</span> x = { ten: <span class="str">'An'</span> }, y = x;  y.ten = <span class="str">'Bình'</span>;
+console.log(x.ten);           <span class="cm">// 'Bình' — cùng một kho</span>
+
+console.log({} === {});       <span class="cm">// false — hai kho khác nhau, dù ruột giống hệt</span>
+console.log(<span class="str">'a'</span> === <span class="str">'a'</span>);     <span class="cm">// true  — so sánh theo giá trị</span></code></pre>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Hệ quả thực tế</p><h2>Ba điều luôn làm người mới ngã</h2></div>
+  <ol class="steps">
+    <li><span><code>const</code> <strong>không</strong> làm object bất biến. Nó chỉ khoá cái túi, cấm bạn đổi <em>chìa khoá</em>; đồ trong kho vẫn sửa thoải mái: <code>const o = {}; o.a = 1;</code> hoàn toàn hợp lệ.</span></li>
+    <li><span><strong>Shallow copy</strong> (sao chép nông) chỉ chép một tầng. <code>{...obj}</code> hay <code>Object.assign</code> tạo kho mới cho tầng ngoài, nhưng các object con bên trong vẫn dùng chung chìa khoá cũ.</span></li>
+    <li><span><strong>So sánh</strong> object bằng <code>===</code> là so địa chỉ, không so nội dung. Muốn so nội dung phải tự viết hoặc so chuỗi JSON (chậm và có bẫy về thứ tự khoá).</span></li>
+  </ol>
+<pre><code><span class="kw">const</span> goc  = { ten: <span class="str">'An'</span>, dc: { tp: <span class="str">'Hà Nội'</span> } };
+
+<span class="kw">const</span> nong = { ...goc };            <span class="cm">// shallow copy</span>
+nong.dc.tp = <span class="str">'Huế'</span>;
+console.log(goc.dc.tp);              <span class="cm">// 'Huế'  ← vẫn dính nhau!</span>
+
+<span class="kw">const</span> sau = structuredClone(goc);   <span class="cm">// deep copy chuẩn, có sẵn trong trình duyệt hiện đại</span>
+sau.dc.tp = <span class="str">'Đà Nẵng'</span>;
+console.log(goc.dc.tp);              <span class="cm">// 'Huế'  ← đã tách hẳn</span></code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của mỗi loại</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Primitive — lợi</h3>
+      <ul>
+        <li><b>An toàn tuyệt đối.</b> Truyền đi đâu cũng không sợ bị sửa trộm.</li>
+        <li><b>So sánh rẻ và đúng trực giác.</b> <code>===</code> so đúng cái bạn nghĩ.</li>
+        <li><b>Bất biến (immutable).</b> Không có thao tác nào sửa được một chuỗi hay một số tại chỗ.</li>
+        <li><b>Nhẹ.</b> Không cần cấp phát vùng nhớ động, không tạo rác cho bộ thu gom.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="kw">let</span> soDu = 1000;
+<span class="kw">function</span> tru(x) { x -= 500; <span class="kw">return</span> x; }
+tru(soDu);
+console.log(soDu);        <span class="out">// 1000 — không ai sửa trộm được</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Primitive — hại</h3>
+      <ul>
+        <li><b>Copy nhiều thì tốn.</b> Truyền một chuỗi rất dài qua nhiều lớp hàm là chép đi chép lại (engine có tối ưu, nhưng về mặt ngữ nghĩa vẫn là bản sao).</li>
+        <li><b>Không mang được state.</b> Muốn nhiều nơi cùng thấy một thay đổi thì phải bọc vào object.</li>
+        <li><b>Vài bẫy riêng:</b> <code>NaN !== NaN</code>, <code>typeof null === 'object'</code>, số thực <code>0.1 + 0.2 !== 0.3</code>.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>console.log(0.1 + 0.2);          <span class="out">// 0.30000000000000004</span>
+console.log(NaN === NaN);        <span class="out">// false</span>
+console.log(<span class="kw">typeof</span> <span class="kw">null</span>);        <span class="out">// 'object' — lỗi lịch sử của JS</span></code></pre></div>
+    </div>
+  </div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Reference — lợi</h3>
+      <ul>
+        <li><b>Truyền rẻ.</b> Đưa một mảng 10.000 phần tử qua hàm chỉ tốn bằng đưa một địa chỉ.</li>
+        <li><b>Chia sẻ state.</b> Nhiều nơi cùng nhìn một dữ liệu — nền tảng của mọi kho state (store) và service.</li>
+        <li><b>Cấu trúc phong phú.</b> Lồng nhau, tự tham chiếu, gắn hành vi (method) vào dữ liệu.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="kw">const</span> ds = [...Array(100000).keys()];
+xuLy(ds);                 <span class="cm">// truyền 100.000 phần tử chỉ tốn bằng một địa chỉ</span>
+
+<span class="cm">// Và nhiều nơi cùng nhìn một dữ liệu:</span>
+<span class="kw">const</span> gioHang = [];
+themSanPham(gioHang, sp);  <span class="cm">// màn hình khác thấy ngay, không cần đồng bộ</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Reference — hại</h3>
+      <ul>
+        <li><b>Tác dụng phụ khó lần.</b> Một hàm ở tận đâu sửa dữ liệu của bạn mà không báo.</li>
+        <li><b>Copy dễ hớ.</b> Người ta tưởng đã copy, thật ra vẫn dùng chung — bug kinh điển của mảng cấu hình dùng lại.</li>
+        <li><b>So sánh không như mong đợi.</b> Hai object "giống hệt" vẫn <code>!==</code>; đây cũng là lý do <code>OnPush</code> trong Angular không nhận ra thay đổi khi bạn sửa tại chỗ.</li>
+        <li><b>Rò rỉ bộ nhớ.</b> Còn một chìa khoá là cả kho không được thu hồi.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="kw">const</span> MAC_DINH = { boLoc: { trang: 1 } };
+
+<span class="kw">function</span> moMan() {
+  <span class="kw">const</span> cauHinh = { ...MAC_DINH };   <span class="cm">// tưởng là bản sao</span>
+  cauHinh.boLoc.trang = 5;           <span class="cm">// ✗ sửa luôn hằng gốc</span>
+}
+moMan(); moMan();
+console.log(MAC_DINH.boLoc.trang);   <span class="out">// 5 — mọi màn sau đều mở ở trang 5</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Nguyên tắc vàng:</strong> coi dữ liệu là bất biến — thay vì sửa tại chỗ, hãy tạo bản mới (<code>{...cu, ten: 'mới'}</code>, <code>[...ds, phanTuMoi]</code>). Vừa tránh tác dụng phụ, vừa giúp Angular/React phát hiện thay đổi bằng phép so sánh địa chỉ rẻ tiền.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>primitive type</td><td>Kiểu nguyên thuỷ — giá trị đơn, lưu trực tiếp trong biến.</td></tr>
+      <tr><td>reference type</td><td>Kiểu tham chiếu — biến chỉ giữ địa chỉ tới vùng nhớ chứa dữ liệu.</td></tr>
+      <tr><td>heap</td><td>Vùng nhớ động, nơi các object thực sự nằm.</td></tr>
+      <tr><td>stack</td><td>Ngăn xếp — vùng nhớ nhanh, giữ biến cục bộ và địa chỉ.</td></tr>
+      <tr><td>immutable</td><td>Bất biến — không thể sửa tại chỗ, muốn đổi phải tạo bản mới.</td></tr>
+      <tr><td>shallow copy</td><td>Sao chép nông — chỉ chép một tầng ngoài cùng.</td></tr>
+      <tr><td>deep copy</td><td>Sao chép sâu — chép toàn bộ các tầng lồng nhau.</td></tr>
+      <tr><td>structuredClone</td><td>Hàm có sẵn của trình duyệt để deep copy đúng chuẩn.</td></tr>
+      <tr><td>side effect</td><td>Tác dụng phụ — hàm thay đổi thứ nằm ngoài chính nó.</td></tr>
+      <tr><td>OnPush</td><td>Chiến lược phát hiện thay đổi của Angular, dựa trên so sánh tham chiếu.</td></tr>
+    </tbody>
+  </table></div>
+</section>

@@ -1,0 +1,84 @@
+<!--meta
+title: Day 35 — Reactive Forms, phần 1
+eyebrow: Angular · Day 35
+short: Day 35
+lede: Form được dựng bằng TypeScript: bạn nắm trong tay đối tượng form, đọc được, sửa được, test được — cách làm chuẩn cho mọi form nghiệp vụ.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Form là một đối tượng, không phải mấy thẻ input</h2></div>
+  <p>Với reactive form (form phản ứng), bạn khai cấu trúc form trong lớp trước, rồi mới nối vào template. Nguồn sự thật nằm ở TypeScript — template chỉ là cái vỏ.</p>
+<pre><code><span class="kw">private</span> fb = inject(FormBuilder);
+
+<span class="kw">readonly</span> form = <span class="kw">this</span>.fb.group({
+  ma: [<span class="str">''</span>, [Validators.required, Validators.pattern(/^KHO-\d{4}$/)]],
+  ten: [<span class="str">''</span>, [Validators.required, Validators.maxLength(100)]],
+  dienTich: [<span class="kw">null</span> <span class="kw">as</span> number | <span class="kw">null</span>],
+  hoatDong: [<span class="kw">true</span>],
+});
+
+luu() {
+  <span class="kw">if</span> (<span class="kw">this</span>.form.invalid) { <span class="kw">this</span>.form.markAllAsTouched(); <span class="kw">return</span>; }
+  <span class="kw">this</span>.api.tao(<span class="kw">this</span>.form.getRawValue()).subscribe(…);
+}</code></pre>
+<pre><code>&lt;form [formGroup]="form" (ngSubmit)="luu()"&gt;
+  &lt;input formControlName="ma" /&gt;
+  &#64;if (form.controls.ma.touched &amp;&amp; form.controls.ma.errors?.['required']) {
+    &lt;small&gt;Mã kho là bắt buộc&lt;/small&gt;
+  }
+&lt;/form&gt;</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Điều khiển được bằng code:</b> đặt giá trị, bật/tắt, reset, thêm bớt control lúc chạy.</li>
+        <li><b>Test không cần giao diện.</b> Dựng form, gán giá trị, kiểm tra <code>valid</code> — xong.</li>
+        <li><b>Kiểu chặt.</b> Form typed cho biết chính xác <code>value</code> có những trường gì.</li>
+        <li><b><code>valueChanges</code> là một observable</b> — ghép thẳng vào RxJS để lọc, chống dội, gọi API.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Test chạy trong mili-giây, không cần dựng template</span>
+form.patchValue({ ma: <span class="str">'KHO-01'</span> });
+expect(form.controls.ma.valid).toBe(<span class="kw">false</span>);   <span class="cm">// sai định dạng → bắt được ngay</span>
+
+<span class="cm">// Và nối thẳng vào RxJS</span>
+form.controls.ten.valueChanges.pipe(debounceTime(300))
+  .subscribe((v) =&gt; <span class="kw">this</span>.kiemTraTrung(v));</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Nhiều code hơn.</b> Một form ba ô cũng phải khai ở hai nơi.</li>
+        <li><b>Phải tự đồng bộ template.</b> Gõ sai <code>formControlName</code> là lỗi lúc chạy, không phải lúc build.</li>
+        <li><b>Dễ quên <code>markAllAsTouched</code></b> nên bấm Lưu mà không thấy lỗi nào hiện ra.</li>
+        <li><b><code>disabled</code> control bị loại khỏi <code>value</code></b> — gửi lên máy chủ thiếu trường mà không ai báo.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>form.controls.ma.disable();
+console.log(form.value);        <span class="cm">// { ten: …, dienTich: … } — MẤT trường ma!</span>
+console.log(form.getRawValue()); <span class="cm">// { ma: …, ten: … } — phải dùng cái này</span>
+
+&lt;input formControlName="maKho" /&gt;   <span class="cm">// gõ nhầm tên → lỗi lúc chạy:</span>
+<span class="cm">// Cannot find control with name: 'maKho'</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>reactive form</td><td>Form dựng bằng code, template chỉ nối vào.</td></tr>
+      <tr><td>FormBuilder</td><td>Tiện ích tạo form ngắn gọn.</td></tr>
+      <tr><td>FormGroup / FormControl</td><td>Nhóm control / một ô nhập.</td></tr>
+      <tr><td>getRawValue()</td><td>Lấy giá trị kể cả các control đang bị vô hiệu hoá.</td></tr>
+      <tr><td>markAllAsTouched</td><td>Đánh dấu đã chạm mọi ô để lỗi hiện ra.</td></tr>
+      <tr><td>typed form</td><td>Form có kiểu chặt chẽ (từ Angular 14).</td></tr>
+    </tbody>
+  </table></div>
+</section>

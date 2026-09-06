@@ -1,0 +1,80 @@
+<!--meta
+title: Day 20 — RxJS Creation Operators
+eyebrow: Angular · Day 20
+short: Day 20
+lede: Cách tạo ra một luồng từ con số không: từ giá trị có sẵn, từ sự kiện DOM, từ đồng hồ, hay từ một Promise.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Bộ vòi tiêu chuẩn</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Toán tử</th><th>Tạo ra luồng</th><th>Dùng khi</th></tr></thead>
+    <tbody>
+      <tr><td>of(a, b)</td><td>Phát lần lượt các giá trị rồi kết thúc</td><td>Dữ liệu giả, giá trị mặc định</td></tr>
+      <tr><td>from(x)</td><td>Từ mảng, Promise, iterable</td><td>Bắc cầu từ Promise sang RxJS</td></tr>
+      <tr><td>fromEvent(el, 'click')</td><td>Từ sự kiện DOM</td><td>Cuộn, gõ phím, kéo thả</td></tr>
+      <tr><td>interval(1000)</td><td>Phát số đếm mỗi giây</td><td>Đồng hồ, hỏi định kỳ</td></tr>
+      <tr><td>timer(2000, 500)</td><td>Chờ rồi phát, có thể lặp</td><td>Trì hoãn, thử lại</td></tr>
+      <tr><td>EMPTY / throwError</td><td>Kết thúc ngay / lỗi ngay</td><td>Nhánh "không làm gì" trong catchError</td></tr>
+      <tr><td>defer(fn)</td><td>Hoãn tạo luồng tới lúc subscribe</td><td>Cần giá trị mới nhất tại thời điểm chạy</td></tr>
+    </tbody>
+  </table></div>
+<pre><code>fromEvent(oTim.nativeElement, <span class="str">'input'</span>).pipe(
+  map((e) =&gt; ($any(e.target)).value <span class="kw">as</span> string),
+  debounceTime(300),
+  distinctUntilChanged(),
+).subscribe((tuKhoa) =&gt; <span class="kw">this</span>.tim(tuKhoa));</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Mọi nguồn dữ liệu về cùng một dạng,</b> sau đó dùng chung bộ toán tử.</li>
+        <li><b>Sự kiện DOM trở nên tổ hợp được:</b> chống dội phím, gộp, huỷ — chỉ bằng vài dòng.</li>
+        <li><b><code>timer</code>/<code>interval</code> huỷ được</b>, sạch hơn <code>setInterval</code> nhiều.</li>
+        <li><b><code>from</code> giúp chuyển dần</b> code Promise cũ sang RxJS mà không viết lại tất cả.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Ô tìm kiếm hoàn chỉnh trong 5 dòng</span>
+fromEvent(o.nativeElement, <span class="str">'input'</span>).pipe(
+  map((e) =&gt; ($any(e.target)).value),
+  debounceTime(300),
+  distinctUntilChanged(),
+).subscribe((tk) =&gt; <span class="kw">this</span>.tim(tk));
+<span class="cm">// Viết tay bằng addEventListener + setTimeout sẽ dài gấp ba và dễ sót.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b><code>interval</code> không tự dừng.</b> Quên huỷ là chạy mãi kể cả khi màn hình đã đóng.</li>
+        <li><b><code>from(promise)</code> mất khả năng huỷ</b> — Promise bên dưới vẫn chạy tiếp dù đã unsubscribe.</li>
+        <li><b><code>fromEvent</code> giữ tham chiếu tới phần tử DOM,</b> dễ giữ luôn cả component nếu không dọn.</li>
+        <li><b>Nhiều toán tử gần giống nhau</b> (<code>of</code> và <code>from</code> với một mảng cho kết quả khác hẳn nhau).</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>interval(1000).subscribe(() =&gt; <span class="kw">this</span>.demNguoc());
+<span class="cm">// ✗ không bao giờ tự dừng — rời màn rồi vẫn đếm, vẫn giữ component sống</span>
+
+of([1, 2, 3]).subscribe(console.log);    <span class="out">// [1,2,3] — MỘT giá trị là cả mảng</span>
+from([1, 2, 3]).subscribe(console.log);  <span class="out">// 1, 2, 3 — ba giá trị</span>
+<span class="cm">// Hai hàm gần giống tên nhưng khác hẳn kết quả — nguồn nhầm lẫn kinh điển.</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>creation operator</td><td>Toán tử khởi tạo — tạo ra một luồng mới.</td></tr>
+      <tr><td>iterable</td><td>Thứ duyệt được bằng vòng lặp (mảng, Set, Map…).</td></tr>
+      <tr><td>debounce</td><td>Chống dội — chờ người dùng ngừng gõ mới xử lý.</td></tr>
+      <tr><td>defer</td><td>Hoãn — chỉ dựng luồng khi có người đăng ký.</td></tr>
+      <tr><td>EMPTY</td><td>Luồng rỗng, kết thúc ngay, không phát giá trị nào.</td></tr>
+    </tbody>
+  </table></div>
+</section>

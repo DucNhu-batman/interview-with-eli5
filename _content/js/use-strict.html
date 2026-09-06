@@ -1,0 +1,110 @@
+<!--meta
+title: "use strict" — chế độ nghiêm ngặt
+eyebrow: JavaScript · Bài 3
+short: use strict
+lede: Một dòng chữ duy nhất ở đầu file đổi luật chơi: những lỗi trước đây bị nuốt im lặng nay nổ ra ngay lập tức.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Một dòng, hai bộ luật</h2></div>
+  <p>JavaScript có hai chế độ chạy. Chế độ mặc định — dân gian gọi là sloppy mode (chế độ dễ dãi) — cố gắng “chữa cháy” cho lập trình viên: gõ sai tên biến thì nó tự tạo biến mới, gán vào thứ không được phép ghi thì nó lặng lẽ bỏ qua. Nghe thì tử tế, nhưng đó chính là cách bug trốn được vào tận môi trường thật.</p>
+  <p>Strict mode (chế độ nghiêm ngặt), bật bằng chuỗi <code>'use strict'</code>, đảo ngược thái độ đó: <strong>sai là báo ngay</strong>.</p>
+<pre><code><span class="str">'use strict'</span>;        <span class="cm">// đầu file — áp cho cả file</span>
+
+<span class="kw">function</span> f() {
+  <span class="str">'use strict'</span>;      <span class="cm">// hoặc đầu hàm — chỉ áp cho hàm này</span>
+}</code></pre>
+  <div class="callout">
+    <p><strong>Có thể bạn đang dùng nó mà không biết:</strong> mọi ES module (file dùng <code>import/export</code>) và mọi thân <code>class</code> <em>luôn luôn</em> chạy ở strict mode. Code Angular, React hay bất kỳ dự án bundler (công cụ đóng gói) hiện đại nào cũng vậy — nên bài này giải thích chính cái luật mà code của bạn đang chạy dưới đó.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Đổi những gì</p><h2>Bảy khác biệt hay gặp nhất</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Tình huống</th><th>Sloppy mode</th><th>Strict mode</th></tr></thead>
+    <tbody>
+      <tr><td>x = 10</td><td>Tạo biến toàn cục</td><td><span class="no">ReferenceError</span></td></tr>
+      <tr><td>this trong hàm thường</td><td><code>window</code> / <code>globalThis</code></td><td><code>undefined</code></td></tr>
+      <tr><td>Ghi vào thuộc tính chỉ đọc</td><td>Im lặng bỏ qua</td><td><span class="no">TypeError</span></td></tr>
+      <tr><td>Ghi vào object đã <code>freeze</code></td><td>Im lặng bỏ qua</td><td><span class="no">TypeError</span></td></tr>
+      <tr><td>Trùng tên tham số</td><td>Cho phép</td><td><span class="no">SyntaxError</span></td></tr>
+      <tr><td>Số hệ 8 kiểu <code>010</code></td><td>= 8</td><td><span class="no">SyntaxError</span></td></tr>
+      <tr><td>delete bienNaoDo</td><td>Trả <code>false</code></td><td><span class="no">SyntaxError</span></td></tr>
+      <tr><td>Câu lệnh <code>with</code></td><td>Cho phép</td><td><span class="no">SyntaxError</span></td></tr>
+      <tr><td><code>arguments</code> và tham số</td><td>Đồng bộ hai chiều</td><td>Tách rời, an toàn hơn</td></tr>
+    </tbody>
+  </table></div>
+<pre><code><span class="str">'use strict'</span>;
+
+<span class="kw">function</span> demTien() {
+  tong = 0;             <span class="cm">// ✗ ReferenceError — quên let, bắt được ngay</span>
+}
+
+<span class="kw">const</span> cauHinh = Object.freeze({ url: <span class="str">'/api'</span> });
+cauHinh.url = <span class="str">'/hack'</span>;      <span class="cm">// ✗ TypeError — sloppy mode sẽ im lặng nuốt</span>
+
+<span class="kw">function</span> ai() { <span class="kw">return</span> <span class="kw">this</span>; }
+ai();                    <span class="cm">// undefined (sloppy mode: window)</span></code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Bắt lỗi sớm.</b> Gõ sai tên biến nổ ngay tại dòng gây lỗi, thay vì đẻ ra một biến toàn cục ma và vỡ ở nơi khác.</li>
+        <li><b>Bảo vệ dữ liệu bất biến.</b> <code>Object.freeze</code> mới thực sự có tác dụng — không còn "ghi hụt" âm thầm.</li>
+        <li><b><code>this</code> trung thực.</b> <code>this</code> là <code>undefined</code> khi mất ngữ cảnh giúp lộ ra lỗi, thay vì lặng lẽ ghi rác lên đối tượng toàn cục.</li>
+        <li><b>Engine tối ưu tốt hơn.</b> Bỏ <code>with</code> và các luật động khiến trình biên dịch dự đoán được nhiều hơn.</li>
+        <li><b>Dọn đường cho tương lai.</b> Cấm dùng các từ dành riêng (<code>implements</code>, <code>interface</code>, <code>package</code>…) làm tên biến.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="str">'use strict'</span>;
+<span class="kw">let</span> soLuong = 0;
+soLuongg = 5;        <span class="cm">// ✗ ReferenceError ngay tại đây</span>
+
+<span class="cm">// Không có strict mode: lặng lẽ tạo biến toàn cục "soLuongg",</span>
+<span class="cm">// soLuong vẫn là 0, và bug lộ ra ở màn hình khác vài ngày sau.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Code cũ có thể vỡ.</b> Bật strict lên một file legacy đang dựa vào biến toàn cục ngầm là gãy ngay.</li>
+        <li><b><code>this = undefined</code> gây lỗi mới.</b> Những chỗ vốn dựa vào <code>this</code> trỏ về <code>window</code> nay ném <code>TypeError</code>.</li>
+        <li><b>Không tắt lại được.</b> Trong phạm vi đã strict, không có cách nào quay về sloppy.</li>
+        <li><b>Bẫy khi nối file kiểu cũ.</b> Nối nhiều file thành một bundle: một file mở đầu bằng <code>'use strict'</code> sẽ áp luật lên toàn bộ những file dán sau nó.</li>
+        <li><b>Dễ đặt sai chỗ.</b> Câu lệnh phải nằm ở dòng đầu tiên của file/hàm; đặt sau một câu lệnh khác là nó bị coi như chuỗi vô nghĩa và <em>không có tác dụng</em>, mà cũng không báo gì.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// Code cũ dựa vào this = window</span>
+<span class="kw">function</span> dangKy() { <span class="kw">this</span>.ten = <span class="str">'App'</span>; }
+dangKy();            <span class="cm">// sloppy: gán window.ten — strict: TypeError</span>
+
+<span class="cm">// Bẫy khi nối file kiểu cũ:</span>
+<span class="cm">// a.js mở đầu bằng 'use strict' → b.js, c.js dán sau cũng bị strict theo,</span>
+<span class="cm">// dù chúng chưa bao giờ được viết để chạy ở chế độ đó.</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Khuyến nghị:</strong> với dự án mới, đừng viết <code>'use strict'</code> bằng tay — hãy dùng ES module (<code>import/export</code>) hoặc TypeScript, khi đó strict mode được bật sẵn cho toàn bộ code. Chỉ thêm dòng đó khi phải viết script cổ điển nhúng thẳng bằng thẻ <code>&lt;script&gt;</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>strict mode</td><td>Chế độ nghiêm ngặt — bộ luật chặt hơn của JavaScript.</td></tr>
+      <tr><td>sloppy mode</td><td>Chế độ dễ dãi — chế độ mặc định, tự chữa lỗi thay lập trình viên.</td></tr>
+      <tr><td>ES module</td><td>Mô-đun chuẩn ES6, dùng <code>import</code> / <code>export</code>; luôn chạy strict.</td></tr>
+      <tr><td>bundler</td><td>Công cụ đóng gói (Webpack, Vite, esbuild…) gộp nhiều file thành gói phát hành.</td></tr>
+      <tr><td>Object.freeze</td><td>Đóng băng đối tượng — cấm thêm/sửa/xoá thuộc tính.</td></tr>
+      <tr><td>globalThis</td><td>Đối tượng toàn cục chuẩn (<code>window</code> trên trình duyệt).</td></tr>
+      <tr><td>SyntaxError</td><td>Lỗi cú pháp — code sai luật, không chạy được dòng nào.</td></tr>
+      <tr><td>legacy code</td><td>Code cũ đang phải nuôi tiếp, thường viết theo chuẩn đời trước.</td></tr>
+    </tbody>
+  </table></div>
+</section>

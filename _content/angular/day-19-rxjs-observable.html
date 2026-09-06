@@ -1,0 +1,90 @@
+<!--meta
+title: Day 19 — Reactive Programming, RxJS và Observable
+eyebrow: Angular · Day 19
+short: Day 19
+lede: Thay vì hỏi "dữ liệu đâu rồi?", bạn đăng ký nhận tin và mô tả sẵn sẽ làm gì khi tin tới. Đó là lập trình phản ứng.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Cái vòi nước, không phải cái xô</h2></div>
+  <p>Một <code>Promise</code> là cái xô: hứa đúng <em>một</em> gáo nước, đến rồi là xong. <strong>Observable</strong> (luồng dữ liệu quan sát được) là cái vòi: có thể chảy ra không giá trị nào, một giá trị, hay hàng nghìn giá trị theo thời gian — cho tới khi bạn khoá vòi.</p>
+  <p>Vì thế mọi thứ "xảy ra theo thời gian" đều mô tả được bằng observable: cú click, phím gõ, phản hồi API, tin nhắn WebSocket, thay đổi URL.</p>
+<pre><code><span class="kw">const</span> sub = <span class="kw">this</span>.http.get&lt;SanPham[]&gt;(<span class="str">'/api/sp'</span>).subscribe({
+  next: (ds) =&gt; <span class="kw">this</span>.items.set(ds),      <span class="cm">// mỗi lần có dữ liệu</span>
+  error: (e) =&gt; <span class="kw">this</span>.loi.set(e.message),  <span class="cm">// lỗi — luồng dừng hẳn</span>
+  complete: () =&gt; console.log(<span class="str">'xong'</span>),     <span class="cm">// hết dữ liệu</span>
+});
+sub.unsubscribe();                          <span class="cm">// khoá vòi</span></code></pre>
+  <div class="callout">
+    <p><strong>Lười (lazy) là tính chất quan trọng nhất.</strong> Observable không làm gì cho tới khi có người <code>subscribe</code>. Gọi <code>http.get(...)</code> mà không subscribe thì <em>không có request nào được gửi</em> — khác hẳn <code>Promise</code>, vốn chạy ngay khi được tạo.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">So sánh</p><h2>Observable và Promise</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Tiêu chí</th><th>Promise</th><th>Observable</th></tr></thead>
+    <tbody>
+      <tr><td>Số giá trị</td><td>Đúng một</td><td>Không giới hạn</td></tr>
+      <tr><td>Khởi chạy</td><td>Ngay khi tạo</td><td>Chỉ khi có người đăng ký</td></tr>
+      <tr><td>Huỷ giữa chừng</td><td><span class="no">Không</span></td><td><span class="yes">Có, bằng unsubscribe</span></td></tr>
+      <tr><td>Toán tử biến đổi</td><td>then/catch</td><td>Hàng trăm operator</td></tr>
+      <tr><td>Chạy lại</td><td>Không</td><td>Subscribe lại là chạy lại</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Một mô hình cho mọi thứ bất đồng bộ:</b> HTTP, sự kiện, thời gian, router — cùng bộ toán tử.</li>
+        <li><b>Huỷ được.</b> Rời màn hình là huỷ request đang chạy, không phí băng thông, không ghi kết quả lên màn đã chết.</li>
+        <li><b>Ghép luồng mạnh.</b> Gộp, chờ nhau, chống dội phím, thử lại — mỗi thứ một toán tử.</li>
+        <li><b>Angular dùng nó khắp nơi</b>, nên hiểu RxJS là đọc được HttpClient, Router, Forms.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Rời màn khi request chưa xong → huỷ luôn, không ghi lên màn đã chết</span>
+<span class="kw">const</span> sub = api.danhSach().subscribe((ds) =&gt; <span class="kw">this</span>.items.set(ds));
+sub.unsubscribe();      <span class="cm">// Promise không làm được điều này</span>
+
+<span class="cm">// Và cùng một bộ toán tử cho mọi nguồn:</span>
+fromEvent(el, <span class="str">'input'</span>).pipe(debounceTime(300));   <span class="cm">// sự kiện</span>
+api.tim(tk).pipe(retry(2));                       <span class="cm">// HTTP</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Đường học dốc.</b> Hàng trăm toán tử, tên gọi khó nhớ, đọc marble diagram mới hình dung được.</li>
+        <li><b>Rất dễ rò rỉ.</b> Quên <code>unsubscribe</code> là component chết rồi mà luồng vẫn chạy.</li>
+        <li><b>Lỗi khó lần.</b> Stack trace đi qua nhiều lớp toán tử, không chỉ thẳng tới dòng gây lỗi.</li>
+        <li><b>Dễ dùng quá tay.</b> Nhiều việc chỉ cần <code>signal</code> hoặc <code>async/await</code> là đủ.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="kw">this</span>.http.get(<span class="str">'/api/kho'</span>);      <span class="cm">// ✗ KHÔNG có request nào được gửi</span>
+<span class="cm">// Observable lười: thiếu subscribe (hoặc async pipe) là không có gì xảy ra.</span>
+<span class="cm">// Người quen Promise mất hàng giờ để phát hiện điều này.</span>
+
+ngOnInit() { <span class="kw">this</span>.ws.tinNhan$.subscribe(…); }   <span class="cm">// không huỷ</span>
+<span class="cm">// → vào ra màn 10 lần = 10 bản component còn sống, xử lý chồng chéo</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>reactive programming</td><td>Lập trình phản ứng — mô tả cách phản ứng với dữ liệu tới.</td></tr>
+      <tr><td>Observable</td><td>Luồng dữ liệu có thể quan sát theo thời gian.</td></tr>
+      <tr><td>subscribe</td><td>Đăng ký nhận dữ liệu; cũng là lúc luồng bắt đầu chạy.</td></tr>
+      <tr><td>unsubscribe</td><td>Huỷ đăng ký, ngừng nhận và dọn tài nguyên.</td></tr>
+      <tr><td>operator</td><td>Toán tử — hàm biến đổi luồng.</td></tr>
+      <tr><td>lazy</td><td>Lười — chỉ chạy khi có người cần.</td></tr>
+      <tr><td>marble diagram</td><td>Sơ đồ bi — cách vẽ luồng theo trục thời gian.</td></tr>
+    </tbody>
+  </table></div>
+</section>

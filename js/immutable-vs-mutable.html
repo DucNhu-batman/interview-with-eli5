@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="vi" data-track="js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Immutable và Mutable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><a href="index.html">JavaScript</a><span>/</span><span class="now">Immutable &amp; Mutable</span></nav>
+<header class="hero col">
+<p class="eyebrow">JavaScript · Bài 6</p>
+<h1>Immutable và Mutable</h1>
+<p class="lede">Vì sao sửa một chuỗi thì luôn ra chuỗi mới, còn sửa một mảng thì mảng cũ biến mất luôn? Vì trong JavaScript có hai loại dữ liệu: loại không cho sửa và loại cho sửa thoải mái.</p>
+</header>
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Tấm bảng phấn và con tem</h2></div>
+  <p>Hình dung dữ liệu của bạn là thứ để viết chữ lên.</p>
+  <p><strong>Mutable</strong> (khả biến — sửa được tại chỗ) giống một <em>tấm bảng phấn</em>. Vẫn là tấm bảng ấy, treo đúng chỗ ấy, nhưng ai cầm giẻ cũng xoá được và viết đè lên. Ai đang nhìn tấm bảng sẽ thấy chữ đổi ngay trước mắt.</p>
+  <p><strong>Immutable</strong> (bất biến — không sửa được tại chỗ) giống một <em>con tem đã in</em>. Muốn nội dung khác thì phải in một con tem mới; con tem cũ vẫn nằm đó, y nguyên. Ai đang cầm tem cũ thì mãi mãi thấy nội dung cũ.</p>
+  <p>Trong JavaScript, chuyện này không phải bạn chọn — nó do <em>kiểu dữ liệu</em> quyết định:</p>
+  <ul>
+    <li>Mọi <strong>primitive</strong> (kiểu nguyên thuỷ: <code>string</code>, <code>number</code>, <code>boolean</code>, <code>null</code>, <code>undefined</code>, <code>symbol</code>, <code>bigint</code>) đều <strong>bất biến</strong>. Không có cách nào sửa một chuỗi hay một số tại chỗ.</li>
+    <li>Mọi <strong>object</strong> (đối tượng — kể cả <code>array</code>/mảng, <code>function</code>/hàm, <code>Date</code>, <code>Map</code>, <code>Set</code>) đều <strong>khả biến</strong> theo mặc định.</li>
+  </ul>
+  <div class="callout">
+    <p><strong>Đừng nhầm với bài trước:</strong> <em>primitive / reference</em> nói về <strong>cách biến cất giữ</strong> giá trị (giữ thẳng giá trị hay chỉ giữ địa chỉ). <em>Mutable / immutable</em> nói về <strong>bản thân giá trị có sửa được không</strong>. Hai câu hỏi khác nhau, nhưng ở JS chúng đi kèm nhau: cái gì primitive thì bất biến, cái gì reference thì khả biến.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Sửa tại chỗ hay đẻ ra cái mới</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 268" role="img" aria-label="Bên trái: thao tác khả biến push sửa thẳng vào kho cũ, địa chỉ không đổi. Bên phải: thao tác bất biến tạo kho mới, kho cũ giữ nguyên.">
+        <defs><marker id="im1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 10,5 0,10" fill="currentColor"></polygon></marker></defs>
+
+        <text x="18" y="24" font-size="12.5" font-weight="700" fill="var(--accent)">MUTABLE — sửa thẳng vào kho cũ</text>
+        <g color="var(--accent)">
+          <rect x="18" y="42" width="112" height="38" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+          <text x="74" y="66" font-size="11.5" text-anchor="middle" fill="var(--ink)" font-family="monospace">ds = @kho1</text>
+          <line x1="134" y1="61" x2="176" y2="61" stroke="currentColor" stroke-width="2" marker-end="url(#im1)"></line>
+          <rect x="182" y="40" width="146" height="42" rx="11" fill="var(--accent-soft)" stroke="currentColor" stroke-width="1.6"></rect>
+          <text x="255" y="66" font-size="12" text-anchor="middle" fill="var(--ink)" font-family="monospace">[1, 2, 3]</text>
+          <text x="18" y="112" font-size="11.5" fill="var(--ink)" font-family="monospace">ds.push(4)</text>
+          <path d="M 255 90 L 255 128" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#im1)"></path>
+          <rect x="18" y="140" width="112" height="38" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+          <text x="74" y="164" font-size="11.5" text-anchor="middle" fill="var(--ink)" font-family="monospace">ds = @kho1</text>
+          <line x1="134" y1="159" x2="176" y2="159" stroke="currentColor" stroke-width="2" marker-end="url(#im1)"></line>
+          <rect x="182" y="138" width="146" height="42" rx="11" fill="var(--accent-soft)" stroke="currentColor" stroke-width="1.6"></rect>
+          <text x="255" y="164" font-size="12" text-anchor="middle" fill="var(--ink)" font-family="monospace">[1, 2, 3, 4]</text>
+        </g>
+        <text x="18" y="210" font-size="11.5" fill="var(--ink)" opacity=".75">Vẫn là kho1 — chỉ ruột bị đổi.</text>
+        <text x="18" y="230" font-size="11.5" font-weight="700" fill="var(--accent)">→ ai cầm @kho1 cũng thấy 4 phần tử</text>
+
+        <line x1="352" y1="16" x2="352" y2="252" stroke="currentColor" stroke-width="1" opacity=".2"></line>
+
+        <text x="376" y="24" font-size="12.5" font-weight="700" fill="var(--good)">IMMUTABLE — dựng kho mới, kho cũ nguyên vẹn</text>
+        <g color="var(--good)">
+          <rect x="376" y="42" width="112" height="38" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+          <text x="432" y="66" font-size="11.5" text-anchor="middle" fill="var(--ink)" font-family="monospace">ds = @kho1</text>
+          <line x1="492" y1="61" x2="534" y2="61" stroke="currentColor" stroke-width="2" marker-end="url(#im1)"></line>
+          <rect x="540" y="40" width="162" height="42" rx="11" fill="var(--good-soft)" stroke="currentColor" stroke-width="1.6"></rect>
+          <text x="621" y="66" font-size="12" text-anchor="middle" fill="var(--ink)" font-family="monospace">[1, 2, 3]</text>
+          <text x="376" y="112" font-size="11.5" fill="var(--ink)" font-family="monospace">ds2 = [...ds, 4]</text>
+          <rect x="376" y="140" width="112" height="38" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+          <text x="432" y="164" font-size="11.5" text-anchor="middle" fill="var(--ink)" font-family="monospace">ds2 = @kho2</text>
+          <line x1="492" y1="159" x2="534" y2="159" stroke="currentColor" stroke-width="2" marker-end="url(#im1)"></line>
+          <rect x="540" y="138" width="162" height="42" rx="11" fill="var(--good-soft)" stroke="currentColor" stroke-width="1.6"></rect>
+          <text x="621" y="164" font-size="12" text-anchor="middle" fill="var(--ink)" font-family="monospace">[1, 2, 3, 4]</text>
+        </g>
+        <text x="376" y="210" font-size="11.5" fill="var(--ink)" opacity=".75">Hai kho khác nhau, hai địa chỉ khác nhau.</text>
+        <text x="376" y="230" font-size="11.5" font-weight="700" fill="var(--good)">→ ai cầm @kho1 vẫn thấy 3 phần tử</text>
+      </svg>
+    </div>
+    <figcaption>Cùng một ý định "thêm số 4", nhưng một bên xoá bảng viết lại, một bên in con tem mới.</figcaption>
+  </figure>
+  <div class="col">
+<pre><code><span class="cm">// 1) Primitive: mọi thao tác đều TRẢ VỀ giá trị mới, không sửa cái cũ</span>
+<span class="kw">let</span> ten = <span class="str">'an'</span>;
+ten.toUpperCase();            <span class="cm">// tạo chuỗi mới rồi vứt đi</span>
+console.log(ten);             <span class="out">// 'an'  — không xi nhê</span>
+
+ten[0] = <span class="str">'A'</span>;                <span class="cm">// im lặng không làm gì (ở strict mode thì ném lỗi)</span>
+console.log(ten);             <span class="out">// 'an'</span>
+
+ten = ten.toUpperCase();      <span class="cm">// muốn đổi thì phải GÁN LẠI biến</span>
+console.log(ten);             <span class="out">// 'AN'</span>
+
+<span class="cm">// 2) Object/array: sửa thẳng được, và mọi người cùng thấy</span>
+<span class="kw">const</span> ds  = [1, 2, 3];
+<span class="kw">const</span> ds2 = ds;
+ds.push(4);
+console.log(ds2);             <span class="out">// [1,2,3,4] — ds2 chưa hề bị đụng tới</span></code></pre>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Bẫy số một:</strong> <code>const</code> <em>không</em> có nghĩa là bất biến. <code>const</code> chỉ khoá <strong>cái tên biến</strong>, cấm bạn gán lại địa chỉ khác; ruột của object thì vẫn sửa vô tư. <code>const o = {a:1}; o.a = 2;</code> chạy ngon lành, còn <code>o = {}</code> mới báo lỗi.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Cách làm</p><h2>Ba mức khoá dữ liệu lại</h2></div>
+  <ol class="steps">
+    <li><span><strong>Không sửa tại chỗ — chỉ dựng bản mới.</strong> Đây là cách phổ biến nhất và không cần công cụ gì: <code>{...cu, ten:'mới'}</code>, <code>[...ds, x]</code>, <code>ds.filter(...)</code>, <code>ds.map(...)</code>. Kỷ luật nằm ở người viết, không có ai chặn nếu bạn quên.</span></li>
+    <li><span><strong><code>Object.freeze(obj)</code> — đóng băng.</strong> Sau khi gọi, mọi phép sửa lên object đó bị bỏ qua (strict mode thì ném <code>TypeError</code>). Nhưng nó <em>nông</em> (shallow): chỉ đóng băng tầng ngoài cùng, object con bên trong vẫn sửa được như thường.</span></li>
+    <li><span><strong>Tách bản sao sâu trước khi đưa ra ngoài.</strong> <code>structuredClone(obj)</code> chép toàn bộ các tầng lồng nhau, nên người nhận có sửa cũng không đụng tới bản gốc của bạn. Đổi lại là tốn bộ nhớ và thời gian.</span></li>
+  </ol>
+<pre><code><span class="kw">const</span> cauHinh = Object.freeze({ trang: 1, boLoc: { trang: 1 } });
+
+cauHinh.trang = 9;              <span class="cm">// ✗ bị bỏ qua (strict mode: TypeError)</span>
+console.log(cauHinh.trang);     <span class="out">// 1  — an toàn</span>
+
+cauHinh.boLoc.trang = 9;        <span class="cm">// ✓ vẫn sửa được! freeze chỉ nông</span>
+console.log(cauHinh.boLoc.trang); <span class="out">// 9  — thủng ở tầng trong</span>
+
+<span class="cm">// Muốn kín thì phải đóng băng đệ quy</span>
+<span class="kw">const</span> dongBangSau = (o) =&gt;
+  (Object.values(o).forEach((v) =&gt; v &amp;&amp; <span class="kw">typeof</span> v === <span class="str">'object'</span> &amp;&amp; dongBangSau(v)),
+   Object.freeze(o));</code></pre>
+  <p>Từ ES2023, mảng còn có sẵn bộ bốn "phiên bản bất biến" của các thao tác vốn sửa tại chỗ — nhận ra chúng nhờ tiền tố <code>to</code>:</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Sửa tại chỗ (mutable)</th><th>Trả bản mới (immutable)</th><th>Việc nó làm</th></tr></thead>
+    <tbody>
+      <tr><td><code>ds.sort()</code></td><td><code>ds.toSorted()</code></td><td>Sắp xếp</td></tr>
+      <tr><td><code>ds.reverse()</code></td><td><code>ds.toReversed()</code></td><td>Đảo ngược</td></tr>
+      <tr><td><code>ds.splice(i, n, x)</code></td><td><code>ds.toSpliced(i, n, x)</code></td><td>Cắt / chèn giữa mảng</td></tr>
+      <tr><td><code>ds[i] = x</code></td><td><code>ds.with(i, x)</code></td><td>Thay một phần tử</td></tr>
+      <tr><td><code>ds.push / pop / shift / unshift / fill</code></td><td><code>[...ds, x]</code>, <code>ds.slice(...)</code>, <code>ds.concat(...)</code></td><td>Thêm / bớt đầu cuối</td></tr>
+    </tbody>
+  </table></div>
+  <p>Còn <code>map</code>, <code>filter</code>, <code>slice</code>, <code>concat</code>, <code>flat</code>, <code>join</code> thì <strong>vốn đã</strong> không sửa mảng gốc — cứ yên tâm dùng.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của mỗi lối làm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Immutable — lợi</h3>
+      <ul>
+        <li><b>Không có tác dụng phụ.</b> Truyền dữ liệu cho hàm lạ mà không sợ nó sửa trộm; bug "ai đó đổi mảng của tôi" biến mất.</li>
+        <li><b>So sánh siêu rẻ.</b> Chỉ cần <code>cu !== moi</code> là biết có thay đổi — đây chính là thứ <code>OnPush</code> của Angular và <code>memo</code> của React dựa vào.</li>
+        <li><b>Giữ được lịch sử.</b> Bản cũ còn nguyên nên làm undo/redo (hoàn tác), time-travel debug rất dễ.</li>
+        <li><b>Dễ suy luận, dễ chạy song song.</b> Giá trị không đổi giữa chừng thì đọc code tới đâu chắc tới đó.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="kw">const</span> cu  = [{ id: 1, xong: <span class="kw">false</span> }];
+<span class="kw">const</span> moi = cu.map((t) =&gt;
+  t.id === 1 ? { ...t, xong: <span class="kw">true</span> } : t);
+
+console.log(cu === moi);      <span class="out">// false → UI biết phải vẽ lại</span>
+console.log(cu[0].xong);      <span class="out">// false → bản cũ để undo</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Immutable — hại</h3>
+      <ul>
+        <li><b>Tốn bộ nhớ và CPU.</b> Mỗi lần đổi một ô là dựng lại cả mảng/object; với danh sách vạn dòng cập nhật liên tục thì thấy rõ độ giật.</li>
+        <li><b>Code dài dòng khi lồng sâu.</b> Đổi một trường ở tầng thứ tư phải trải spread qua cả bốn tầng.</li>
+        <li><b>Tạo nhiều rác.</b> Bộ thu gom (garbage collector) phải dọn liên tục các bản trung gian.</li>
+        <li><b>Không ai ép buộc.</b> Trừ khi dùng <code>Object.freeze</code>, đây chỉ là thoả thuận — một dòng <code>push</code> lọt vào là hỏng cả hệ thống.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// đổi đúng 1 trường ở tầng sâu</span>
+<span class="kw">const</span> moi = {
+  ...st,
+  user: { ...st.user,
+    dc: { ...st.user.dc, tp: <span class="str">'Huế'</span> } },
+};                    <span class="out">// 3 tầng spread cho 1 chữ</span></code></pre></div>
+    </div>
+  </div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mutable — lợi</h3>
+      <ul>
+        <li><b>Nhanh và tiết kiệm.</b> Sửa một ô chỉ đụng đúng ô đó, không cấp phát vùng nhớ mới.</li>
+        <li><b>Viết ngắn, đọc thuận.</b> <code>ds.push(x)</code> nói đúng ý định, không vòng vo.</li>
+        <li><b>Chia sẻ state tự nhiên.</b> Nhiều nơi cùng trỏ vào một dữ liệu là thấy thay đổi ngay, không cần cơ chế đồng bộ.</li>
+        <li><b>Hợp với thuật toán tại chỗ.</b> Sắp xếp, hoán vị, gom nhóm trên mảng lớn.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="kw">const</span> kq = [];
+<span class="kw">for</span> (<span class="kw">const</span> x <span class="kw">of</span> nguon) kq.push(bienDoi(x));
+<span class="cm">// nhanh hơn hẳn: kq = [...kq, bienDoi(x)]</span>
+<span class="cm">// vì cách kia dựng lại mảng ở MỖI vòng lặp</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mutable — hại</h3>
+      <ul>
+        <li><b>Tác dụng phụ từ xa.</b> Một hàm ở tầng nào đó sửa dữ liệu của bạn mà không báo — loại bug tốn nhiều giờ nhất để lần ra.</li>
+        <li><b>UI không nhận ra thay đổi.</b> Sửa tại chỗ thì địa chỉ không đổi, nên phép so sánh tham chiếu của <code>OnPush</code>/<code>memo</code> kết luận "chẳng có gì mới".</li>
+        <li><b>Không hoàn tác được.</b> Bản cũ đã bị đè, muốn undo phải tự chép lại từ trước.</li>
+        <li><b>Hằng số giả.</b> Một <code>const</code> dùng chung bị sửa một lần là sai vĩnh viễn cho mọi lượt chạy sau.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="kw">const</span> goc = [3, 1, 2];
+<span class="kw">const</span> daSap = goc.sort();     <span class="cm">// sort() sửa TẠI CHỖ</span>
+
+console.log(goc);            <span class="out">// [1,2,3] — gốc đã hỏng</span>
+console.log(daSap === goc);  <span class="out">// true → OnPush nghĩ "không đổi"</span>
+
+<span class="cm">// Cách đúng:</span>
+<span class="kw">const</span> an = goc.toSorted();   <span class="cm">// hoặc [...goc].sort()</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Chọn thế nào cho đỡ đau đầu:</strong> mặc định dùng <em>bất biến</em> cho mọi dữ liệu đi ra khỏi hàm — state của ứng dụng, dữ liệu bind ra template, tham số truyền đi nơi khác. Chỉ dùng <em>khả biến</em> ở phần bên trong một hàm, trên biến cục bộ mà không ai ngoài kia nhìn thấy (dựng mảng trong vòng lặp, sắp xếp bản nháp). Ranh giới là: <strong>sửa tại chỗ thì được, miễn là không ai khác đang cầm cái đó</strong>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>immutable</td><td>Bất biến — giá trị không thể sửa tại chỗ, muốn đổi phải tạo bản mới.</td></tr>
+      <tr><td>mutable</td><td>Khả biến — sửa được ngay trên chính giá trị đó.</td></tr>
+      <tr><td>mutate / sửa tại chỗ</td><td>Thay đổi ruột của một dữ liệu mà giữ nguyên địa chỉ của nó.</td></tr>
+      <tr><td>primitive</td><td>Kiểu nguyên thuỷ — string, number, boolean, null, undefined, symbol, bigint.</td></tr>
+      <tr><td>object</td><td>Đối tượng — gồm cả mảng (array), hàm (function), Date, Map, Set.</td></tr>
+      <tr><td>Object.freeze</td><td>Hàm đóng băng object, chặn mọi phép sửa — nhưng chỉ ở tầng ngoài cùng.</td></tr>
+      <tr><td>shallow / deep</td><td>Nông / sâu — chỉ tầng ngoài cùng, hay xuyên qua mọi tầng lồng nhau.</td></tr>
+      <tr><td>structuredClone</td><td>Hàm có sẵn của trình duyệt, chép sâu một object đúng chuẩn.</td></tr>
+      <tr><td>spread (<code>...</code>)</td><td>Cú pháp "rải" — trải các phần tử/thuộc tính của cái cũ vào một cái mới.</td></tr>
+      <tr><td>side effect</td><td>Tác dụng phụ — hàm thay đổi thứ nằm ngoài chính nó.</td></tr>
+      <tr><td>strict mode</td><td>Chế độ nghiêm ngặt của JS; biến các lỗi im lặng thành lỗi thật.</td></tr>
+      <tr><td>OnPush</td><td>Chiến lược phát hiện thay đổi của Angular, so sánh bằng địa chỉ chứ không so nội dung.</td></tr>
+      <tr><td>garbage collector</td><td>Bộ thu gom rác — tự động thu hồi vùng nhớ không còn ai dùng.</td></tr>
+      <tr><td>undo / redo</td><td>Hoàn tác / làm lại — quay về một bản dữ liệu trước đó.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<nav class="pager"><a class="prev" href="pass-by-value-vs-reference.html"><span class="dir">← Bài trước</span><span class="nm">Pass by value và pass by reference</span></a><a class="next" href="loose-vs-strict-equality.html"><span class="dir">Bài tiếp →</span><span class="nm">== và === — so sánh lỏng và so sánh nghiêm</span></a></nav>
+<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 6/13</p></footer>
+</div>
+</body>
+</html>

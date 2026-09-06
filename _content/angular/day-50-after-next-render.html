@@ -1,0 +1,439 @@
+<!--meta
+title: Day 50 — afterNextRender: đợi vẽ xong rồi hãy đo
+eyebrow: Angular · Day 50
+short: Day 50
+lede: Thẻ HTML chỉ có số đo thật sau khi Angular dựng xong toàn bộ cây component. afterNextRender là cái hẹn giờ chuẩn để đo, để ghi và để trao thẻ cho thư viện ngoài — chạy đúng một lần, và không bao giờ chạy trên máy chủ.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Vấn đề</p><h2>Hỏi chiều cao lúc thợ còn đang xây</h2></div>
+  <p>Có những việc chỉ làm được khi thẻ HTML thật đã nằm trên màn hình: đo chiều rộng một cột bảng, cuộn tới dòng vừa thêm, đặt con trỏ vào ô nhập đầu tiên, hay trao một thẻ <code>&lt;div&gt;</code> rỗng cho thư viện vẽ bản đồ. Đặt mấy việc đó vào <b>ngOnInit</b> (móc vòng đời — <i>lifecycle hook</i>, hàm Angular tự gọi tại một mốc nhất định — chạy ngay sau khi component vừa được tạo) thì hỏng chắc: lúc ấy trên màn hình chưa có gì cả.</p>
+  <p>Chuyển xuống <b>ngAfterViewInit</b> (móc vòng đời chạy sau khi <i>view</i> — phần giao diện của chính component đó — đã dựng xong) thì đỡ hơn, nhưng vẫn còn hớ. Nó chạy <b>ở giữa chừng</b> đợt <i>change detection</i> (dò tìm thay đổi — lượt Angular đi khắp cây component so lại các giá trị hiển thị), tại đúng mắt xích của component đó. Component con nằm sâu hơn, khối <code>@if</code> vừa bật, khối <code>@defer</code> (khối tải muộn) vẫn có thể chưa dựng. Bạn đang đo một căn nhà mà thợ còn đang xây tầng trên.</p>
+  <div class="callout">
+    <p><strong>Hình dung thế này.</strong> Bạn đặt thợ may rèm cho một căn phòng. Gọi lúc chưa xây xong thì đo được số 0. Gọi lúc thợ mới dựng khung, chưa trát tường thì đo ra số — nhưng là số sai. <b>afterNextRender</b> là lời hẹn: “<i>khi nào cả căn nhà xong hết, gọi tôi một tiếng</i>”. Chỉ một tiếng, đúng một lần.</p>
+  </div>
+<pre><code><span class="cm">// Ba chỗ đặt cùng một câu lệnh đo — chỉ chỗ thứ ba cho số đúng</span>
+export class BangKhoComponent {
+  <span class="kw">private readonly</span> bang = viewChild.required&lt;ElementRef&lt;HTMLElement&gt;&gt;(<span class="str">'bang'</span>);
+
+  <span class="kw">constructor</span>() {
+    afterNextRender(() =&gt; {
+      <span class="kw">this</span>.bang().nativeElement.offsetWidth;  <span class="out">// ✓ số thật, đo sau khi cả cây dựng xong</span>
+    });
+  }
+
+  ngOnInit(): void {
+    <span class="kw">this</span>.bang();                             <span class="cm">// ✗ nổ lỗi — signal query chưa có giá trị</span>
+  }
+
+  ngAfterViewInit(): void {
+    <span class="kw">this</span>.bang().nativeElement.offsetWidth;  <span class="cm">// ✗ có thẻ rồi, nhưng số chưa chắc đúng</span>
+  }
+}</code></pre>
+  <p><b>offsetWidth</b> là chiều rộng thật của thẻ HTML tính bằng điểm ảnh, do trình duyệt tính ra sau khi đã sắp xếp bố cục. Chưa sắp xếp thì nó trả về 0.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 1</p><h2>Chỗ đứng của nó trong một khung hình</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 700 512" role="img" aria-label="Chuỗi năm mốc trong một khung hình: sự kiện xảy ra, Angular quét change detection và ngOnInit cùng ngAfterViewInit chạy ở giữa đợt quét đó nên đo được số 0, cả cây component dựng xong DOM, afterNextRender chạy và đo ra số thật, cuối cùng trình duyệt vẽ khung hình cho người dùng thấy.">
+        <defs>
+          <marker id="anr-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"></polygon>
+          </marker>
+          <marker id="anr-ar-hi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="#7B6FE0"></polygon>
+          </marker>
+        </defs>
+
+        <rect x="120" y="16" width="330" height="56" rx="13" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="285" y="40" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">Có việc vừa xảy ra</text>
+        <text x="285" y="59" font-size="11.5" text-anchor="middle" fill="currentColor" opacity=".72">click · máy chủ trả dữ liệu · signal đổi</text>
+
+        <line x1="285" y1="72" x2="285" y2="110" stroke="currentColor" stroke-width="1.6" marker-end="url(#anr-ar)"></line>
+
+        <rect x="120" y="110" width="330" height="82" rx="13" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="285" y="136" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">Angular quét change detection</text>
+        <text x="285" y="156" font-size="11.5" text-anchor="middle" fill="currentColor" opacity=".72" font-family="monospace">ngOnInit · ngAfterViewInit</text>
+        <text x="285" y="175" font-size="11.5" text-anchor="middle" fill="currentColor" opacity=".72">chạy rải rác ở đây, theo từng component</text>
+
+        <line x1="450" y1="151" x2="486" y2="151" stroke="#D9587A" stroke-width="1.6" marker-end="url(#anr-ar)" opacity=".9"></line>
+        <text x="494" y="146" font-size="11.5" font-weight="700" fill="#D9587A">đo ở đây</text>
+        <text x="494" y="163" font-size="11.5" fill="currentColor" opacity=".75">→ ra 0, hoặc số cũ</text>
+
+        <line x1="285" y1="192" x2="285" y2="230" stroke="currentColor" stroke-width="1.6" marker-end="url(#anr-ar)"></line>
+
+        <rect x="120" y="230" width="330" height="56" rx="13" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="285" y="254" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">Cả cây component đã dựng xong DOM</text>
+        <text x="285" y="273" font-size="11.5" text-anchor="middle" fill="currentColor" opacity=".72">không còn component nào đang chờ dựng</text>
+
+        <line x1="285" y1="286" x2="285" y2="326" stroke="#7B6FE0" stroke-width="2.2" marker-end="url(#anr-ar-hi)"></line>
+        <text x="300" y="311" font-size="11" font-weight="700" fill="#7B6FE0">Angular gọi các hàm đã hẹn</text>
+
+        <rect x="120" y="326" width="330" height="80" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></rect>
+        <text x="285" y="352" font-size="13.5" font-weight="700" text-anchor="middle" fill="var(--accent)" font-family="monospace">afterNextRender()</text>
+        <text x="285" y="372" font-size="11.5" text-anchor="middle" fill="currentColor" opacity=".8">đo · ghi thẳng vào thẻ</text>
+        <text x="285" y="390" font-size="11.5" text-anchor="middle" fill="currentColor" opacity=".8">trao thẻ cho thư viện ngoài</text>
+
+        <line x1="450" y1="366" x2="486" y2="366" stroke="#2AA08C" stroke-width="1.6" marker-end="url(#anr-ar)" opacity=".9"></line>
+        <text x="494" y="361" font-size="11.5" font-weight="700" fill="#2AA08C">đo ở đây</text>
+        <text x="494" y="378" font-size="11.5" fill="currentColor" opacity=".75">→ số thật</text>
+
+        <line x1="285" y1="406" x2="285" y2="444" stroke="currentColor" stroke-width="1.6" marker-end="url(#anr-ar)"></line>
+
+        <rect x="120" y="444" width="330" height="56" rx="13" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="285" y="468" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">Trình duyệt vẽ khung hình</text>
+        <text x="285" y="487" font-size="11.5" text-anchor="middle" fill="currentColor" opacity=".72">người dùng mới thấy kết quả</text>
+      </svg>
+    </div>
+    <figcaption>Khác biệt nằm ở chỗ đứng, không ở nội dung hàm. <code>ngAfterViewInit</code> chạy <i>trong lúc</i> Angular còn đang đi khắp cây; <code>afterNextRender</code> chờ tới khi cả cây xong hẳn, và vẫn kịp trước lúc trình duyệt vẽ — nên bạn sửa thẻ ở đây thì người dùng không thấy màn hình nháy.</figcaption>
+  </figure>
+  <div class="col">
+    <p>Có một điểm nữa quan trọng không kém: <b>afterNextRender không chạy trên máy chủ</b>. Khi ứng dụng được dựng sẵn phía máy chủ — <b>SSR</b> (<i>server-side rendering</i>, kết xuất phía máy chủ, để trang hiện ra nhanh và máy tìm kiếm đọc được) — thì ở đó không có trình duyệt, không có <code>window</code> hay <code>document</code>, không có thẻ nào để đo. Angular đơn giản là bỏ qua các hàm này. Nhờ vậy nó là nơi an toàn để nhét mọi đoạn mã chỉ chạy được trên trình duyệt, không cần đi kiểm tra <code>isPlatformBrowser</code> thủ công nữa.</p>
+  </div>
+</section>
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 2</p><h2>“Render xong” và “vẽ xong” là hai chuyện khác nhau</h2></div>
+  <div class="col">
+    <p>Câu mô tả quen thuộc — “<i>chạy sau khi cả ứng dụng render xong, trước lúc trình duyệt vẽ</i>” — gộp hai chủ thể hoàn toàn khác nhau vào một dòng. Tách ra thì dễ hiểu ngay: <b>render là việc của Angular</b>, <b>vẽ là việc của trình duyệt</b>, và giữa hai việc đó còn một bước thứ ba mà hầu như không ai nhắc tới.</p>
+    <p>Trong một <b>khung hình</b> (<i>frame</i> — một lượt cập nhật màn hình của trình duyệt, thường khoảng 16 mili-giây một lượt), thứ tự thật là ba mốc chứ không phải hai.</p>
+  </div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Mốc</th><th>Ai làm</th><th>Xong mốc này thì bạn có gì</th></tr></thead>
+    <tbody>
+      <tr><td>1 · Dựng DOM</td><td>Angular</td><td>Thẻ đã nằm trong cây tài liệu. Nhưng <b>chưa ai tính</b> nó nằm ở đâu, rộng cao bao nhiêu. Đây chính là cái mà từ “<b>render xong</b>” muốn nói — và Angular chỉ nói được tới đây, vì nó không phải người tính bố cục.</td></tr>
+      <tr><td>2 · Tính bố cục</td><td>Trình duyệt</td><td>Mỗi thẻ có toạ độ và kích thước thật tính bằng điểm ảnh. Đây mới là lúc <code>offsetWidth</code> có nghĩa. Mốc này <b>không nằm trong từ “render xong”</b>.</td></tr>
+      <tr><td>3 · Vẽ</td><td>Trình duyệt</td><td>Điểm ảnh được tô lên màn hình. Người dùng <b>thấy</b>. Đây là cái mà từ “<b>vẽ</b>” muốn nói.</td></tr>
+    </tbody>
+  </table></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 700 300" role="img" aria-label="Một khung hình chia làm hai nửa. Nửa trái là việc của Angular khi JavaScript còn giữ quyền: quét change detection, DOM đã đủ thẻ tức là render xong, rồi afterNextRender chạy. Nửa phải là việc của trình duyệt sau khi JavaScript trả quyền: tính lại kiểu, tính bố cục, rồi vẽ cho người dùng thấy. Một mũi tên đứt nối từ afterNextRender sang bước tính bố cục, cho thấy khi mã hỏi số đo thì trình duyệt bị ép tính bố cục ngay tại chỗ.">
+        <defs>
+          <marker id="anr-fr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"></polygon>
+          </marker>
+          <marker id="anr-fr-hi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="var(--good)"></polygon>
+          </marker>
+        </defs>
+
+        <text x="16" y="28" font-size="12.5" font-weight="700" fill="var(--accent)" font-family="monospace">MỘT KHUNG HÌNH — trình duyệt chỉ vẽ đúng một lần, ở cuối</text>
+        <rect x="16" y="40" width="668" height="212" rx="16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="6 5" opacity=".38"></rect>
+
+        <rect x="32" y="58" width="310" height="176" rx="13" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="187" y="80" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor" opacity=".8">Angular chạy — trình duyệt đứng đợi</text>
+
+        <rect x="44" y="90" width="286" height="36" rx="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="187" y="113" font-size="11.5" text-anchor="middle" fill="currentColor">Quét change detection khắp cây</text>
+
+        <rect x="44" y="132" width="286" height="44" rx="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="187" y="151" font-size="11.5" text-anchor="middle" fill="currentColor">DOM đã đủ thẻ, không ai còn chờ dựng</text>
+        <text x="187" y="168" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent)">= “render xong”</text>
+
+        <rect x="44" y="182" width="286" height="48" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></rect>
+        <text x="187" y="203" font-size="12.5" font-weight="700" text-anchor="middle" fill="var(--accent)" font-family="monospace">afterNextRender()</text>
+        <text x="187" y="220" font-size="11" text-anchor="middle" fill="currentColor" opacity=".78">đo · ghi · trao thẻ cho thư viện ngoài</text>
+
+        <line x1="344" y1="108" x2="356" y2="108" stroke="currentColor" stroke-width="1.6" marker-end="url(#anr-fr)"></line>
+
+        <rect x="358" y="58" width="310" height="176" rx="13" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="513" y="80" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor" opacity=".8">Trình duyệt làm nốt phần của nó</text>
+
+        <rect x="370" y="90" width="286" height="36" rx="10" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="513" y="113" font-size="11.5" text-anchor="middle" fill="currentColor">Tính lại kiểu hiển thị (style)</text>
+
+        <rect x="370" y="132" width="286" height="44" rx="10" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="513" y="151" font-size="11.5" text-anchor="middle" fill="currentColor">Tính bố cục (layout)</text>
+        <text x="513" y="168" font-size="11" font-weight="700" text-anchor="middle" fill="var(--good)">= lúc offsetWidth có nghĩa</text>
+
+        <rect x="370" y="182" width="286" height="48" rx="10" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.6"></rect>
+        <text x="513" y="203" font-size="12.5" font-weight="700" text-anchor="middle" fill="currentColor">Vẽ (paint)</text>
+        <text x="513" y="220" font-size="11" text-anchor="middle" fill="currentColor" opacity=".78">người dùng mới thấy</text>
+
+        <path d="M330 206 C 350 206 350 154 366 154" fill="none" stroke="var(--good)" stroke-width="1.8" stroke-dasharray="4 4" marker-end="url(#anr-fr-hi)"></path>
+
+        <text x="16" y="274" font-size="11.5" font-weight="700" fill="var(--good)">Hỏi số đo trong afterNextRender ⇒ ép trình duyệt tính bố cục ngay tại chỗ — nên có số thật dù chưa vẽ.</text>
+        <text x="16" y="292" font-size="11.5" font-weight="700" fill="var(--bad)">setTimeout(…, 0) rơi ra ngoài khung hình này — không gì bảo đảm nó còn kịp trước lúc vẽ.</text>
+      </svg>
+    </div>
+    <figcaption>Nửa trái là Angular, nửa phải là trình duyệt. <code>afterNextRender</code> nằm ở <b>mép cuối của nửa trái</b>: muộn nhất có thể trong phần việc của Angular, nhưng vẫn còn nguyên phần việc của trình duyệt ở phía sau.</figcaption>
+  </figure>
+  <div class="col">
+    <p><b>Vì sao đo được số thật khi trình duyệt còn chưa vẽ?</b> Vì mốc 2 không cần mốc 3. Tính bố cục và tô màn hình là hai việc rời nhau; trình duyệt bình thường làm gộp cả hai ở cuối khung hình cho tiết kiệm, nhưng khi mã hỏi <code>offsetWidth</code> thì nó buộc phải bỏ dở việc gom và tính bố cục <i>ngay tại chỗ</i> để có câu trả lời — chuyện này gọi là <b>tính bố cục ép buộc</b> (<i>forced synchronous layout</i>). Angular đã dựng đủ thẻ, CSS đã đủ, nên con số ép ra được là con số thật.</p>
+    <p><b>Và vì sao lại quý cái chỗ “trước lúc vẽ”?</b> Vì <b>JavaScript chạy liền một mạch</b>: trong suốt một <i>task</i> (lượt việc — một mạch mã chạy không nghỉ), trình duyệt không được xen vào vẽ. Nó chỉ vẽ khi mạch đó kết thúc. <code>afterNextRender</code> nằm ở cuối mạch ấy, nên mọi thứ bạn sửa trong đó — đặt lại chiều cao, thêm lớp, cuộn tới dòng — <b>đi chung vào cùng một lần vẽ</b> với phần Angular vừa dựng. Người dùng chỉ thấy kết quả cuối.</p>
+    <p><code>setTimeout(…, 0)</code> thì ngược lại: nó xin một mạch <i>mới</i>. Mạch cũ kết thúc, trình duyệt được rảnh — và nếu đúng lúc đó tới hạn khung hình, nó vẽ luôn trạng thái chưa sửa. Đến khi mạch mới chạy và sửa xong thì phải đợi khung hình sau mới hiện ra. Kết quả là một cái nháy: người dùng thấy bảng chưa căn chiều cao, rồi mới thấy nó nhảy về đúng chỗ.</p>
+  </div>
+<pre><code><span class="cm">// Cùng một việc, khác nhau đúng ở chỗ đứng trong khung hình</span>
+
+afterNextRender(() =&gt; {
+  el.style.height = el.scrollHeight + <span class="str">'px'</span>;   <span class="out">// ✓ cùng mạch → đi chung một lần vẽ</span>
+});                                            <span class="cm">//   người dùng thấy đúng ngay từ khung hình đầu</span>
+
+setTimeout(() =&gt; {
+  el.style.height = el.scrollHeight + <span class="str">'px'</span>;   <span class="cm">// ✗ mạch mới → có thể đã vẽ mất một lần</span>
+}, <span class="str">0</span>);                                        <span class="cm">//   người dùng thấy nháy một cái rồi mới đúng</span></code></pre>
+  <div class="callout col">
+    <p><strong>Nói gọn một câu.</strong> “<b>Render xong</b>” là <i>Angular hết việc</i>. “<b>Vẽ</b>” là <i>trình duyệt hết việc</i>. <code>afterNextRender</code> là khe hẹp nằm giữa hai cái đó — đủ muộn để mọi thẻ đã có mặt, đủ sớm để người dùng chưa kịp thấy gì.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 3</p><h2>Bốn pha — và vì sao phải chia pha</h2></div>
+  <div class="col">
+    <p>Trình duyệt tính bố cục (<b>layout</b> — sắp xem thẻ nào nằm ở đâu, rộng cao bao nhiêu) một cách lười biếng: nó gom các thay đổi lại, tính một lượt. Nhưng nếu bạn <b>ghi</b> vào thẻ rồi lập tức <b>đọc</b> số đo, trình duyệt buộc phải tính lại ngay lập tức mới trả lời được. Đọc–ghi xen kẽ nhiều lần thì nó phải tính lại nhiều lần. Hiện tượng đó gọi là <b>layout thrashing</b> (giằng xé bố cục) và là một trong những nguyên nhân giật khung hình phổ biến nhất.</p>
+    <p>Vì thế <code>afterNextRender</code> nhận vào một bản khai bốn pha, và Angular gom tất cả hàm cùng pha của toàn ứng dụng chạy liền một mạch — đọc chung với đọc, ghi chung với ghi.</p>
+  </div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 700 330" role="img" aria-label="Bốn pha chạy theo thứ tự từ trên xuống: earlyRead chỉ đọc, write chỉ ghi, mixedReadWrite vừa đọc vừa ghi, read chỉ đọc. Giá trị trả về của pha trên được truyền làm tham số cho pha dưới.">
+        <defs>
+          <marker id="anr-ph" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="#7B6FE0"></polygon>
+          </marker>
+        </defs>
+
+        <text x="20" y="24" font-size="12.5" font-weight="700" fill="var(--accent)" font-family="monospace">thứ tự cố định — chạy từ trên xuống</text>
+
+        <rect x="150" y="44" width="380" height="52" rx="12" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="30" y="68" font-size="12" font-weight="700" fill="currentColor" opacity=".55" font-family="monospace">pha 1</text>
+        <text x="168" y="68" font-size="13" font-weight="700" fill="currentColor" font-family="monospace">earlyRead</text>
+        <text x="168" y="86" font-size="11.5" fill="currentColor" opacity=".72">đọc số đo mà pha ghi bên dưới cần tới</text>
+        <rect x="556" y="56" width="66" height="26" rx="9" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.2"></rect>
+        <text x="589" y="73" font-size="11" font-weight="700" text-anchor="middle" fill="var(--good)">chỉ đọc</text>
+
+        <line x1="340" y1="96" x2="340" y2="122" stroke="#7B6FE0" stroke-width="1.8" marker-end="url(#anr-ph)"></line>
+        <text x="352" y="114" font-size="10.5" fill="currentColor" opacity=".7">giá trị trả về chảy xuống</text>
+
+        <rect x="150" y="122" width="380" height="52" rx="12" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="30" y="146" font-size="12" font-weight="700" fill="currentColor" opacity=".55" font-family="monospace">pha 2</text>
+        <text x="168" y="146" font-size="13" font-weight="700" fill="currentColor" font-family="monospace">write</text>
+        <text x="168" y="164" font-size="11.5" fill="currentColor" opacity=".72">đặt kích thước, đổi lớp, cuộn tới vị trí</text>
+        <rect x="556" y="134" width="66" height="26" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"></rect>
+        <text x="589" y="151" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent)">chỉ ghi</text>
+
+        <line x1="340" y1="174" x2="340" y2="200" stroke="#7B6FE0" stroke-width="1.8" marker-end="url(#anr-ph)"></line>
+
+        <rect x="150" y="200" width="380" height="52" rx="12" fill="var(--surface)" stroke="currentColor" stroke-width="1.2" stroke-dasharray="5 4" opacity=".85"></rect>
+        <text x="30" y="224" font-size="12" font-weight="700" fill="currentColor" opacity=".55" font-family="monospace">pha 3</text>
+        <text x="168" y="224" font-size="13" font-weight="700" fill="currentColor" font-family="monospace">mixedReadWrite</text>
+        <text x="168" y="242" font-size="11.5" fill="currentColor" opacity=".72">lối thoát hiểm — thư viện ngoài tự làm cả hai</text>
+        <rect x="546" y="212" width="86" height="26" rx="9" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.2"></rect>
+        <text x="589" y="229" font-size="11" font-weight="700" text-anchor="middle" fill="var(--bad)">tránh nếu được</text>
+
+        <line x1="340" y1="252" x2="340" y2="278" stroke="#7B6FE0" stroke-width="1.8" marker-end="url(#anr-ph)"></line>
+
+        <rect x="150" y="278" width="380" height="52" rx="12" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="30" y="302" font-size="12" font-weight="700" fill="currentColor" opacity=".55" font-family="monospace">pha 4</text>
+        <text x="168" y="302" font-size="13" font-weight="700" fill="currentColor" font-family="monospace">read</text>
+        <text x="168" y="320" font-size="11.5" fill="currentColor" opacity=".72">đọc lại kết quả sau khi đã ghi xong</text>
+        <rect x="556" y="290" width="66" height="26" rx="9" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.2"></rect>
+        <text x="589" y="307" font-size="11" font-weight="700" text-anchor="middle" fill="var(--good)">chỉ đọc</text>
+      </svg>
+    </div>
+    <figcaption>Bốn pha chạy đúng thứ tự này, và giá trị pha trên trả về được truyền thẳng làm tham số cho pha dưới — không cần biến tạm trong lớp. Trong bốn pha, chỉ nên dùng <code>write</code> và <code>read</code>; hai pha còn lại dành cho trường hợp bất đắc dĩ.</figcaption>
+  </figure>
+<pre><code><span class="cm">// Căn chiều cao vùng cuộn của bảng cho vừa phần còn lại của màn hình</span>
+afterNextRender({
+  earlyRead: () =&gt; <span class="kw">this</span>.thanhLoc().nativeElement.getBoundingClientRect().height,
+
+  write: (caoThanhLoc) =&gt; {                        <span class="cm">// nhận đúng số pha trên trả về</span>
+    <span class="kw">this</span>.vungCuon().nativeElement.style.height = <span class="str">'calc(100vh - '</span> + (caoThanhLoc + 180) + <span class="str">'px)'</span>;
+  },
+
+  read: () =&gt; {
+    <span class="kw">this</span>.coThanhCuon.set(<span class="kw">this</span>.vungCuon().nativeElement.scrollHeight &gt; …);
+  },
+});</code></pre>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 700 250" role="img" aria-label="So sánh hai cách: bên trái đọc và ghi xen kẽ khiến trình duyệt phải tính lại bố cục ba lần; bên phải gom đọc với đọc và ghi với ghi theo pha, trình duyệt chỉ tính lại một lần.">
+        <text x="24" y="26" font-size="12.5" font-weight="700" fill="#D9587A">Đọc – ghi xen kẽ</text>
+        <text x="24" y="44" font-size="11" fill="currentColor" opacity=".7">mỗi lần đọc lại bắt trình duyệt tính lại bố cục</text>
+
+        <rect x="24" y="60" width="126" height="34" rx="9" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="87" y="82" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="monospace">đọc</text>
+        <rect x="24" y="102" width="126" height="34" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="87" y="124" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="monospace">ghi</text>
+        <rect x="24" y="144" width="126" height="34" rx="9" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="87" y="166" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="monospace">đọc</text>
+        <rect x="24" y="186" width="126" height="34" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="87" y="208" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="monospace">ghi</text>
+
+        <text x="162" y="82" font-size="11" fill="#D9587A" font-weight="700">tính lại bố cục</text>
+        <text x="162" y="166" font-size="11" fill="#D9587A" font-weight="700">tính lại bố cục</text>
+        <text x="162" y="240" font-size="12" fill="#D9587A" font-weight="700">→ 2 lượt tính lại thừa</text>
+
+        <line x1="350" y1="56" x2="350" y2="224" stroke="currentColor" stroke-width="1" opacity=".25"></line>
+
+        <text x="392" y="26" font-size="12.5" font-weight="700" fill="#2AA08C">Gom theo pha</text>
+        <text x="392" y="44" font-size="11" fill="currentColor" opacity=".7">đọc chung với đọc, ghi chung với ghi</text>
+
+        <rect x="392" y="60" width="126" height="34" rx="9" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="455" y="82" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="monospace">đọc</text>
+        <rect x="392" y="102" width="126" height="34" rx="9" fill="var(--surface)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="455" y="124" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="monospace">đọc</text>
+        <rect x="392" y="144" width="126" height="34" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="455" y="166" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="monospace">ghi</text>
+        <rect x="392" y="186" width="126" height="34" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="455" y="208" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="monospace">ghi</text>
+
+        <text x="530" y="82" font-size="11" fill="#2AA08C" font-weight="700">tính lại bố cục</text>
+        <text x="530" y="240" font-size="12" fill="#2AA08C" font-weight="700">→ đúng 1 lượt</text>
+      </svg>
+    </div>
+    <figcaption>Chia pha không phải là nghi thức thừa. Nó là cách duy nhất để Angular gom được các thao tác DOM của <i>toàn bộ</i> ứng dụng — kể cả của những component chẳng liên quan gì tới nhau — vào chung một lượt tính bố cục.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Họ hàng</p><h2>Chọn đúng cái trong bốn cái na ná nhau</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Hàm</th><th>Chạy khi nào</th><th>Chạy mấy lần</th><th>Trên máy chủ</th><th>Dùng cho</th></tr></thead>
+    <tbody>
+      <tr><td>ngAfterViewInit</td><td>Giữa đợt quét, ngay sau khi view của chính component dựng xong</td><td>Một lần</td><td><span class="yes">Có</span></td><td>Việc không đụng tới số đo thật của thẻ</td></tr>
+      <tr><td>afterNextRender</td><td>Sau khi cả ứng dụng render xong, trước lúc trình duyệt vẽ</td><td>Một lần</td><td><span class="no">Không</span></td><td>Đo lần đầu, focus, khởi tạo thư viện ngoài</td></tr>
+      <tr><td>afterEveryRender</td><td>Y hệt trên</td><td>Mọi lần render</td><td><span class="no">Không</span></td><td>Đồng bộ liên tục với một thứ nằm ngoài Angular</td></tr>
+      <tr><td>afterRenderEffect</td><td>Y hệt trên</td><td>Mỗi khi signal nó đọc bị đổi</td><td><span class="no">Không</span></td><td>Ghi ra DOM theo dữ liệu signal, có dọn dẹp</td></tr>
+    </tbody>
+  </table></div>
+  <div class="col">
+    <p><b>Lưu ý tên gọi:</b> từ Angular 20 trở về trước hàm chạy-mọi-lần tên là <code>afterRender</code>. Từ Angular 21 — bản dự án này đang dùng — nó đã đổi tên thành <code>afterEveryRender</code>. Còn <code>afterNextRender</code> thì giữ nguyên tên từ đầu, nên các bài viết cũ trên mạng vẫn đúng ở phần này.</p>
+    <p>Quy tắc chọn gọn nhất: <b>cần một lần thì dùng <code>afterNextRender</code></b>. Chỉ đổi sang <code>afterEveryRender</code> khi bạn thật sự phải chạy lại sau mỗi lần vẽ — và hãy hiểu rằng đó là cái giá trả trên <i>mọi</i> khung hình.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Số đo luôn thật.</b> Chạy sau khi cả cây dựng xong nên không còn cảnh <code>offsetWidth</code> ra 0 hay ra số của lần trước.</li>
+        <li><b>An toàn với SSR mà không cần điều kiện.</b> Không chạy trên máy chủ, nên mã đụng <code>window</code> / <code>document</code> nằm ở đây là yên tâm.</li>
+        <li><b>Không cần dọn dẹp thủ công.</b> Mặc định nó tự huỷ theo <code>DestroyRef</code> của nơi khai — component chết thì lời hẹn cũng huỷ.</li>
+        <li><b>Gom được thao tác DOM toàn ứng dụng</b> nhờ chia pha, nên ít lượt tính bố cục hơn hẳn cách tự gọi <code>setTimeout</code>.</li>
+        <li><b>Kịp trước lúc vẽ,</b> nên sửa thẻ ở đây người dùng không thấy màn hình nháy một cái rồi mới đúng.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Trước: hẹn giờ mò mẫm, chạy cả trên máy chủ, hay hụt</span>
+ngAfterViewInit(): void {
+  setTimeout(() =&gt; <span class="kw">this</span>.oTim().nativeElement.focus(), <span class="str">0</span>);
+}
+
+<span class="cm">// Sau: đúng mốc, tự dọn, máy chủ bỏ qua</span>
+<span class="kw">constructor</span>() {
+  afterNextRender(() =&gt; <span class="kw">this</span>.oTim().nativeElement.focus());
+}</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Chỉ gọi được trong ngữ cảnh tiêm phụ thuộc.</b> Gọi từ một hàm xử lý sự kiện bất kỳ là nổ lỗi <code>NG0203</code>, phải tự truyền <code>injector</code> vào.</li>
+        <li><b>Không chạy trên máy chủ</b> — đúng là mặt lợi, nhưng cũng là bẫy: nhét logic nghiệp vụ vào đây thì bản dựng SSR thiếu mất phần đó mà không báo gì.</li>
+        <li><b>Đúng một lần, không lặp lại.</b> Dữ liệu đổi khiến bố cục đổi thì số đo cũ thành sai, và nó sẽ không tự đo lại giúp bạn.</li>
+        <li><b>Đặt sai pha là mất sạch cái lợi:</b> đọc số đo trong pha <code>write</code> thì trình duyệt vẫn phải tính lại ngay tại chỗ.</li>
+        <li><b>Trong unit test nó không tự chạy</b> — quên gọi <code>fixture.detectChanges()</code> là test xanh giả, hàm bên trong chưa từng chạy.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>moPopup(): void {
+  afterNextRender(() =&gt; …);        <span class="cm">// ✗ NG0203 — ngoài ngữ cảnh tiêm</span>
+}
+
+<span class="cm">// Cách chữa: xin sẵn injector rồi đưa vào</span>
+<span class="kw">private readonly</span> injector = inject(Injector);
+
+moPopup(): void {
+  afterNextRender(() =&gt; …, { injector: <span class="kw">this</span>.injector });   <span class="out">// ✓</span>
+}</code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cạm bẫy</p><h2>Bốn chỗ hay sập nhất</h2></div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag bad">NG0203</span>
+      <h3>Gọi ngoài ngữ cảnh tiêm</h3>
+      <p><b>Ngữ cảnh tiêm</b> (<i>injection context</i>) là khoảnh khắc Angular đang dựng một đối tượng và biết nó thuộc về ai — tức là trong <code>constructor</code> hoặc lúc gán giá trị đầu cho thuộc tính. Ra khỏi đó phải tự đưa <code>injector</code>.</p>
+<pre><code><span class="kw">private readonly</span> injector = inject(Injector);
+afterNextRender(fn, { injector: <span class="kw">this</span>.injector });</code></pre>
+    </div>
+    <div class="card">
+      <span class="tag bad">Im lặng</span>
+      <h3>Nhét logic nghiệp vụ vào</h3>
+      <p>Gọi API, chuẩn hoá dữ liệu, ghi log nghiệp vụ — đặt ở đây thì bản dựng phía máy chủ bỏ qua hết mà không một lời cảnh báo. Chỗ này chỉ dành cho việc đụng tới thẻ HTML thật.</p>
+<pre><code><span class="cm">// ✗ máy chủ sẽ không bao giờ chạy dòng này</span>
+afterNextRender(() =&gt; <span class="kw">this</span>.taiDanhSach());</code></pre>
+    </div>
+    <div class="card">
+      <span class="tag warn">Vòng lặp</span>
+      <h3>Ghi ngược vào signal</h3>
+      <p>Đổi một signal mà template đang đọc, ngay bên trong hàm này, sẽ kéo thêm một lượt render nữa. Với <code>afterNextRender</code> là thêm một lượt; với <code>afterEveryRender</code> là vòng lặp vô tận, treo tab.</p>
+<pre><code>afterEveryRender(() =&gt; {
+  <span class="kw">this</span>.chieuCao.set(el.offsetHeight);  <span class="cm">// ✗ render → set → render → …</span>
+});</code></pre>
+    </div>
+    <div class="card">
+      <span class="tag warn">Đo một lần</span>
+      <h3>Bố cục đổi sau đó</h3>
+      <p>Người dùng kéo giãn cửa sổ, mở thanh bên, dữ liệu về thêm dòng — số đo cũ thành sai. Việc cần theo dõi liên tục thì dùng <code>ResizeObserver</code> (bộ theo dõi đổi kích thước của trình duyệt), đừng ép <code>afterNextRender</code> làm.</p>
+<pre><code>afterNextRender(() =&gt; {
+  <span class="kw">const</span> ro = <span class="kw">new</span> ResizeObserver(() =&gt; <span class="kw">this</span>.doLai());
+  ro.observe(el);
+  <span class="kw">this</span>.destroyRef.onDestroy(() =&gt; ro.disconnect());
+});</code></pre>
+    </div>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Trong dự án này</p><h2>Ba việc đáng chuyển sang afterNextRender</h2></div>
+  <ul class="steps">
+    <li><b>Đặt con trỏ vào ô nhập đầu tiên</b> khi mở màn thêm mới hoặc mở popup — thay cho <code>setTimeout(…, 0)</code> trong <code>ngAfterViewInit</code>.</li>
+    <li><b>Đo để tính chiều cao vùng cuộn của bảng</b> theo phần màn hình còn lại sau thanh lọc và thanh phân trang.</li>
+    <li><b>Trao thẻ rỗng cho thư viện ngoài</b> — bản đồ, biểu đồ, trình soạn thảo — vì các thư viện đó đòi thẻ phải có kích thước thật ngay lúc khởi tạo, nếu không sẽ vẽ ra khung 0×0.</li>
+  </ul>
+  <p>Điểm chung của cả ba: chúng đều là việc <i>của trình duyệt</i>, không phải việc của nghiệp vụ. Đó chính là ranh giới để quyết định một đoạn mã có thuộc về <code>afterNextRender</code> hay không.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>render</td><td>Dựng ra giao diện — biến dữ liệu thành thẻ HTML trên màn hình.</td></tr>
+      <tr><td>afterNextRender</td><td>Hẹn chạy một hàm sau lần render kế tiếp của toàn ứng dụng, đúng một lần.</td></tr>
+      <tr><td>afterEveryRender</td><td>Như trên nhưng chạy sau mọi lần render (trước Angular 21 tên là <code>afterRender</code>).</td></tr>
+      <tr><td>afterRenderEffect</td><td>Hàm chạy trong pha render và chạy lại mỗi khi signal nó đọc bị đổi.</td></tr>
+      <tr><td>lifecycle hook (móc vòng đời)</td><td>Hàm Angular tự gọi tại một mốc trong đời của component.</td></tr>
+      <tr><td>ngOnInit</td><td>Móc vòng đời chạy ngay sau khi component được tạo, trước khi có giao diện.</td></tr>
+      <tr><td>ngAfterViewInit</td><td>Móc vòng đời chạy sau khi view của chính component đó dựng xong.</td></tr>
+      <tr><td>view</td><td>Phần giao diện thuộc về một component.</td></tr>
+      <tr><td>DOM</td><td>Cây phần tử HTML thật mà trình duyệt đang hiển thị.</td></tr>
+      <tr><td>change detection</td><td>Dò tìm thay đổi — lượt Angular đi khắp cây so lại các giá trị hiển thị.</td></tr>
+      <tr><td>layout (bố cục)</td><td>Việc trình duyệt tính xem thẻ nào nằm ở đâu, rộng cao bao nhiêu.</td></tr>
+      <tr><td>layout thrashing</td><td>Giằng xé bố cục — đọc và ghi xen kẽ khiến trình duyệt phải tính lại nhiều lần.</td></tr>
+      <tr><td>paint (vẽ)</td><td>Bước trình duyệt tô màu thật lên màn hình sau khi đã tính bố cục.</td></tr>
+      <tr><td>frame (khung hình)</td><td>Một lượt cập nhật màn hình của trình duyệt, thường khoảng 16 mili-giây một lượt.</td></tr>
+      <tr><td>task (lượt việc)</td><td>Một mạch JavaScript chạy liền không nghỉ; trình duyệt chỉ được vẽ sau khi mạch đó kết thúc.</td></tr>
+      <tr><td>reflow</td><td>Lượt trình duyệt tính lại bố cục sau khi DOM hoặc CSS thay đổi.</td></tr>
+      <tr><td>forced synchronous layout</td><td>Tính bố cục ép buộc — mã hỏi số đo nên trình duyệt phải bỏ dở việc gom và tính ngay tại chỗ.</td></tr>
+      <tr><td>earlyRead / write / mixedReadWrite / read</td><td>Bốn pha của render hook, chạy đúng theo thứ tự này.</td></tr>
+      <tr><td>offsetWidth / getBoundingClientRect</td><td>Hai cách hỏi trình duyệt về kích thước thật của một thẻ.</td></tr>
+      <tr><td>SSR</td><td>Kết xuất phía máy chủ — dựng sẵn HTML trên máy chủ trước khi gửi về trình duyệt.</td></tr>
+      <tr><td>injection context (ngữ cảnh tiêm)</td><td>Khoảnh khắc Angular đang dựng đối tượng và biết nó thuộc về ai.</td></tr>
+      <tr><td>Injector</td><td>Bộ cấp phát phụ thuộc — thứ biết cách tạo ra một dịch vụ khi được hỏi.</td></tr>
+      <tr><td>DestroyRef</td><td>Vật đại diện cho lúc một component/dịch vụ bị huỷ, dùng để đăng ký việc dọn dẹp.</td></tr>
+      <tr><td>manualCleanup</td><td>Tuỳ chọn bảo Angular đừng tự huỷ lời hẹn — bạn sẽ tự gọi <code>destroy()</code>.</td></tr>
+      <tr><td>AfterRenderRef</td><td>Vật trả về của các hàm này, có <code>destroy()</code> để huỷ lời hẹn.</td></tr>
+      <tr><td>signal</td><td>Ô dữ liệu tự biết ai đang đọc mình, đổi giá trị thì báo cho chỗ đó.</td></tr>
+      <tr><td>viewChild</td><td>Truy vấn dạng signal để lấy một thẻ hoặc component con trong view.</td></tr>
+      <tr><td>ElementRef</td><td>Vỏ bọc Angular dùng để cầm một thẻ HTML thật.</td></tr>
+      <tr><td>ResizeObserver</td><td>Bộ theo dõi của trình duyệt, báo mỗi khi một thẻ đổi kích thước.</td></tr>
+      <tr><td>NG0203</td><td>Mã lỗi Angular báo khi gọi hàm cần ngữ cảnh tiêm ở sai chỗ.</td></tr>
+    </tbody>
+  </table></div>
+</section>

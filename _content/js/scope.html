@@ -1,0 +1,152 @@
+<!--meta
+title: Scope — phạm vi truy cập
+eyebrow: JavaScript · Bài 1
+short: Scope
+lede: Vì sao có biến chỗ này gọi được, chỗ kia lại "không tồn tại"? Câu trả lời nằm ở các lớp phòng lồng nhau mà JavaScript dựng lên quanh mỗi biến.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Những căn phòng lồng nhau</h2></div>
+  <p>Scope (phạm vi — vùng code mà một biến còn “nhìn thấy được”) giống một dãy phòng lồng trong nhau. Đứng ở phòng con, bạn nhìn ra được đồ đạc của phòng cha và của cả căn nhà. Nhưng đứng ở phòng cha, bạn <strong>không</strong> nhìn được vào trong phòng con.</p>
+  <p>JavaScript có bốn loại phòng:</p>
+  <ol class="steps">
+    <li><span><strong>Global scope</strong> (phạm vi toàn cục) — cả căn nhà. Biến khai báo ngoài mọi hàm, ai cũng thấy.</span></li>
+    <li><span><strong>Function scope</strong> (phạm vi hàm) — mỗi lần gọi hàm là dựng một phòng mới. <code>var</code> chỉ tôn trọng loại phòng này.</span></li>
+    <li><span><strong>Block scope</strong> (phạm vi khối) — mọi cặp ngoặc nhọn <code>{ }</code>: thân <code>if</code>, thân <code>for</code>, một khối trần. Chỉ <code>let</code> và <code>const</code> tôn trọng.</span></li>
+    <li><span><strong>Module scope</strong> (phạm vi mô-đun) — mỗi file ES module là một phòng riêng, không rò biến ra ngoài.</span></li>
+  </ol>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Scope chain — tra biến từ trong ra ngoài</h2></div>
+  <div class="col">
+    <p>Khi gặp một cái tên, JavaScript tìm trong phòng hiện tại trước. Không có thì bước ra phòng ngoài, rồi ngoài nữa, tới tận global. Hết đường mà vẫn không thấy thì báo <code>ReferenceError</code>. Chuỗi tìm kiếm đó gọi là scope chain (chuỗi phạm vi), và nó <strong>chỉ đi một chiều ra ngoài</strong>.</p>
+  </div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 700 260" role="img" aria-label="Ba khung lồng nhau: global chứa function chứa block. Mũi tên tra cứu biến đi từ trong ra ngoài, không có chiều ngược lại.">
+        <defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 10,5 0,10" fill="#C87518"></polygon></marker></defs>
+        <rect x="20" y="20" width="440" height="220" rx="14" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="38" y="44" font-size="12" font-weight="700" fill="currentColor">global — const app = 'BDQS'</text>
+        <rect x="52" y="62" width="376" height="160" rx="12" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="70" y="86" font-size="12" font-weight="700" fill="currentColor">function tinhTien() — var thue = 0.1</text>
+        <rect x="84" y="104" width="312" height="100" rx="10" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="102" y="128" font-size="12" font-weight="700" fill="currentColor">block { } — let tam = 5</text>
+        <text x="102" y="152" font-size="12" fill="currentColor">thấy: tam ✓  thue ✓  app ✓</text>
+        <text x="102" y="176" font-size="12" fill="currentColor" opacity=".7">global không thấy tam, không thấy thue</text>
+        <path d="M 396 154 H 500 V 60 H 470" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#a1)"></path>
+        <text x="516" y="120" font-size="12" font-weight="700" fill="var(--accent)">tra ra ngoài</text>
+        <text x="516" y="140" font-size="11.5" fill="currentColor" opacity=".75">tìm hết phòng trong</text>
+        <text x="516" y="158" font-size="11.5" fill="currentColor" opacity=".75">mới bước ra phòng ngoài</text>
+      </svg>
+    </div>
+    <figcaption>Mũi tên chỉ có một chiều: trong nhìn ra được, ngoài không nhìn vào được.</figcaption>
+  </figure>
+  <div class="col">
+<pre><code><span class="kw">const</span> app = <span class="str">'BDQS'</span>;              <span class="cm">// global</span>
+
+<span class="kw">function</span> tinhTien() {
+  <span class="kw">var</span> thue = 0.1;               <span class="cm">// function scope</span>
+  <span class="kw">if</span> (<span class="kw">true</span>) {
+    <span class="kw">let</span> tam = 5;                <span class="cm">// block scope</span>
+    console.log(app, thue, tam);  <span class="cm">// ✓ thấy cả ba</span>
+  }
+  console.log(tam);               <span class="cm">// ✗ ReferenceError: tam is not defined</span>
+}</code></pre>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Hai điều hay nhầm</p><h2>Lexical scope và shadowing</h2></div>
+  <p><strong>Lexical scope</strong> (phạm vi tĩnh) nghĩa là phạm vi được quyết định lúc bạn <em>viết</em> code, chứ không phải lúc <em>gọi</em>. Hàm nhớ nơi nó được sinh ra, không quan tâm ai gọi nó và gọi từ đâu:</p>
+<pre><code><span class="kw">const</span> ten = <span class="str">'ngoài'</span>;
+<span class="kw">function</span> in1() { console.log(ten); }
+
+<span class="kw">function</span> chay() {
+  <span class="kw">const</span> ten = <span class="str">'trong'</span>;
+  in1();                          <span class="cm">// in ra 'ngoài' — vì in1 được VIẾT ở ngoài</span>
+}</code></pre>
+  <p><strong>Shadowing</strong> (che biến) là khai một biến trùng tên ở phòng trong. Biến ngoài không mất, chỉ bị che khuất trong phạm vi đó — rất tiện, nhưng cũng là nguồn nhầm lẫn kinh điển khi đọc code người khác.</p>
+  <div class="callout">
+    <p><strong>Mẹo đọc nhanh:</strong> gặp một biến lạ, hãy tìm ngược từ chỗ dùng ra ngoài. Nơi khai báo <em>gần nhất</em> tính từ trong ra chính là biến đang được dùng.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Tránh đụng tên.</b> Hai hàm cùng đặt biến <code>i</code>, <code>data</code>, <code>result</code> mà không giẫm chân nhau.</li>
+        <li><b>Dọn bộ nhớ tự động.</b> Hàm chạy xong, phòng của nó bị dẹp; bộ thu gom rác (garbage collector) thu hồi.</li>
+        <li><b>Đóng gói dữ liệu riêng tư.</b> Kết hợp với closure (bao đóng), scope là cách duy nhất tạo biến "private" thật sự trong JavaScript thuần.</li>
+        <li><b>Code dễ đoán.</b> Nhìn một hàm là biết nó đọc/ghi những gì, không phải quét cả file.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="kw">function</span> taoBoDem() {
+  <span class="kw">let</span> dem = 0;                    <span class="cm">// không ai ngoài hàm này chạm tới được</span>
+  <span class="kw">return</span> { tang: () =&gt; ++dem, xem: () =&gt; dem };
+}
+<span class="kw">const</span> b = taoBoDem();
+b.tang();
+console.log(b.xem(), b.dem);      <span class="out">// 1 undefined — dữ liệu thật sự riêng tư</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Hai luật cùng tồn tại.</b> <code>var</code> theo phạm vi hàm, <code>let/const</code> theo phạm vi khối — trộn lẫn trong một file là mảnh đất của bug.</li>
+        <li><b>Shadowing gây mù.</b> Sửa nhầm biến bị che, chương trình vẫn chạy nhưng sai âm thầm.</li>
+        <li><b>Biến toàn cục dễ bị ghi đè.</b> Hai thư viện cùng gán <code>window.config</code> là mất dữ liệu của nhau.</li>
+        <li><b>Closure giữ scope sống.</b> Một callback còn tham chiếu tới phòng cũ thì cả phòng đó không được thu hồi → rò rỉ bộ nhớ (memory leak).</li>
+        <li><b>Tra cứu sâu tốn công.</b> Chuỗi scope quá dài khiến engine phải dò nhiều lớp (ảnh hưởng nhỏ, nhưng có thật trong vòng lặp nóng).</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="kw">function</span> tinhTong(ds) {
+  tong = 0;                       <span class="cm">// ✗ quên let → tạo biến TOÀN CỤC</span>
+  ds.forEach((x) =&gt; (tong += x));
+  <span class="kw">return</span> tong;
+}
+<span class="cm">// Một hàm khác cũng dùng tên "tong" → hai bên ghi đè nhau, không lỗi nào hiện ra</span>
+
+<span class="kw">const</span> gia = 100;
+<span class="kw">function</span> xuLy(gia) { <span class="kw">return</span> gia * 2; }   <span class="cm">// tham số CHE biến ngoài</span>
+xuLy();                                    <span class="out">// NaN — không phải 200</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Cạm bẫy hay gặp nhất:</strong> quên <code>let/const/var</code> khi gán — <code>tong = 0</code> trong một hàm sẽ tạo ra biến <em>toàn cục</em> ngoài ý muốn (trừ khi bật strict mode). Cả ứng dụng dùng chung biến đó mà không ai biết.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Thực hành</p><h2>Bốn nguyên tắc nên theo</h2></div>
+  <ol class="steps">
+    <li><span>Mặc định dùng <code>const</code>; cần gán lại thì <code>let</code>. Chỉ đụng <code>var</code> khi bảo trì code cũ.</span></li>
+    <li><span>Khai báo biến ở phạm vi <em>hẹp nhất</em> có thể — sát chỗ dùng nhất.</span></li>
+    <li><span>Không tạo biến toàn cục. Cần chia sẻ state thì xuất (export) từ một module.</span></li>
+    <li><span>Bật ESLint với <code>no-undef</code>, <code>no-shadow</code>, <code>block-scoped-var</code> để máy soát hộ.</span></li>
+  </ol>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>scope</td><td>Phạm vi — vùng code mà một biến còn nhìn thấy được.</td></tr>
+      <tr><td>global scope</td><td>Phạm vi toàn cục — cấp ngoài cùng, mọi nơi đều thấy.</td></tr>
+      <tr><td>function scope</td><td>Phạm vi hàm — biến sống trong thân hàm bao quanh.</td></tr>
+      <tr><td>block scope</td><td>Phạm vi khối — biến chỉ sống trong cặp ngoặc nhọn gần nhất.</td></tr>
+      <tr><td>module scope</td><td>Phạm vi mô-đun — mỗi file ES module là một phạm vi riêng.</td></tr>
+      <tr><td>scope chain</td><td>Chuỗi phạm vi — đường tra cứu biến từ trong ra ngoài.</td></tr>
+      <tr><td>lexical scope</td><td>Phạm vi tĩnh — xác định theo nơi code được viết, không theo nơi gọi.</td></tr>
+      <tr><td>shadowing</td><td>Che biến — biến trong trùng tên làm khuất biến ngoài.</td></tr>
+      <tr><td>closure</td><td>Bao đóng — hàm vẫn nhớ được scope nơi nó ra đời.</td></tr>
+      <tr><td>garbage collector</td><td>Bộ thu gom rác — cơ chế tự thu hồi bộ nhớ không còn ai dùng.</td></tr>
+      <tr><td>memory leak</td><td>Rò rỉ bộ nhớ — vùng nhớ đáng lẽ được thu hồi nhưng vẫn bị giữ.</td></tr>
+      <tr><td>ReferenceError</td><td>Lỗi tham chiếu — dùng một cái tên chưa hề tồn tại.</td></tr>
+      <tr><td>ESLint</td><td>Công cụ soát code tự động, cảnh báo lỗi và thói quen xấu.</td></tr>
+    </tbody>
+  </table></div>
+</section>

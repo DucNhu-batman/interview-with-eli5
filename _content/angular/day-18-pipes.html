@@ -1,0 +1,81 @@
+<!--meta
+title: Day 18 — Pipes
+eyebrow: Angular · Day 18
+short: Day 18
+lede: Biến dữ liệu thô thành thứ người đọc hiểu ngay trong template — và ranh giới sống còn giữa pipe thuần và pipe không thuần.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Cái bộ lọc đặt giữa dữ liệu và mắt người dùng</h2></div>
+  <p>Pipe (ống lọc) nhận một giá trị, trả về giá trị đã định dạng, dùng ngay trong template bằng dấu <code>|</code>. Angular có sẵn <code>date</code>, <code>currency</code>, <code>number</code>, <code>percent</code>, <code>json</code>, <code>slice</code>, <code>async</code>…</p>
+<pre><code>{{ ngayTao() | date: <span class="str">'dd/MM/yyyy HH:mm'</span> }}
+{{ tongTien() | currency: <span class="str">'VND'</span> : <span class="str">'symbol'</span> : <span class="str">'1.0-0'</span> }}
+{{ danhSach$ | async }}                <span class="cm">// tự subscribe và tự huỷ</span>
+
+<span class="cm">// Pipe tự viết</span>
+&#64;Pipe({ name: <span class="str">'rutGon'</span> })
+export class RutGonPipe <span class="kw">implements</span> PipeTransform {
+  transform(v: string, max = 50): string {
+    <span class="kw">return</span> v.length &gt; max ? v.slice(0, max) + <span class="str">'…'</span> : v;
+  }
+}</code></pre>
+  <div class="callout">
+    <p><strong>Thuần hay không thuần?</strong> Mặc định pipe là <em>pure</em> (thuần): chỉ tính lại khi đầu vào đổi tham chiếu — rất rẻ. Khai <code>pure: false</code> thì nó chạy lại <strong>mỗi chu kỳ phát hiện thay đổi</strong>, tức là hàng trăm lần mỗi giây khi người dùng đang thao tác. Chỉ dùng khi thật sự không còn cách nào khác.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Template sạch.</b> Logic định dạng nằm ngoài, không nhét vào giữa HTML.</li>
+        <li><b>Dùng lại khắp nơi</b> và kiểm thử được như một hàm thuần.</li>
+        <li><b>Pipe thuần có cache.</b> Đầu vào không đổi thì không tính lại — rẻ hơn gọi hàm trong template.</li>
+        <li><b><code>async</code> pipe tự huỷ đăng ký</b>, xoá sạch một lớp lỗi rò rỉ bộ nhớ.</li>
+        <li><b>Hỗ trợ đa vùng miền</b> sẵn cho ngày tháng và tiền tệ.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>&lt;td&gt;{{ row.ngayTao | date: <span class="str">'dd/MM/yyyy'</span> }}&lt;/td&gt;
+&lt;td&gt;{{ row.tien | currency: <span class="str">'VND'</span> }}&lt;/td&gt;
+<span class="cm">// Pipe thuần: 500 dòng nhưng chỉ tính lại đúng dòng có dữ liệu đổi.</span>
+
+&lt;p&gt;{{ (nguoiDung$ | async)?.ten }}&lt;/p&gt;
+<span class="cm">// async pipe tự huỷ đăng ký khi component chết — không thể quên.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Pipe không thuần rất tốn.</b> Là nguyên nhân số một của giao diện giật ở màn hình danh sách.</li>
+        <li><b>Không nhận ra thay đổi bên trong object/mảng</b> nếu tham chiếu giữ nguyên — người viết dễ tưởng pipe hỏng.</li>
+        <li><b>Khó gỡ lỗi.</b> Lỗi ném ra từ trong pipe hiển thị rất mơ hồ.</li>
+        <li><b>Xâu chuỗi nhiều pipe</b> làm biểu thức khó đọc và khó đoán thứ tự.</li>
+        <li><b>Không thay được cho tầng nghiệp vụ.</b> Tính toán quan trọng nên nằm ở facade/service, không nên giấu trong pipe.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&#64;Pipe({ name: <span class="str">'loc'</span>, pure: <span class="kw">false</span> })
+<span class="cm">// ✗ chạy lại MỌI chu kỳ kiểm tra, với mỗi dòng:</span>
+&#64;for (r of ds() | loc: tuKhoa()) { … }
+<span class="cm">// 500 dòng × 60 lần/giây = 30.000 lần lọc mỗi giây → giao diện giật</span>
+
+<span class="kw">this</span>.ds().push(moi);
+<span class="cm">// ✗ pipe thuần không nhận ra: tham chiếu mảng không đổi → màn hình đứng im</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>pipe</td><td>Ống lọc — biến đổi giá trị để hiển thị.</td></tr>
+      <tr><td>pure pipe</td><td>Pipe thuần — chỉ tính lại khi đầu vào đổi tham chiếu.</td></tr>
+      <tr><td>impure pipe</td><td>Pipe không thuần — chạy lại mỗi chu kỳ kiểm tra.</td></tr>
+      <tr><td>async pipe</td><td>Pipe tự đăng ký và huỷ đăng ký một luồng dữ liệu.</td></tr>
+      <tr><td>PipeTransform</td><td>Giao diện bắt buộc, chỉ có một hàm <code>transform</code>.</td></tr>
+      <tr><td>i18n / locale</td><td>Đa ngôn ngữ / vùng miền, ảnh hưởng cách hiện ngày và tiền.</td></tr>
+    </tbody>
+  </table></div>
+</section>

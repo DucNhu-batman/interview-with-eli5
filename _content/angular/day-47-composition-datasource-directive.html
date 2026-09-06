@@ -1,0 +1,79 @@
+<!--meta
+title: Day 47 — Ghép nguồn dữ liệu cho form bằng Directive
+eyebrow: Angular · Day 47
+short: Day 47
+lede: Thay vì mỗi màn tự gọi API đổ dữ liệu cho dropdown, hãy để một directive lo: gắn thuộc tính là ô select tự có dữ liệu.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Đưa việc lấy dữ liệu ra khỏi component</h2></div>
+  <p>Mọi màn hình đều có những dropdown giống nhau: danh sách kho, danh sách đơn vị, danh mục trạng thái. Nếu mỗi component tự inject service, tự gọi API, tự gán vào <code>options</code> thì cùng một đoạn code bị chép hàng chục lần.</p>
+  <p>Giải pháp là composition (ghép chức năng) bằng directive: directive tự lấy dữ liệu rồi đặt vào component chủ.</p>
+<pre><code>&#64;Directive({ selector: <span class="str">'[nguonKho]'</span> })
+export class NguonKhoDirective {
+  <span class="kw">private</span> host = inject(SelectComponent, { host: <span class="kw">true</span> });
+  <span class="kw">private</span> api = inject(DanhMucService);
+
+  <span class="kw">constructor</span>() {
+    <span class="kw">this</span>.api.dsKho()
+      .pipe(takeUntilDestroyed())
+      .subscribe((ds) =&gt; <span class="kw">this</span>.host.options.set(ds));
+  }
+}
+
+&lt;qp45-select formControlName="khoId" nguonKho /&gt;   <span class="cm">// hết, không cần gì thêm</span></code></pre>
+  <div class="callout">
+    <p><strong>Angular 15+ còn có <code>hostDirectives</code>:</strong> gắn sẵn directive vào một component ngay tại nơi khai báo, để mọi nơi dùng component đó đều có hành vi kèm theo mà không phải nhớ gõ thêm thuộc tính.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Component form gọn hẳn:</b> không còn hàng chục dòng nạp danh mục.</li>
+        <li><b>Sửa một chỗ, mọi màn được hưởng</b> (đổi endpoint, thêm cache, thêm lọc theo quyền).</li>
+        <li><b>Ghép được nhiều directive</b> trên cùng một ô: nguồn dữ liệu + tự động chọn + vô hiệu hoá.</li>
+        <li><b>Template đọc như mô tả yêu cầu:</b> "ô này lấy nguồn kho".</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Trước — lặp ở mọi màn</span>
+ngOnInit() { <span class="kw">this</span>.api.dsKho().subscribe((ds) =&gt; <span class="kw">this</span>.dsKho.set(ds)); }
+&lt;qp45-select [options]="dsKho()" formControlName="khoId" /&gt;
+
+<span class="cm">// Sau — thêm cache dùng chung chỉ phải sửa trong directive</span>
+&lt;qp45-select formControlName="khoId" nguonKho /&gt;</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Phép thuật ngầm.</b> Nhìn template không biết dữ liệu từ đâu ra, người mới rất dễ bối rối.</li>
+        <li><b>Directive gắn chặt vào component chủ</b> — đổi API của component là gãy directive.</li>
+        <li><b>Khó tuỳ biến từng chỗ:</b> một màn cần lọc khác đi thì phải thêm input hoặc viết directive khác.</li>
+        <li><b>Mỗi ô một request</b> nếu quên chia sẻ kết quả — ba dropdown là ba lần gọi cùng một API.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// 3 ô cùng nguồn → 3 request giống hệt nhau</span>
+&lt;qp45-select nguonKho /&gt; &lt;qp45-select nguonKho /&gt; &lt;qp45-select nguonKho /&gt;
+
+<span class="cm">// chữa trong service:</span>
+dsKho$ = <span class="kw">this</span>.http.get(…).pipe(shareReplay({ bufferSize: 1, refCount: <span class="kw">true</span> }));</code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>composition</td><td>Ghép chức năng từ nhiều mảnh nhỏ thay vì kế thừa.</td></tr>
+      <tr><td>host</td><td>Component/phần tử mà directive được gắn lên.</td></tr>
+      <tr><td>hostDirectives</td><td>Khai directive kèm sẵn cho một component.</td></tr>
+      <tr><td>datasource</td><td>Nguồn dữ liệu cho một ô chọn/bảng.</td></tr>
+      <tr><td>shareReplay</td><td>Chia sẻ một lần gọi cho nhiều người đăng ký.</td></tr>
+    </tbody>
+  </table></div>
+</section>

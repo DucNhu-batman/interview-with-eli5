@@ -1,0 +1,83 @@
+<!--meta
+title: Day 45 — Huỷ đăng ký một Subscription
+eyebrow: Angular · Day 45
+short: Day 45
+lede: Quên huỷ đăng ký là cách rò rỉ bộ nhớ phổ biến nhất trong Angular. Bốn cách xử lý, xếp từ tốt nhất tới nên tránh.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Vấn đề</p><h2>Component chết nhưng luồng vẫn sống</h2></div>
+  <p>Component bị huỷ không tự động ngắt các subscription của nó. Luồng vẫn chạy, callback vẫn chạy, và vì callback tham chiếu tới <code>this</code> nên cả component không được thu hồi. Rời vào rồi ra một màn hình mười lần là có mười bản component còn sống trong bộ nhớ.</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Cách</th><th>Đánh giá</th></tr></thead>
+    <tbody>
+      <tr><td>async pipe</td><td>Tốt nhất — không subscribe bằng tay thì không phải huỷ</td></tr>
+      <tr><td>takeUntilDestroyed()</td><td>Tốt — ngắn gọn, không thể quên</td></tr>
+      <tr><td>toSignal()</td><td>Tốt — tự huỷ, dùng được thẳng trong template</td></tr>
+      <tr><td>subscription.unsubscribe() thủ công</td><td>Chỉ khi bắt buộc; rất dễ quên</td></tr>
+    </tbody>
+  </table></div>
+<pre><code><span class="cm">// Khuyên dùng</span>
+<span class="kw">readonly</span> ds = toSignal(<span class="kw">this</span>.api.danhSach(), { initialValue: [] });
+
+<span class="cm">// Khi buộc phải subscribe (có tác dụng phụ)</span>
+<span class="kw">private</span> destroyRef = inject(DestroyRef);
+<span class="kw">constructor</span>() {
+  <span class="kw">this</span>.ws.tinNhan$
+    .pipe(takeUntilDestroyed(<span class="kw">this</span>.destroyRef))
+    .subscribe((m) =&gt; <span class="kw">this</span>.xuLy(m));
+}</code></pre>
+  <div class="callout">
+    <p><strong>Không phải luồng nào cũng cần huỷ.</strong> Luồng tự kết thúc — <code>http.get()</code> (một giá trị rồi complete), luồng có <code>take(1)</code>/<code>first()</code> — không gây rò rỉ. Nguy hiểm là những luồng vô hạn: <code>valueChanges</code>, <code>interval</code>, <code>fromEvent</code>, Subject trong service dùng chung.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của việc quản lý subscription</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Không rò rỉ bộ nhớ,</b> app dùng lâu vẫn nhẹ.</li>
+        <li><b>Không có callback ma</b> ghi dữ liệu lên màn hình đã đóng.</li>
+        <li><b>Huỷ luôn request đang bay,</b> tiết kiệm băng thông và tải máy chủ.</li>
+        <li><b><code>DestroyRef</code> bỏ hẳn <code>ngOnDestroy</code></b> — đúng quy ước của dự án này.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Rời màn giữa lúc đang tải: request bị huỷ, không ghi vào signal đã chết</span>
+&#64;if (ds().length) { … }        <span class="cm">// toSignal tự dọn</span>
+
+<span class="cm">// Kiểm chứng: mở/đóng màn 20 lần, số listener trong DevTools không tăng</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Dễ quên,</b> và hậu quả không hiện ra ngay — app chỉ chậm dần.</li>
+        <li><b>Huỷ nhầm lúc chưa xong:</b> đang lưu mà rời màn thì lệnh lưu bị huỷ giữa chừng.</li>
+        <li><b>Đặt <code>takeUntil</code> sai vị trí</b> khiến phần sau của chuỗi vẫn chạy.</li>
+        <li><b>Quản lý bằng tay sinh code nhàm chán,</b> mỗi component lặp lại một đoạn giống nhau.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// ✗ Rò rỉ: luồng vô hạn, không có gì ngắt</span>
+ngOnInit() { interval(1000).subscribe(() =&gt; <span class="kw">this</span>.demNguoc()); }
+
+<span class="cm">// ✗ Huỷ nhầm: lệnh lưu bị cắt khi người dùng bấm sang màn khác</span>
+api.luu(dl).pipe(takeUntilDestroyed(destroyRef)).subscribe();
+<span class="cm">// → dữ liệu không tới máy chủ, mà cũng không có thông báo lỗi nào</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>subscription</td><td>Đăng ký nhận dữ liệu từ một luồng.</td></tr>
+      <tr><td>memory leak</td><td>Rò rỉ bộ nhớ — thứ đáng lẽ được thu hồi vẫn bị giữ.</td></tr>
+      <tr><td>takeUntilDestroyed</td><td>Tự huỷ đăng ký khi component bị huỷ.</td></tr>
+      <tr><td>DestroyRef</td><td>Đối tượng đại diện vòng đời huỷ của component.</td></tr>
+      <tr><td>async pipe</td><td>Pipe tự đăng ký và tự huỷ trong template.</td></tr>
+    </tbody>
+  </table></div>
+</section>

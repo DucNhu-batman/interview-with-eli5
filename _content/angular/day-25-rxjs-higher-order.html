@@ -1,0 +1,90 @@
+<!--meta
+title: Day 25 — Higher Order Observables và Utility Operators
+eyebrow: Angular · Day 25
+short: Day 25
+lede: Luồng của luồng, cùng nhóm toán tử tiện ích (tap, delay, shareReplay) mà bạn sẽ dùng hằng ngày để gỡ lỗi và tối ưu.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Khi mỗi giá trị lại là một cái vòi khác</h2></div>
+  <p>Higher-order observable (luồng bậc cao) là luồng mà mỗi giá trị nó phát ra lại là <em>một observable</em>. Ví dụ: mỗi lần người dùng gõ phím → sinh ra một request. Nếu chỉ <code>map</code>, bạn nhận được một luồng chứa các luồng chưa ai đăng ký.</p>
+  <p>Muốn "làm phẳng" nó, phải dùng một toán tử flattening (làm phẳng) — chính là bộ <code>switchMap</code>/<code>mergeMap</code>/<code>concatMap</code>/<code>exhaustMap</code> ở Day 21, hoặc tách đôi thành <code>map</code> + <code>switchAll</code>/<code>mergeAll</code>.</p>
+<pre><code>tuKhoa$.pipe(
+  map((tk) =&gt; <span class="kw">this</span>.api.tim(tk)),   <span class="cm">// Observable&lt;Observable&lt;KetQua&gt;&gt; — chưa chạy</span>
+  switchAll(),                        <span class="cm">// làm phẳng, tương đương switchMap</span>
+);</code></pre>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Bộ đồ nghề</p><h2>Utility operators dùng hằng ngày</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Toán tử</th><th>Tác dụng</th></tr></thead>
+    <tbody>
+      <tr><td>tap</td><td>Xem trộm giá trị mà không đổi gì — dùng để log, bật/tắt spinner</td></tr>
+      <tr><td>delay</td><td>Trì hoãn phát giá trị</td></tr>
+      <tr><td>finalize</td><td>Dọn dẹp khi luồng kết thúc hoặc bị huỷ</td></tr>
+      <tr><td>shareReplay(1)</td><td>Chia sẻ một lần chạy cho nhiều người đăng ký, phát lại giá trị cuối</td></tr>
+      <tr><td>toSignal / toObservable</td><td>Cầu nối giữa RxJS và signal của Angular</td></tr>
+      <tr><td>timeout</td><td>Ném lỗi nếu quá lâu không có dữ liệu</td></tr>
+    </tbody>
+  </table></div>
+<pre><code><span class="kw">readonly</span> danhMuc$ = <span class="kw">this</span>.api.dsDanhMuc().pipe(
+  shareReplay({ bufferSize: 1, refCount: <span class="kw">true</span> }),   <span class="cm">// chỉ gọi API một lần</span>
+);
+<span class="kw">readonly</span> danhMuc = toSignal(<span class="kw">this</span>.danhMuc$, { initialValue: [] });</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b><code>shareReplay</code> chống gọi API trùng</b> khi nhiều component cùng cần một danh mục.</li>
+        <li><b><code>tap</code> là công cụ gỡ lỗi số một</b> — chèn vào giữa chuỗi để xem giá trị đi qua.</li>
+        <li><b><code>toSignal</code> nối RxJS với signal</b>, cho phép dùng luồng trong template mà không cần <code>async</code> pipe.</li>
+        <li><b>Hiểu luồng bậc cao là hiểu vì sao cần flattening</b> — chấm dứt kiểu subscribe lồng subscribe.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="kw">readonly</span> danhMuc$ = api.dsDanhMuc().pipe(
+  shareReplay({ bufferSize: 1, refCount: <span class="kw">true</span> }),
+);
+<span class="cm">// 5 dropdown cùng dùng danhMuc$ → chỉ MỘT request được gửi.</span>
+
+<span class="cm">// Và tap là công cụ soi luồng số một:</span>
+.pipe(tap((v) =&gt; console.log(<span class="str">'sau filter:'</span>, v)), switchMap(…))</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b><code>shareReplay</code> không có <code>refCount</code></b> giữ luồng sống mãi — nguồn rò rỉ bộ nhớ rất hay gặp.</li>
+        <li><b>Dữ liệu cũ bị đóng băng.</b> Cache một lần thì thay đổi ở máy chủ không tới được người dùng.</li>
+        <li><b><code>tap</code> dễ bị lạm dụng</b> thành nơi nhét tác dụng phụ, làm luồng khó suy luận.</li>
+        <li><b>Luồng bậc cao khó hình dung,</b> đọc code người khác rất dễ hiểu nhầm thứ tự chạy.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>shareReplay(1)          <span class="cm">// ✗ thiếu refCount</span>
+<span class="cm">// → luồng nguồn không bao giờ bị ngắt, kể cả khi không còn ai đăng ký;</span>
+<span class="cm">// một interval/WebSocket bên dưới sẽ chạy tới hết phiên làm việc</span>
+
+<span class="cm">// Và cache quá tay:</span>
+<span class="kw">readonly</span> tonKho$ = api.tonKho().pipe(shareReplay(1));
+<span class="cm">// → người dùng nhập kho xong, số tồn trên màn vẫn là số cũ, mãi mãi</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>higher-order observable</td><td>Luồng bậc cao — luồng chứa các luồng khác.</td></tr>
+      <tr><td>flattening</td><td>Làm phẳng — đăng ký luồng con và đẩy giá trị ra luồng ngoài.</td></tr>
+      <tr><td>shareReplay</td><td>Chia sẻ kết quả và phát lại cho người đăng ký sau.</td></tr>
+      <tr><td>refCount</td><td>Đếm số người đăng ký; về 0 thì ngắt luồng nguồn.</td></tr>
+      <tr><td>toSignal</td><td>Chuyển observable thành signal của Angular.</td></tr>
+      <tr><td>cold / hot</td><td>Luồng chạy riêng cho từng người đăng ký / dùng chung một lần chạy.</td></tr>
+    </tbody>
+  </table></div>
+</section>

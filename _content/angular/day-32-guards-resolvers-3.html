@@ -1,0 +1,81 @@
+<!--meta
+title: Day 32 — Guards và Resolvers, phần 3
+eyebrow: Angular · Day 32
+short: Day 32
+lede: Resolver lấy dữ liệu trước khi màn hình xuất hiện. Rất gọn — nhưng đổi lại là một quãng "đứng hình" mà người dùng không hiểu chuyện gì đang xảy ra.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Dọn cỗ xong mới mời khách vào</h2></div>
+  <p>Resolver (bộ giải dữ liệu) là hàm chạy trước khi component được tạo. Router chờ nó xong rồi mới điều hướng, và đặt kết quả vào <code>route.data</code>. Component nhận dữ liệu đã sẵn sàng, khỏi phải xử lý trạng thái "đang tải".</p>
+<pre><code>export <span class="kw">const</span> khoResolver: ResolveFn&lt;Kho&gt; = (route) =&gt;
+  inject(KhoService).chiTiet(route.paramMap.get(<span class="str">'id'</span>)!);
+
+{ path: <span class="str">'kho/:id'</span>, component: ChiTietKhoComponent, resolve: { kho: khoResolver } }
+
+<span class="cm">// Trong component — cách gọn nhất</span>
+{ path: <span class="str">'kho/:id'</span>, component: ChiTietKhoComponent,
+  resolve: { kho: khoResolver }, data: { }, }
+<span class="kw">readonly</span> kho = toSignal(inject(ActivatedRoute).data.pipe(map((d) =&gt; d[<span class="str">'kho'</span>] <span class="kw">as</span> Kho)));
+
+<span class="cm">// Hoặc bật withComponentInputBinding() rồi nhận thẳng qua input cùng tên</span>
+kho = input.required&lt;Kho&gt;();</code></pre>
+  <div class="callout">
+    <p><strong>Mẹo hiện đại:</strong> bật <code>provideRouter(routes, withComponentInputBinding())</code> thì mọi tham số route và dữ liệu resolver tự chảy vào <code>input()</code> cùng tên. Component không cần biết <code>ActivatedRoute</code> là gì — dễ test hơn hẳn.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Component sạch:</b> không có trạng thái tải, không có dữ liệu <code>undefined</code> ở lần vẽ đầu.</li>
+        <li><b>Không nhấp nháy khung rỗng</b> rồi mới đổ dữ liệu.</li>
+        <li><b>Bắt lỗi sớm:</b> id không tồn tại thì chuyển hướng ngay, không vẽ màn lỗi.</li>
+        <li><b>Tải song song nhiều nguồn</b> trước khi vào, dùng chung một chỗ khai báo.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>{ path: <span class="str">':id'</span>, component: ChiTietKho, resolve: { kho: khoResolver } }
+
+export class ChiTietKho { kho = input.required&lt;Kho&gt;(); }
+<span class="cm">// Không có trạng thái "đang tải", không có kho() === undefined,</span>
+<span class="cm">// không nhấp nháy khung rỗng. Id sai → chuyển hướng trước khi vẽ.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Ứng dụng như treo.</b> Màn cũ vẫn hiện, chưa có gì báo là đang tải — phải tự bật chỉ báo từ sự kiện router.</li>
+        <li><b>Chậm nhất quyết định tất cả.</b> Một API chậm giữ chân toàn bộ màn hình.</li>
+        <li><b>Khó hiện lỗi tử tế.</b> Lỗi xảy ra khi chưa có màn hình nào để hiển thị nó.</li>
+        <li><b>Dữ liệu không tự làm mới</b> khi ở lại màn lâu — resolver chỉ chạy lúc vào.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>resolve: { kho: khoResolver, lichSu: lichSuResolver }
+<span class="cm">// ✗ lichSuResolver mất 4 giây:</span>
+<span class="cm">// người dùng bấm vào dòng → màn hình CŨ đứng im 4 giây, không dấu hiệu gì</span>
+<span class="cm">// → họ tưởng máy treo và bấm tiếp nhiều lần</span>
+
+<span class="cm">// Và dữ liệu không tự làm mới:</span>
+<span class="cm">// mở màn 30 phút, số tồn kho vẫn là số của lúc mới vào</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Chọn thế nào:</strong> dữ liệu nhỏ, bắt buộc phải có (chi tiết bản ghi, danh mục) → resolver. Dữ liệu lớn hoặc có thể tải dần (danh sách, biểu đồ, tab phụ) → cứ vào màn trước, hiện khung xương rồi tải sau — người dùng cảm thấy nhanh hơn nhiều.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>resolver</td><td>Bộ giải dữ liệu — lấy dữ liệu trước khi vào route.</td></tr>
+      <tr><td>route data</td><td>Dữ liệu gắn kèm route, đọc qua <code>ActivatedRoute</code>.</td></tr>
+      <tr><td>withComponentInputBinding</td><td>Tự bơm tham số route vào input của component.</td></tr>
+      <tr><td>skeleton</td><td>Khung xương — giao diện giả trong lúc chờ dữ liệu.</td></tr>
+      <tr><td>NavigationStart/End</td><td>Sự kiện router báo bắt đầu/kết thúc điều hướng.</td></tr>
+    </tbody>
+  </table></div>
+</section>

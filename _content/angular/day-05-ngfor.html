@@ -1,0 +1,82 @@
+<!--meta
+title: Day 5 — Structural Directive: NgForOf / @for
+eyebrow: Angular · Day 5
+short: Day 5
+lede: Lặp một khuôn giao diện theo danh sách. Và trackBy — thứ quyết định giữa việc vẽ lại một dòng hay vẽ lại cả nghìn dòng.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Một khuôn, nhiều bản</h2></div>
+  <p>Bạn viết giao diện cho <em>một</em> phần tử; Angular nhân bản khuôn đó cho từng phần tử trong danh sách và bơm dữ liệu vào.</p>
+<pre><code>&#64;for (sp of danhSach(); track sp.id) {
+  &lt;app-the-san-pham [sp]="sp" /&gt;
+} &#64;empty {
+  &lt;p&gt;Chưa có sản phẩm nào&lt;/p&gt;
+}
+
+<span class="cm">// Cú pháp cũ</span>
+&lt;li *ngFor="let sp of danhSach(); index as i; trackBy: trackById"&gt;
+  {{ i + 1 }}. {{ sp.ten }}
+&lt;/li&gt;</code></pre>
+  <p>Các biến ngữ cảnh dùng được: <code>$index</code>, <code>$first</code>, <code>$last</code>, <code>$even</code>, <code>$odd</code>, <code>$count</code>.</p>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Trọng tâm</p><h2>track / trackBy: vì sao bắt buộc</h2></div>
+  <p>Khi danh sách đổi, Angular phải quyết định dòng nào giữ, dòng nào vẽ lại. Mặc định nó so sánh theo <em>tham chiếu object</em>. Gọi API lấy lại danh sách là mọi object đều mới → toàn bộ dòng bị huỷ và dựng lại, dù nội dung y hệt.</p>
+  <p>Khai <code>track sp.id</code> là bảo Angular: "hãy nhận dạng dòng bằng <code>id</code>". Nó sẽ giữ nguyên các dòng cũ, chỉ chạm vào dòng thật sự đổi.</p>
+  <div class="callout bad">
+    <p><strong>Đừng track theo <code>$index</code></strong> khi danh sách có thể chèn/xoá/sắp xếp — vị trí thay đổi sẽ khiến Angular nhận nhầm dòng, gây hiện tượng ô nhập giữ sai giá trị. Ở Angular 17+, <code>track</code> là <strong>bắt buộc</strong> — đây là một quyết định thiết kế có chủ ý.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Giao diện luôn khớp dữ liệu.</b> Sửa mảng là danh sách tự cập nhật.</li>
+        <li><b>Cập nhật tối thiểu nhờ track.</b> Nghìn dòng nhưng chỉ vẽ lại dòng đổi.</li>
+        <li><b><code>@empty</code> gọn gàng</b> — hết cảnh thêm một <code>*ngIf</code> riêng cho trạng thái rỗng.</li>
+        <li><b>Có sẵn biến vị trí</b> cho việc đánh số, tô màu xen kẽ, xử lý phần tử cuối.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>&#64;for (sp of danhSach(); track sp.id) { &lt;app-dong [sp]="sp" /&gt; }
+
+<span class="cm">// Gọi API lấy lại 500 dòng, chỉ 1 dòng đổi giá:</span>
+<span class="cm">// → Angular giữ nguyên 499 phần tử DOM, chỉ vẽ lại đúng 1 dòng</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Danh sách lớn thì chậm.</b> Vài nghìn dòng nên chuyển sang cuộn ảo (virtual scroll) của Angular CDK.</li>
+        <li><b>Track sai còn hại hơn không track.</b> Trùng khoá gây lỗi khó lần.</li>
+        <li><b>Gọi hàm/pipe không thuần trong vòng lặp</b> nhân chi phí lên theo số dòng.</li>
+        <li><b>Sửa mảng tại chỗ</b> (<code>push</code>) không tạo tham chiếu mới — với <code>OnPush</code> hoặc signal thì giao diện không cập nhật.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&#64;for (o of dongs(); track $index) { &lt;input [formControl]="o" /&gt; }
+<span class="cm">// Xoá dòng thứ 2 trong danh sách 5 dòng:</span>
+<span class="cm">// ✗ các ô nhập bên dưới giữ nguyên giá trị cũ, lệch hẳn với dữ liệu</span>
+
+<span class="kw">this</span>.items().push(moi);      <span class="cm">// ✗ sửa tại chỗ, tham chiếu không đổi</span>
+<span class="kw">this</span>.items.update((ds) =&gt; [...ds, moi]);   <span class="cm">// ✓ giao diện mới cập nhật</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>trackBy / track</td><td>Cách nhận dạng từng phần tử để tái sử dụng DOM.</td></tr>
+      <tr><td>virtual scroll</td><td>Cuộn ảo — chỉ vẽ những dòng đang nằm trong tầm nhìn.</td></tr>
+      <tr><td>pipe thuần</td><td>Pipe chỉ tính lại khi đầu vào đổi (mặc định).</td></tr>
+      <tr><td>tham chiếu</td><td>Địa chỉ của object; Angular so sánh nó để biết dữ liệu có đổi không.</td></tr>
+      <tr><td>OnPush</td><td>Chiến lược chỉ kiểm tra lại khi đầu vào đổi tham chiếu.</td></tr>
+      <tr><td>CDK</td><td>Component Dev Kit — bộ công cụ dựng component của Angular.</td></tr>
+    </tbody>
+  </table></div>
+</section>

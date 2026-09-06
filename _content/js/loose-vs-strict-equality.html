@@ -1,0 +1,223 @@
+<!--meta
+title: == và === — so sánh lỏng và so sánh nghiêm
+eyebrow: JavaScript · Bài 7
+short: == và ===
+lede: Cùng là "bằng nhau", nhưng == ép hai vế về cùng kiểu trước khi so, còn === thì không. Chính bước ép kiểu đó đẻ ra một loạt kết quả trái khoáy mà ai cũng gặp ít nhất một lần.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Một dấu bằng nhiều hơn, một bước ít đi</h2></div>
+  <p>JavaScript có hai toán tử (operator — ký hiệu thực hiện một phép tính) so sánh bằng:</p>
+  <div class="cards">
+    <div class="card">
+      <span class="tag bad">Lỏng</span>
+      <h3><code>==</code> — abstract equality</h3>
+      <p>So sánh <strong>sau khi ép kiểu</strong> (type coercion — tự động đổi giá trị sang kiểu khác). Hai vế khác kiểu thì JavaScript tự nắn cho về cùng kiểu rồi mới so.</p>
+<pre><code><span class="kw">1</span> == <span class="str">'1'</span>      <span class="out">// true — chuỗi '1' bị đổi thành số 1</span>
+<span class="kw">0</span> == <span class="kw">false</span>    <span class="out">// true — false bị đổi thành số 0</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag">Nghiêm</span>
+      <h3><code>===</code> — strict equality</h3>
+      <p>So sánh <strong>không ép kiểu</strong>. Khác kiểu là <code>false</code> ngay, khỏi bàn thêm. Đây là hành vi mà hầu hết ngôn ngữ khác gọi là "bằng nhau".</p>
+<pre><code><span class="kw">1</span> === <span class="str">'1'</span>     <span class="out">// false — số khác chuỗi</span>
+<span class="kw">0</span> === <span class="kw">false</span>   <span class="out">// false — số khác boolean</span></code></pre>
+    </div>
+  </div>
+  <p>Với <strong>nguyên thuỷ</strong> (primitive — số, chuỗi, boolean, <code>null</code>, <code>undefined</code>, symbol, bigint) thì cả hai so <em>giá trị</em>. Với <strong>đối tượng</strong> (object — mảng, đối tượng, hàm) thì cả hai đều so <em>địa chỉ ô nhớ</em>, không so nội dung — nên <code>{} === {}</code> lẫn <code>{} == {}</code> đều là <code>false</code>.</p>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> <code>===</code> trả lời "hai vế có giống hệt nhau không". <code>==</code> trả lời "sau khi tôi tự sửa hai vế cho khớp kiểu thì chúng có giống nhau không" — và <em>cách nó tự sửa</em> mới là thứ gây bất ngờ, chứ không phải phép so sánh.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2><code>==</code> quyết định theo sáu bước</h2></div>
+  <p class="col">Khi gặp <code>a == b</code>, JavaScript chạy một thuật toán (algorithm — dãy bước cố định) đi từ trên xuống, gặp bước nào khớp thì dừng ở đó:</p>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 424" role="img" aria-label="Sơ đồ sáu bước của toán tử ==: bước một, cùng kiểu thì so như ===; bước hai, null với undefined thì true; bước ba, số với chuỗi thì đổi chuỗi thành số rồi so lại; bước bốn, có boolean thì đổi true thành 1 và false thành 0 rồi so lại; bước năm, đối tượng với nguyên thuỷ thì đổi đối tượng thành nguyên thuỷ rồi so lại; bước sáu, còn lại thì false.">
+        <defs>
+          <marker id="eqArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <g>
+          <rect x="16" y="8" width="404" height="52" rx="12" fill="var(--surface-2)"></rect>
+          <text x="34" y="32" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">1</text>
+          <text x="56" y="32" font-size="13" font-weight="600" fill="currentColor">Hai vế cùng kiểu?</text>
+          <text x="56" y="50" font-size="11.5" fill="currentColor" opacity=".7">số với số, chuỗi với chuỗi, đối tượng với đối tượng…</text>
+          <line x1="424" y1="34" x2="470" y2="34" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#eqArrow)"></line>
+          <text x="478" y="38" font-size="12" fill="currentColor" font-family="monospace">so sánh y hệt ===</text>
+          <line x1="218" y1="60" x2="218" y2="76" stroke="currentColor" stroke-width="1.4" opacity=".5" marker-end="url(#eqArrow)"></line>
+        </g>
+
+        <g>
+          <rect x="16" y="80" width="404" height="52" rx="12" fill="var(--surface-2)"></rect>
+          <text x="34" y="104" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">2</text>
+          <text x="56" y="104" font-size="13" font-weight="600" fill="currentColor">Một bên <tspan font-family="monospace">null</tspan>, bên kia <tspan font-family="monospace">undefined</tspan>?</text>
+          <text x="56" y="122" font-size="11.5" fill="currentColor" opacity=".7">chỉ hai giá trị này bằng nhau, không kèm ai khác</text>
+          <line x1="424" y1="106" x2="470" y2="106" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#eqArrow)"></line>
+          <text x="478" y="110" font-size="12" fill="var(--good)" font-family="monospace" font-weight="700">true</text>
+          <line x1="218" y1="132" x2="218" y2="148" stroke="currentColor" stroke-width="1.4" opacity=".5" marker-end="url(#eqArrow)"></line>
+        </g>
+
+        <g>
+          <rect x="16" y="152" width="404" height="52" rx="12" fill="var(--surface-2)"></rect>
+          <text x="34" y="176" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">3</text>
+          <text x="56" y="176" font-size="13" font-weight="600" fill="currentColor">Số với chuỗi?</text>
+          <text x="56" y="194" font-size="11.5" fill="currentColor" opacity=".7">chuỗi bị đổi thành số, rồi quay lại bước 1</text>
+          <line x1="424" y1="178" x2="470" y2="178" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#eqArrow)"></line>
+          <text x="478" y="182" font-size="12" fill="currentColor" font-family="monospace">'12' → 12</text>
+          <line x1="218" y1="204" x2="218" y2="220" stroke="currentColor" stroke-width="1.4" opacity=".5" marker-end="url(#eqArrow)"></line>
+        </g>
+
+        <g>
+          <rect x="16" y="224" width="404" height="52" rx="12" fill="var(--surface-2)"></rect>
+          <text x="34" y="248" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">4</text>
+          <text x="56" y="248" font-size="13" font-weight="600" fill="currentColor">Có một bên là boolean?</text>
+          <text x="56" y="266" font-size="11.5" fill="currentColor" opacity=".7">đổi thành số, rồi quay lại bước 1</text>
+          <line x1="424" y1="250" x2="470" y2="250" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#eqArrow)"></line>
+          <text x="478" y="254" font-size="12" fill="currentColor" font-family="monospace">true → 1, false → 0</text>
+          <line x1="218" y1="276" x2="218" y2="292" stroke="currentColor" stroke-width="1.4" opacity=".5" marker-end="url(#eqArrow)"></line>
+        </g>
+
+        <g>
+          <rect x="16" y="296" width="404" height="52" rx="12" fill="var(--surface-2)"></rect>
+          <text x="34" y="320" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">5</text>
+          <text x="56" y="320" font-size="13" font-weight="600" fill="currentColor">Đối tượng với nguyên thuỷ?</text>
+          <text x="56" y="338" font-size="11.5" fill="currentColor" opacity=".7">đối tượng bị đổi thành nguyên thuỷ, rồi quay lại bước 1</text>
+          <line x1="424" y1="322" x2="470" y2="322" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#eqArrow)"></line>
+          <text x="478" y="326" font-size="12" fill="currentColor" font-family="monospace">[] → '' , [3] → '3'</text>
+          <line x1="218" y1="348" x2="218" y2="364" stroke="currentColor" stroke-width="1.4" opacity=".5" marker-end="url(#eqArrow)"></line>
+        </g>
+
+        <g>
+          <rect x="16" y="368" width="404" height="48" rx="12" fill="var(--surface-2)"></rect>
+          <text x="34" y="397" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">6</text>
+          <text x="56" y="397" font-size="13" font-weight="600" fill="currentColor">Không rơi vào bước nào ở trên</text>
+          <line x1="424" y1="392" x2="470" y2="392" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#eqArrow)"></line>
+          <text x="478" y="396" font-size="12" fill="var(--bad)" font-family="monospace" font-weight="700">false</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption><code>===</code> chỉ có đúng bước 1. Năm bước còn lại là toàn bộ phần "thêm" của <code>==</code> — và cũng là toàn bộ phần gây lỗi.</figcaption>
+  </figure>
+  <p class="col">Đọc ngược sơ đồ sẽ thấy vì sao <code>[] == false</code> lại là <code>true</code>: bước 4 đổi <code>false</code> thành <code>0</code>, bước 5 đổi <code>[]</code> thành chuỗi rỗng <code>''</code>, bước 3 đổi <code>''</code> thành <code>0</code>, và cuối cùng bước 1 so <code>0</code> với <code>0</code>. Bốn lần biến hình chỉ để nói "mảng rỗng bằng false".</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Những cặp hay làm người ta ngã ngửa</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Biểu thức</th><th><code>==</code></th><th><code>===</code></th><th>Vì sao</th></tr></thead>
+    <tbody>
+      <tr><td>1 == '1'</td><td><span class="yes">true</span></td><td><span class="no">false</span></td><td>Bước 3: chuỗi <code>'1'</code> thành số <code>1</code>.</td></tr>
+      <tr><td>0 == ''</td><td><span class="yes">true</span></td><td><span class="no">false</span></td><td>Chuỗi rỗng thành số <code>0</code>.</td></tr>
+      <tr><td>0 == '0'</td><td><span class="yes">true</span></td><td><span class="no">false</span></td><td>Chuỗi <code>'0'</code> thành số <code>0</code>.</td></tr>
+      <tr><td>'' == '0'</td><td><span class="no">false</span></td><td><span class="no">false</span></td><td><b>Cùng kiểu chuỗi nên dừng ở bước 1</b> — không ép kiểu, hai chuỗi khác nhau.</td></tr>
+      <tr><td>null == undefined</td><td><span class="yes">true</span></td><td><span class="no">false</span></td><td>Bước 2, luật riêng duy nhất.</td></tr>
+      <tr><td>null == 0</td><td><span class="no">false</span></td><td><span class="no">false</span></td><td><code>null</code> <b>không</b> được đổi thành số — nó rơi thẳng xuống bước 6.</td></tr>
+      <tr><td>NaN == NaN</td><td><span class="no">false</span></td><td><span class="no">false</span></td><td><code>NaN</code> (Not-a-Number — giá trị "không phải số") không bằng chính nó, theo chuẩn số thực dấu phẩy động.</td></tr>
+      <tr><td>[] == false</td><td><span class="yes">true</span></td><td><span class="no">false</span></td><td>Qua bước 4 → 5 → 3, cuối cùng thành <code>0 == 0</code>.</td></tr>
+      <tr><td>[] == ![]</td><td><span class="yes">true</span></td><td>—</td><td><code>![]</code> là <code>false</code> (mảng là truthy), rồi y hệt dòng trên.</td></tr>
+      <tr><td>'1' == true</td><td><span class="yes">true</span></td><td><span class="no">false</span></td><td><code>true</code> thành <code>1</code>, chuỗi <code>'1'</code> thành <code>1</code>.</td></tr>
+      <tr><td>'2' == true</td><td><span class="no">false</span></td><td><span class="no">false</span></td><td>Vẫn so với <code>1</code>, không phải "chuỗi có nội dung thì truthy".</td></tr>
+      <tr><td>{} == {}</td><td><span class="no">false</span></td><td><span class="no">false</span></td><td>Hai đối tượng khác ô nhớ; cả hai toán tử đều so địa chỉ.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout bad">
+    <p><strong>Cạm bẫy lớn nhất — <code>==</code> không bắc cầu:</strong> <code>0 == ''</code> đúng, <code>0 == '0'</code> đúng, nhưng <code>'' == '0'</code> lại sai. Trong toán học, quan hệ "bằng" mà không bắc cầu là quan hệ hỏng. Vì thế không có cách nào "học thuộc cho quen" <code>==</code> — mọi trực giác đều sẽ trượt ở đâu đó.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Ngoại lệ</p><h2><code>===</code> vẫn sai ở hai chỗ: <code>NaN</code> và <code>-0</code></h2></div>
+  <p>So nghiêm không phải là thần thánh. Nó thừa hưởng đúng hai điểm kỳ quặc của chuẩn số:</p>
+<pre><code>NaN === NaN        <span class="out">// false — dù rõ ràng là "cùng một thứ"</span>
+<span class="kw">0</span> === -<span class="kw">0</span>           <span class="out">// true — dù đây là hai giá trị khác nhau về dấu</span>
+
+<span class="cm">// Muốn "giống hệt" đúng nghĩa thì dùng Object.is:</span>
+Object.is(NaN, NaN)   <span class="out">// true</span>
+Object.is(<span class="kw">0</span>, -<span class="kw">0</span>)     <span class="out">// false</span>
+
+<span class="cm">// Kiểm tra NaN một cách tường minh:</span>
+Number.isNaN(x)       <span class="cm">// đúng: chỉ true khi x thật sự là NaN</span>
+isNaN(x)              <span class="cm">// sai: hàm cũ, ép kiểu trước — isNaN('abc') là true</span></code></pre>
+  <p><code>Object.is</code> (so sánh "giống hệt" theo chuẩn SameValue) giống <code>===</code> ở mọi trường hợp còn lại, nên chỉ lôi ra khi thực sự cần phân biệt <code>NaN</code> hoặc dấu của số không — dùng nó thay <code>===</code> ở khắp nơi là làm mã khó đọc mà chẳng được gì.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của <code>==</code></h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Gộp <code>null</code> và <code>undefined</code> trong một phép so</b> — đây là công dụng hợp lệ duy nhất và cũng là lý do duy nhất để giữ <code>==</code> trong mã hiện đại.</li>
+        <li><b>Viết ngắn khi dữ liệu vào không rõ kiểu</b>, ví dụ tham số lấy từ đường dẫn luôn là chuỗi trong khi mã lại giữ số.</li>
+        <li><b>Được các bộ kiểm mã cho phép có chọn lọc:</b> quy tắc <code>eqeqeq</code> của ESLint (bộ kiểm mã — công cụ soi lỗi và soi phong cách viết) có tuỳ chọn <code>'always', { null: 'ignore' }</code>, cho đúng một ngoại lệ này.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="kw">if</span> (x == <span class="kw">null</span>) { … }
+<span class="cm">// Bắt cả null lẫn undefined, không bắt 0, '' hay false.</span>
+<span class="cm">// Bản viết bằng === phải dài gấp đôi:</span>
+<span class="kw">if</span> (x === <span class="kw">null</span> || x === <span class="kw">undefined</span>) { … }
+
+<span class="cm">// Bản hiện đại, rõ ràng hơn cả hai:</span>
+<span class="kw">if</span> (x ?? <span class="kw">false</span>) { … }        <span class="cm">// toán tử hợp nhất null</span>
+<span class="kw">const</span> ten = x?.ten ?? <span class="str">'Không rõ'</span>;</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Không bắc cầu</b> — quan hệ bằng mà <code>a == b</code>, <code>a == c</code> nhưng <code>b != c</code> thì không thể suy luận được bằng trực giác.</li>
+        <li><b>Giấu lỗi kiểu dữ liệu.</b> Chuỗi lọt vào chỗ đáng lẽ là số vẫn chạy êm, tới khi làm phép cộng mới vỡ ở một chỗ hoàn toàn khác.</li>
+        <li><b>Kết quả phụ thuộc <code>valueOf</code>/<code>toString</code></b> của đối tượng — bước 5 gọi vào chính mã của bạn, nên hai đối tượng "tưởng như" so được lại ra kết quả bất ngờ.</li>
+        <li><b>Chậm hơn một chút</b> vì có thể phải chuyển kiểu vài vòng, tuy đây là lý do yếu nhất.</li>
+        <li><b>Người đọc sau phải dừng lại đoán</b>: tác giả cố tình dùng <code>==</code>, hay gõ thiếu một dấu bằng?</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// ✗ id từ đường dẫn là chuỗi, id trong danh sách là số</span>
+<span class="kw">const</span> found = ds.find((r) =&gt; r.id == idTrenUrl);
+<span class="cm">// Chạy đúng… cho tới khi có bản ghi id = 0 và idTrenUrl = ''</span>
+<span class="cm">// → khớp nhầm, mở sai bản ghi.</span>
+
+<span class="cm">// ✗ soLuong lấy từ ô nhập là chuỗi rỗng khi người dùng xoá trắng</span>
+<span class="kw">if</span> (soLuong == <span class="kw">0</span>) canhBao();
+<span class="out">// '' == 0 là true → cảnh báo "số lượng bằng 0" khi ô đang trống</span>
+
+<span class="cm">// ✗ đối tượng tự định nghĩa valueOf</span>
+<span class="kw">const</span> vi = { valueOf: () =&gt; <span class="kw">0</span> };
+vi == <span class="kw">false</span>          <span class="out">// true (!)</span>
+vi === <span class="kw">false</span>         <span class="out">// false</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> dùng <code>===</code> và <code>!==</code> ở mọi nơi, bật quy tắc <code>eqeqeq</code> trong ESLint để máy nhắc thay người. Ngoại lệ duy nhất được phép là <code>x == null</code> khi muốn bắt cả <code>null</code> lẫn <code>undefined</code> — và nếu dự án đã dùng cú pháp mới thì <code>?.</code> (optional chaining — truy cập an toàn) cùng <code>??</code> (nullish coalescing — hợp nhất null) còn nói rõ ý hơn. Khi hai vế có thể khác kiểu, hãy <strong>ép kiểu tường minh trước</strong> (<code>Number(x) === y</code>) thay vì để <code>==</code> ép ngầm.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>operator</td><td>Toán tử — ký hiệu thực hiện một phép tính, ở đây là phép so sánh.</td></tr>
+      <tr><td>loose equality (==)</td><td>So sánh lỏng — so sau khi tự ép hai vế về cùng kiểu.</td></tr>
+      <tr><td>strict equality (===)</td><td>So sánh nghiêm — khác kiểu là sai ngay, không ép kiểu.</td></tr>
+      <tr><td>type coercion</td><td>Ép kiểu — tự động đổi giá trị từ kiểu này sang kiểu khác.</td></tr>
+      <tr><td>primitive</td><td>Nguyên thuỷ — số, chuỗi, boolean, null, undefined, symbol, bigint.</td></tr>
+      <tr><td>object</td><td>Đối tượng — mảng, đối tượng, hàm; so sánh theo địa chỉ ô nhớ.</td></tr>
+      <tr><td>boolean</td><td>Kiểu luận lý, chỉ có hai giá trị đúng và sai.</td></tr>
+      <tr><td>NaN</td><td>Not-a-Number — giá trị "không phải số", và không bằng chính nó.</td></tr>
+      <tr><td>truthy / falsy</td><td>Giá trị được coi là đúng / sai khi đặt vào chỗ cần boolean.</td></tr>
+      <tr><td>transitive</td><td>Bắc cầu — a bằng b và b bằng c thì a bằng c. <code>==</code> không có tính này.</td></tr>
+      <tr><td>Object.is</td><td>Hàm so "giống hệt" — như <code>===</code> nhưng đúng với NaN và phân biệt 0 với -0.</td></tr>
+      <tr><td>valueOf / toString</td><td>Hai phương thức đối tượng dùng để tự đổi mình thành nguyên thuỷ.</td></tr>
+      <tr><td>algorithm</td><td>Thuật toán — dãy bước cố định máy chạy để ra kết quả.</td></tr>
+      <tr><td>ESLint</td><td>Bộ kiểm mã — công cụ soi lỗi và soi phong cách viết trong dự án JavaScript.</td></tr>
+      <tr><td>eqeqeq</td><td>Quy tắc ESLint bắt buộc dùng <code>===</code> thay cho <code>==</code>.</td></tr>
+      <tr><td>optional chaining (?.)</td><td>Truy cập an toàn — trả về undefined thay vì lỗi khi vế trái rỗng.</td></tr>
+      <tr><td>nullish coalescing (??)</td><td>Hợp nhất null — lấy vế phải chỉ khi vế trái là null hoặc undefined.</td></tr>
+    </tbody>
+  </table></div>
+</section>

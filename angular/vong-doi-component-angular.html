@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vòng đời Component Angular</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F3F5F8; --surface:#FFFFFF; --surface-2:#EDF0F4;
+  --ink:#141A21; --ink-soft:#59656F; --line:#DBE1E8;
+  --accent:#C41C3F; --accent-bg:#FBEAEE;
+  --teal:#0D6A7C; --teal-bg:#E2F1F4;
+  --code-bg:#0F1720; --code-ink:#DCE6F0; --code-dim:#7C8B9C; --code-key:#FF8FA6; --code-str:#8FD3C0;
+  --shadow:0 1px 2px rgba(20,26,33,.05), 0 8px 24px -16px rgba(20,26,33,.25);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0D1116; --surface:#141A21; --surface-2:#1B222A;
+    --ink:#E6EBF0; --ink-soft:#94A1AD; --line:#27313B;
+    --accent:#FF6E88; --accent-bg:#37151E;
+    --teal:#5DC9DC; --teal-bg:#0E2A31;
+    --code-bg:#090E13; --code-ink:#D6E2EE; --code-dim:#6C7B8C;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0D1116; --surface:#141A21; --surface-2:#1B222A;
+  --ink:#E6EBF0; --ink-soft:#94A1AD; --line:#27313B;
+  --accent:#FF6E88; --accent-bg:#37151E;
+  --teal:#5DC9DC; --teal-bg:#0E2A31;
+  --code-bg:#090E13; --code-ink:#D6E2EE; --code-dim:#6C7B8C;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Newsreader",Georgia,"Times New Roman",serif;
+  font-size:17.5px; line-height:1.68; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:860px; margin:0 auto; padding:0 24px 96px}
+h1,h2,h3,.disp{font-family:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif; text-wrap:balance; letter-spacing:-.015em}
+code,kbd,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* ---------- header ---------- */
+header.top{border-bottom:1px solid var(--line); background:var(--surface)}
+.top-inner{max-width:860px; margin:0 auto; padding:56px 24px 40px}
+.eyebrow{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:0 0 18px}
+h1{font-size:clamp(2.4rem,7vw,3.9rem); line-height:1.02; font-weight:700; margin:0 0 18px}
+.lede{font-size:1.18rem; color:var(--ink-soft); max-width:60ch; margin:0}
+.lede em{color:var(--ink); font-style:normal; font-weight:600}
+
+/* ---------- stat strip ---------- */
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden; margin:34px 0 0}
+.stat{background:var(--surface); padding:14px 14px 12px}
+.stat b{display:block; font-family:"Bricolage Grotesque",sans-serif; font-size:1.55rem; line-height:1.1; font-variant-numeric:tabular-nums; color:var(--accent)}
+.stat b.t{color:var(--teal)}
+.stat span{display:block; font-family:"JetBrains Mono",monospace; font-size:10.5px; color:var(--ink-soft); margin-top:5px; word-break:break-all}
+.back{display:inline-block; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); text-decoration:none; margin:0 0 22px}
+.back:hover{color:var(--accent)}
+.stat-note{font-size:.86rem; color:var(--ink-soft); margin:10px 0 0}
+
+/* ---------- sections ---------- */
+section{margin-top:64px}
+.sec-head{display:flex; align-items:baseline; gap:12px; border-bottom:2px solid var(--ink); padding-bottom:8px; margin-bottom:26px}
+.sec-num{font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--accent); font-weight:600}
+h2{font-size:1.72rem; margin:0; font-weight:700}
+h3{font-size:1.16rem; margin:34px 0 10px; font-weight:600}
+p{margin:0 0 16px}
+.wide{margin-left:calc((100% - min(1100px, 100vw - 48px))/2 * -1 + 0px)}
+
+/* ---------- callouts ---------- */
+.note{border-left:3px solid var(--accent); background:var(--accent-bg); padding:14px 18px; border-radius:0 8px 8px 0; margin:22px 0}
+.note.t{border-left-color:var(--teal); background:var(--teal-bg)}
+.note p:last-child{margin-bottom:0}
+.note .tag{font-family:"JetBrains Mono",monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:5px}
+.note.t .tag{color:var(--teal)}
+
+/* ---------- code ---------- */
+pre{background:var(--code-bg); color:var(--code-ink); padding:16px 18px; border-radius:9px; overflow-x:auto; font-size:13px; line-height:1.62; margin:16px 0; border:1px solid rgba(255,255,255,.06)}
+pre .c{color:var(--code-dim)}
+pre .k{color:var(--code-key)}
+pre .s{color:var(--code-str)}
+:not(pre)>code{background:var(--surface-2); padding:1.5px 5px; border-radius:4px; font-size:.86em; color:var(--ink)}
+.src{font-family:"JetBrains Mono",monospace; font-size:11px; color:var(--ink-soft); margin:-8px 0 20px; display:block}
+
+/* ---------- hook cards ---------- */
+.hooks{display:flex; flex-direction:column; gap:16px}
+.hook{background:var(--surface); border:1px solid var(--line); border-radius:11px; padding:18px 20px; box-shadow:var(--shadow); border-left:4px solid var(--accent)}
+.hook.repeat{border-left-color:var(--teal)}
+.hook-top{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:6px}
+.hook-name{font-family:"JetBrains Mono",monospace; font-weight:600; font-size:1rem; color:var(--ink)}
+.pill{font-family:"JetBrains Mono",monospace; font-size:10px; letter-spacing:.06em; text-transform:uppercase; padding:3px 8px; border-radius:99px; background:var(--accent-bg); color:var(--accent); white-space:nowrap}
+.pill.t{background:var(--teal-bg); color:var(--teal)}
+.hook dl{display:grid; grid-template-columns:max-content 1fr; gap:6px 16px; margin:12px 0 0; font-size:.95rem}
+.hook dt{font-family:"JetBrains Mono",monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); padding-top:5px}
+.hook dd{margin:0}
+.trap{margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); font-size:.95rem}
+.trap b{font-family:"Bricolage Grotesque",sans-serif; color:var(--accent); font-size:.86rem; letter-spacing:.02em}
+
+/* ---------- deep dive (collapse) ---------- */
+.more{margin-top:14px; border-top:1px dashed var(--line); padding-top:2px}
+.more>summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:9px; padding:10px 2px; font-family:"Bricolage Grotesque",sans-serif; font-weight:600; font-size:.92rem; color:var(--accent)}
+.more>summary::-webkit-details-marker{display:none}
+.more>summary::before{content:"+"; font-family:"JetBrains Mono",monospace; font-size:.95rem; line-height:1; width:17px; height:17px; display:grid; place-items:center; border:1.5px solid var(--accent); border-radius:4px; flex:none}
+.more[open]>summary::before{content:"\2013"}
+.more .body{font-size:.96rem; padding:2px 2px 12px}
+.more .body h4{font-family:"Bricolage Grotesque",sans-serif; font-size:1rem; margin:20px 0 7px; font-weight:600; color:var(--ink)}
+.more .body h4:first-child{margin-top:4px}
+.more .body p{margin:0 0 12px}
+.more .body ul{margin:0 0 12px; padding-left:20px}
+.more .body li{margin-bottom:7px}
+.more .body pre{font-size:12.5px}
+.steps{list-style:none; padding:0; margin:0 0 14px; counter-reset:st}
+.steps li{position:relative; padding-left:31px; margin-bottom:8px; counter-increment:st}
+.steps li::before{content:counter(st); position:absolute; left:0; top:3px; width:20px; height:20px; border-radius:50%; background:var(--accent-bg); color:var(--accent); font-family:"JetBrains Mono",monospace; font-size:10.5px; font-weight:600; display:grid; place-items:center}
+.rule{background:var(--surface-2); border-radius:8px; padding:12px 16px; margin:14px 0 4px; font-size:.97rem}
+.rule strong{color:var(--accent)}
+
+/* ---------- figures ---------- */
+figure{margin:28px 0; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:22px 20px 16px; overflow-x:auto; box-shadow:var(--shadow)}
+figure svg{display:block; max-width:100%; height:auto; margin:0 auto; color:var(--ink)}
+figcaption{font-size:.9rem; color:var(--ink-soft); margin-top:14px; text-align:center; text-wrap:balance}
+
+/* ---------- Q&A ---------- */
+.qa{border-top:1px solid var(--line)}
+.qa details{border-bottom:1px solid var(--line); padding:2px 0}
+.qa summary{cursor:pointer; padding:14px 4px; font-family:"Bricolage Grotesque",sans-serif; font-weight:600; font-size:1.03rem; list-style:none; display:flex; gap:12px; align-items:flex-start}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary::before{content:"?"; font-family:"JetBrains Mono",monospace; color:var(--accent); font-size:.9rem; flex:none; padding-top:2px}
+.qa details[open] summary{color:var(--accent)}
+.qa .ans{padding:0 4px 16px 28px; font-size:1rem}
+.qa .ans p:last-child{margin-bottom:0}
+summary:focus-visible,a:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:4px}
+
+/* ---------- glossary ---------- */
+.gloss{width:100%; border-collapse:collapse; font-size:.95rem; margin-top:8px}
+.gloss th{text-align:left; font-family:"JetBrains Mono",monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft); border-bottom:2px solid var(--ink); padding:0 12px 8px 0}
+.gloss td{border-bottom:1px solid var(--line); padding:10px 12px 10px 0; vertical-align:top}
+.gloss td:first-child{font-family:"JetBrains Mono",monospace; font-size:.84rem; color:var(--accent); white-space:nowrap; font-weight:600}
+.gloss-wrap{overflow-x:auto}
+
+footer{margin-top:72px; padding-top:22px; border-top:1px solid var(--line); font-size:.86rem; color:var(--ink-soft)}
+@media (max-width:560px){
+  .hook dl{grid-template-columns:1fr; gap:2px 0}
+  .hook dt{padding-top:10px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <a class="back" href="index.html">← Sổ tay Angular</a>
+    <p class="eyebrow">Ôn phỏng vấn · Angular 21.2.5 · repo-ubck-core-fe</p>
+    <h1>Vòng đời của một Component</h1>
+    <p class="lede">Angular tự gọi giúp bạn <em>tám cái hàm</em> tại tám thời điểm cố định trong đời một khối giao diện. Biết mỗi hàm chạy <em>lúc nào</em>, <em>mấy lần</em>, và <em>tại sao</em> — là xong 80% câu hỏi lifecycle trong phỏng vấn. Mọi ví dụ dưới đây lấy từ chính source code của repo này.</p>
+
+    <div class="stats">
+      <div class="stat"><b>140</b><span>ngOnInit</span></div>
+      <div class="stat"><b>45</b><span>ngOnDestroy</span></div>
+      <div class="stat"><b>35</b><span>ngAfterViewInit</span></div>
+      <div class="stat"><b>3</b><span>ngOnChanges</span></div>
+      <div class="stat"><b>1</b><span>ngDoCheck</span></div>
+      <div class="stat"><b class="t">22</b><span>afterNextRender</span></div>
+      <div class="stat"><b class="t">526</b><span>computed()</span></div>
+      <div class="stat"><b class="t">65</b><span>DestroyRef</span></div>
+    </div>
+    <p class="stat-note">Số lần xuất hiện thật trong thư mục <code>projects/</code>. Đọc con số này là đã thấy câu chuyện: repo dùng rất nhiều <span class="mono">ngOnInit</span>/<span class="mono">ngOnDestroy</span>, gần như không dùng <span class="mono">ngDoCheck</span>, và đang dịch chuyển sang nhóm API mới (màu xanh).</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ============ 1 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">01</span><h2>Giải thích cho người chưa biết gì</h2></div>
+
+  <p>Một <strong>component</strong> (thành phần giao diện — một mẩu màn hình có HTML riêng, CSS riêng và code riêng, ví dụ cái nút, cái bảng, cái dropdown) không tồn tại mãi mãi. Nó <em>sinh ra</em> khi người dùng mở màn hình đó, <em>sống</em> một lúc, rồi <em>chết</em> khi chuyển sang màn hình khác.</p>
+
+  <p><strong>Lifecycle</strong> (vòng đời) là chuỗi các mốc đó. <strong>Lifecycle hook</strong> (móc vòng đời — cái "móc" để bạn treo code của mình vào) là những hàm có tên cố định: nếu bạn khai báo hàm tên đúng như vậy trong class, Angular sẽ <em>tự gọi</em> nó đúng lúc. Bạn không bao giờ gọi tay các hàm này.</p>
+
+  <div class="note">
+    <span class="tag">Ví von</span>
+    <p>Coi component như một nhân viên mới. <code>constructor</code> (hàm khởi tạo — hàm chạy khi đối tượng vừa được tạo ra trong bộ nhớ) là lúc ký hợp đồng: mới có tên, chưa có bàn ghế. <code>ngOnInit</code> là buổi onboarding: đã nhận đủ thông tin từ cấp trên, bắt đầu làm việc. <code>ngAfterViewInit</code> là lúc bàn ghế máy tính đã lắp xong — giờ mới sờ được vào đồ đạc. <code>ngOnDestroy</code> là lúc nghỉ việc: phải trả thẻ, tắt máy, huỷ đăng ký — nếu quên thì công ty tốn tiền mãi (đó chính là <strong>memory leak</strong> — rò rỉ bộ nhớ).</p>
+  </div>
+
+  <p>Ba từ nữa cần nói rõ trước khi đi tiếp:</p>
+  <ul>
+    <li><strong>Template</strong> (khuôn mẫu) — file HTML của component, ví dụ <code>dropdown.component.html</code>.</li>
+    <li><strong>DOM</strong> (Document Object Model — cây các thẻ HTML thật mà trình duyệt đang vẽ). Angular tạo template thành DOM.</li>
+    <li><strong>Change Detection</strong> — viết tắt <strong>CD</strong>, "cơ chế phát hiện thay đổi": mỗi khi có sự kiện (click, dữ liệu về từ server, hết timer…), Angular quét lại xem dữ liệu nào đổi để vẽ lại màn hình. Mỗi lần quét như vậy gọi là một <em>nhịp CD</em>. Phần lớn lifecycle hook thực chất là các mốc <em>bên trong</em> một nhịp CD.</li>
+  </ul>
+</section>
+
+<!-- ============ 2 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">02</span><h2>Thứ tự chạy — bức tranh phải thuộc lòng</h2></div>
+
+  <p>Đây là câu hỏi phỏng vấn kinh điển: <em>"Kể thứ tự các lifecycle hook."</em> Sơ đồ dưới là câu trả lời đầy đủ.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 660" role="img" aria-label="Thứ tự chạy các lifecycle hook của Angular: constructor, ngOnChanges, ngOnInit, ngDoCheck, ngAfterContentInit, ngAfterContentChecked, ngAfterViewInit, ngAfterViewChecked, lặp lại mỗi nhịp change detection, cuối cùng là ngOnDestroy">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+        <marker id="arA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#0D6A7C"/>
+        </marker>
+      </defs>
+
+      <!-- legend -->
+      <rect x="110" y="4" width="12" height="12" rx="3" fill="none" stroke="#C41C3F" stroke-width="2.5"/>
+      <text x="130" y="14" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">chạy 1 lần duy nhất</text>
+      <rect x="300" y="4" width="12" height="12" rx="3" fill="none" stroke="#0D6A7C" stroke-width="2.5"/>
+      <text x="320" y="14" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">chạy lại mỗi nhịp CD</text>
+
+      <g font-family="JetBrains Mono, monospace" font-size="13">
+        <!-- 1 constructor -->
+        <rect x="110" y="40" width="360" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <text x="128" y="65" fill="currentColor">constructor()</text>
+        <text x="455" y="65" text-anchor="end" font-size="10.5" fill="currentColor" opacity=".6">chưa có input, chưa có DOM</text>
+        <line x1="290" y1="80" x2="290" y2="100" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)"/>
+
+        <!-- 2 ngOnChanges -->
+        <rect x="110" y="102" width="360" height="40" rx="6" fill="none" stroke="#C41C3F" stroke-width="2"/>
+        <text x="128" y="127" fill="currentColor">ngOnChanges(changes)</text>
+        <text x="455" y="127" text-anchor="end" font-size="10.5" fill="currentColor" opacity=".6">mỗi khi @Input đổi</text>
+        <line x1="290" y1="142" x2="290" y2="162" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)"/>
+
+        <!-- 3 ngOnInit -->
+        <rect x="110" y="164" width="360" height="40" rx="6" fill="none" stroke="#C41C3F" stroke-width="2"/>
+        <text x="128" y="189" fill="currentColor">ngOnInit()</text>
+        <text x="455" y="189" text-anchor="end" font-size="10.5" fill="currentColor" opacity=".6">input đã sẵn sàng</text>
+        <line x1="290" y1="204" x2="290" y2="224" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)"/>
+
+        <!-- 4 ngDoCheck -->
+        <rect x="110" y="226" width="360" height="40" rx="6" fill="none" stroke="#0D6A7C" stroke-width="2"/>
+        <text x="128" y="251" fill="currentColor">ngDoCheck()</text>
+        <line x1="290" y1="266" x2="290" y2="286" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)"/>
+
+        <!-- 5 -->
+        <rect x="110" y="288" width="360" height="40" rx="6" fill="none" stroke="#C41C3F" stroke-width="2"/>
+        <text x="128" y="313" fill="currentColor">ngAfterContentInit()</text>
+        <line x1="290" y1="328" x2="290" y2="348" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)"/>
+
+        <!-- 6 -->
+        <rect x="110" y="350" width="360" height="40" rx="6" fill="none" stroke="#0D6A7C" stroke-width="2"/>
+        <text x="128" y="375" fill="currentColor">ngAfterContentChecked()</text>
+        <line x1="290" y1="390" x2="290" y2="410" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)"/>
+
+        <!-- 7 -->
+        <rect x="110" y="412" width="360" height="40" rx="6" fill="none" stroke="#C41C3F" stroke-width="2"/>
+        <text x="128" y="437" fill="currentColor">ngAfterViewInit()</text>
+        <text x="455" y="437" text-anchor="end" font-size="10.5" fill="currentColor" opacity=".6">DOM đã có</text>
+        <line x1="290" y1="452" x2="290" y2="472" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)"/>
+
+        <!-- 8 -->
+        <rect x="110" y="474" width="360" height="40" rx="6" fill="none" stroke="#0D6A7C" stroke-width="2"/>
+        <text x="128" y="499" fill="currentColor">ngAfterViewChecked()</text>
+
+        <!-- loop back -->
+        <path d="M470,494 L545,494 L545,122 L472,122" fill="none" stroke="#0D6A7C" stroke-width="1.8" marker-end="url(#arA)"/>
+        <text x="560" y="316" font-size="10.5" fill="#0D6A7C" transform="rotate(90 560 316)" text-anchor="middle">nhịp CD kế tiếp</text>
+
+        <!-- destroy -->
+        <line x1="290" y1="514" x2="290" y2="562" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 5" marker-end="url(#ar)"/>
+        <text x="300" y="544" font-size="10.5" fill="currentColor" opacity=".6">khi component bị gỡ khỏi màn hình</text>
+        <rect x="110" y="564" width="360" height="40" rx="6" fill="none" stroke="#C41C3F" stroke-width="2"/>
+        <text x="128" y="589" fill="currentColor">ngOnDestroy()</text>
+
+        <!-- numbers -->
+        <g text-anchor="end" font-size="11" fill="currentColor" opacity=".45">
+          <text x="96" y="65">0</text><text x="96" y="127">1</text><text x="96" y="189">2</text>
+          <text x="96" y="251">3</text><text x="96" y="313">4</text><text x="96" y="375">5</text>
+          <text x="96" y="437">6</text><text x="96" y="499">7</text><text x="96" y="589">8</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption>Tám hook chạy theo đúng thứ tự này. Bốn hook viền đỏ chỉ chạy một lần cho cả đời component; ba hook viền xanh (<span class="mono">DoCheck</span>, <span class="mono">ContentChecked</span>, <span class="mono">ViewChecked</span>) chạy lại ở <em>mọi</em> nhịp change detection — đó là lý do chúng nguy hiểm về hiệu năng.</figcaption>
+  </figure>
+
+  <div class="note">
+    <span class="tag">Mẹo nhớ</span>
+    <p>Ba cặp <em>Init → Checked</em> đi liền nhau theo hướng “từ trong ra ngoài”: <strong>DoCheck</strong> (dữ liệu của chính tôi) → <strong>Content</strong> (nội dung người ta chiếu vào tôi) → <strong>View</strong> (template của tôi và các con của tôi). Cứ nhớ <em>data → content → view</em>.</p>
+  </div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">03</span><h2>Từng hook, và code thật trong repo</h2></div>
+
+  <div class="hooks">
+
+    <div class="hook">
+      <div class="hook-top"><span class="hook-name">constructor()</span><span class="pill">1 lần</span><span class="pill">chưa phải hook</span></div>
+      <p style="margin:0">Không phải lifecycle hook của Angular — nó là của TypeScript/JavaScript. Chạy khi Angular <code>new</code> ra class. Lúc này <strong>input</strong> (dữ liệu component cha truyền xuống) <em>chưa</em> được gán, DOM <em>chưa</em> tồn tại.</p>
+      <dl>
+        <dt>Dùng để</dt><dd>Chỉ <strong>dependency injection</strong> (DI — tiêm phụ thuộc: Angular tự đưa service vào cho bạn) qua <code>inject()</code>, và đăng ký <code>effect()</code> / <code>afterNextRender()</code> — hai thứ này bắt buộc phải gọi trong "injection context" (ngữ cảnh tiêm phụ thuộc), tức là trong constructor hoặc field initializer.</dd>
+        <dt>Không dùng để</dt><dd>Gọi API (giao diện lập trình — ở đây hiểu là gọi HTTP lấy dữ liệu), đọc input, đụng vào DOM.</dd>
+      </dl>
+      <div class="trap"><b>Bẫy →</b> "Sao không gọi HTTP trong constructor cho gọn?" Vì input chưa có (bạn sẽ gọi với <code>undefined</code>), và constructor chạy cả khi <strong>SSR</strong> (Server-Side Rendering — kết xuất trang ở phía máy chủ) lẫn khi unit test, làm test khó mock.</div>
+
+      <details class="more">
+        <summary>Đào sâu: ba lý do tách bạch, và những thứ BẮT BUỘC phải nằm trong constructor</summary>
+        <div class="body">
+
+          <h4>Lý do 1 — Constructor chạy trước khi input được gán</h4>
+          <p>Thứ tự Angular dựng một component:</p>
+          <ol class="steps">
+            <li><code>new MyComponent()</code> — constructor chạy. Input <strong>chưa</strong> có giá trị.</li>
+            <li>Angular ghi giá trị input vào instance (thể hiện — đối tượng cụ thể được tạo ra từ class).</li>
+            <li><code>ngOnChanges()</code></li>
+            <li><code>ngOnInit()</code> — input đã sẵn sàng.</li>
+          </ol>
+<pre><span class="c">// @Input() cổ điển</span>
+<span class="k">@Input</span>() userId!: <span class="k">string</span>;
+<span class="k">constructor</span>(<span class="k">private</span> http: HttpClient) {
+  <span class="k">this</span>.http.get(<span class="s">`/api/user/${this.userId}`</span>).subscribe(...);  <span class="c">// → /api/user/undefined</span>
+}</pre>
+          <p>Với <strong>signal input</strong> (<code>input()</code> — kiểu mới repo đang dùng), hậu quả chia hai nhánh, và đây là chỗ hay bị hỏi xoáy:</p>
+          <ul>
+            <li><code>input.required&lt;T&gt;()</code> — đọc trong constructor sẽ <strong>ném lỗi lúc chạy</strong>: <code>NG0950: Input is required but no value is available yet</code>. Repo có nhiều chỗ khai báo kiểu này: <span class="mono">table.component.ts:51</span>, <span class="mono">chip-list.component.ts:43</span>.</li>
+            <li><code>input&lt;T&gt;(giáTrịMặcĐịnh)</code> — <strong>không</strong> ném lỗi, mà trả về giá trị mặc định. Nguy hiểm hơn: code chạy êm ru nhưng gọi API sai, bug chỉ lộ trên production (môi trường chạy thật).</li>
+          </ul>
+
+          <h4>Lý do 2 — SSR: constructor chạy cả trên máy chủ, nơi không có trình duyệt</h4>
+          <p>Khi bật <strong>SSR</strong>, Angular chạy chính component đó bằng Node.js để sinh sẵn HTML. Trên máy chủ <em>không tồn tại</em> <code>window</code>, <code>document</code>, <code>localStorage</code>. Constructor chạy ở <em>cả hai</em> nơi, nên code đụng vào trình duyệt đặt trong constructor sẽ làm hỏng lượt kết xuất phía máy chủ.</p>
+          <p>Repo xử lý bằng cách đẩy việc đó xuống hook muộn hơn rồi chặn cửa — <span class="mono">ubck-echarts-core.ts</span> làm đúng ba lần, ở <code>ngOnInit</code>, <code>ngOnDestroy</code> và <code>ngAfterViewInit</code>:</p>
+<pre><span class="k">private readonly</span> platformId = inject(PLATFORM_ID);   <span class="c">// inject() thì ĐƯỢC đặt ở đây</span>
+
+<span class="k">ngOnInit</span>() {
+  <span class="k">if</span> (!isPlatformBrowser(<span class="k">this</span>.platformId)) { <span class="k">return</span> }   <span class="c">// máy chủ thì thoát luôn</span>
+  ...
+}</pre>
+          <p>Còn một hệ quả nữa: nếu gọi HTTP trong constructor mà không dùng <strong>TransferState</strong> (kho dữ liệu máy chủ nhét sẵn vào HTML để phía trình duyệt dùng lại), request sẽ chạy <strong>hai lần</strong> — một lần trên máy chủ, một lần nữa khi trang được <strong>hydrate</strong> (trình duyệt "nhận lại" phần HTML có sẵn rồi gắn logic vào). Người dùng thấy màn hình nháy, máy chủ tốn gấp đôi.</p>
+
+          <h4>Lý do 3 — Unit test không còn chỗ chen vào</h4>
+          <p>Đây là lý do thực dụng nhất. Trong test, <code>TestBed.createComponent()</code> chạy constructor <em>ngay lập tức</em>, còn <code>ngOnInit</code> chỉ chạy khi bạn gọi <code>detectChanges()</code>. Khoảng trống giữa hai mốc đó chính là chỗ bạn cài <strong>mock</strong> (bản giả lập dùng thay cho thứ thật khi test):</p>
+<pre><span class="k">const</span> fixture = TestBed.createComponent(UserCard);   <span class="c">// constructor chạy ở đây</span>
+fixture.componentRef.setInput(<span class="s">'userId'</span>, <span class="s">42</span>);         <span class="c">// ← chen input vào</span>
+httpMock.expectOne(<span class="s">'/api/user/42'</span>).flush(fakeUser);  <span class="c">// ← chen mock vào</span>
+fixture.detectChanges();                             <span class="c">// ngOnInit mới chạy → gọi API</span></pre>
+          <p>Nếu HTTP nằm trong constructor, request đã bắn xong ngay ở dòng đầu — trước khi bạn kịp gán input, trước khi kịp cấu hình <code>HttpTestingController</code>. Bạn mất khả năng test các nhánh "id khác nhau", và test dễ thành <strong>flaky</strong> (lúc pass lúc fail tuỳ thứ tự chạy).</p>
+
+          <h4>Ngoại lệ — thứ bắt buộc phải nằm trong constructor</h4>
+          <p>Đừng trả lời cực đoan kiểu "constructor chỉ được để trống". Có một nhóm API <em>chỉ chạy được trong</em> <strong>injection context</strong> (ngữ cảnh tiêm phụ thuộc — tức thân constructor, hoặc <strong>field initializer</strong>: dòng khởi tạo thuộc tính ngay trong class):</p>
+          <p><code>inject()</code> · <code>effect()</code> · <code>afterNextRender()</code> · <code>toSignal()</code> · <code>takeUntilDestroyed()</code> (khi không truyền <code>DestroyRef</code> vào).</p>
+          <p>Repo dùng cả hai vị trí hợp lệ:</p>
+<pre><span class="c">// field initializer — vẫn nằm trong injection context</span>
+<span class="c">// projects/ui/src/custom/download-progress/component/download-notify/download-notify.component.ts:96</span>
+<span class="k">private readonly</span> active = toSignal(<span class="k">this</span>.downloadManager.activeDownload$, { initialValue: [] });
+
+<span class="c">// thân constructor</span>
+<span class="c">// projects/ui/src/custom/deferered-section/deferered-section.component.ts:39</span>
+<span class="k">constructor</span>() {
+  afterNextRender({ read: () => <span class="k">this</span>.handleImplementWhenDomStable() });
+  <span class="k">this</span>.destroyRef.onDestroy(() => <span class="k">this</span>.handleComponentDestroy());
+}</pre>
+          <div class="rule">Ranh giới gọn để nói trong phỏng vấn: <strong>constructor để ĐĂNG KÝ, ngOnInit để THỰC THI.</strong> Đăng ký thì rẻ và không phụ thuộc input; thực thi thì cần dữ liệu và cần đúng môi trường.</div>
+
+          <h4>Nếu bị hỏi tiếp: "Angular mới có cách nào gọn hơn ngOnInit không?"</h4>
+          <p>Có. Angular 19 thêm <code>resource()</code>/<code>rxResource()</code>, Angular 20 thêm <code>httpResource()</code>. Chúng khai báo ngay ở field và nhận signal làm tham số, nên tự gọi lại khi input đổi — bỏ được cả <code>ngOnInit</code> lẫn <code>ngOnChanges</code>:</p>
+<pre>userId = input.required&lt;<span class="k">number</span>&gt;();
+user = httpResource(() => <span class="s">`/api/user/${this.userId()}`</span>);   <span class="c">// tự chạy lại khi userId đổi</span></pre>
+          <p>Repo hiện chưa dùng nhóm API này — nhưng nhắc được nó cho thấy bạn nắm hướng đi của framework, không chỉ thuộc bài cũ.</p>
+
+        </div>
+      </details>
+    </div>
+
+    <div class="hook">
+      <div class="hook-top"><span class="hook-name">ngOnChanges(changes: SimpleChanges)</span><span class="pill">mỗi lần input đổi</span></div>
+      <p style="margin:0">Chạy <em>trước</em> <code>ngOnInit</code> ở lần đầu, rồi chạy lại mỗi khi component cha gán giá trị mới cho một input. Tham số <code>SimpleChanges</code> là một object dạng <code>{ tênInput: { previousValue, currentValue, firstChange } }</code>.</p>
+      <dl>
+        <dt>Quan trọng</dt><dd>Angular so sánh <strong>theo tham chiếu</strong> (reference — địa chỉ của object trong bộ nhớ), không so sánh từng field. Sửa <code>obj.name = 'x'</code> trong mảng cũ thì <code>ngOnChanges</code> <em>không</em> nổ; phải tạo object/mảng mới (<strong>immutable</strong> — bất biến).</dd>
+        <dt>Trong repo</dt><dd>Chỉ 3 chỗ dùng, vì repo đã chuyển sang <code>input()</code> signal + <code>computed()</code>.</dd>
+      </dl>
+<pre><span class="c">// projects/ui/src/custom/base/Atoms/cmm-input-switch/cmm-input-switch.component.ts:41</span>
+<span class="k">ngOnChanges</span>(changes: SimpleChanges) {
+  <span class="k">if</span> (changes[<span class="s">'defaultValue'</span>]) {
+    <span class="k">this</span>._value.set(<span class="k">this</span>.defaultValue());
+  }
+}</pre>
+      <div class="trap"><b>Bẫy →</b> "Dùng <code>input()</code> signal thì <code>ngOnChanges</code> còn chạy không?" — Có. Signal input vẫn được báo cáo trong <code>SimpleChanges</code>. Chứng minh ngay trong repo: <span class="mono">ubck-echarts-core.ts</span> khai báo toàn bộ input bằng <code>input()</code> nhưng vẫn cài <code>ngOnChanges</code> để lọc thay đổi.</div>
+    </div>
+
+    <div class="hook">
+      <div class="hook-top"><span class="hook-name">ngOnInit()</span><span class="pill">1 lần</span><span class="pill">140 chỗ</span></div>
+      <p style="margin:0">Chạy đúng một lần, sau lần <code>ngOnChanges</code> đầu tiên. Đây là nơi input đã có giá trị thật → chỗ khởi tạo chuẩn.</p>
+      <dl>
+        <dt>Dùng để</dt><dd>Gọi HTTP, <strong>subscribe</strong> (đăng ký lắng nghe) một <strong>Observable</strong> (luồng dữ liệu phát ra nhiều lần theo thời gian, của thư viện <strong>RxJS</strong>), set giá trị mặc định cho form.</dd>
+        <dt>Không dùng để</dt><dd>Đo kích thước phần tử hay tìm <code>@ViewChild</code> — DOM chưa chắc có.</dd>
+      </dl>
+<pre><span class="c">// projects/ubck-echarts/src/directives/ubck-echarts-core.ts:144</span>
+<span class="k">ngOnInit</span>() {
+  <span class="k">if</span> (!isPlatformBrowser(<span class="k">this</span>.platformId)) { <span class="k">return</span> }   <span class="c">// SSR: bỏ qua</span>
+  <span class="k">if</span> (!window.ResizeObserver) <span class="k">throw new</span> Error(<span class="s">'please install a polyfill'</span>);
+
+  <span class="k">this</span>.resizeSub = <span class="k">this</span>.resize$
+    .pipe(throttleTime(<span class="s">100</span>, asyncScheduler, { leading: <span class="k">false</span>, trailing: <span class="k">true</span> }))
+    .subscribe(() => <span class="k">this</span>.resize());        <span class="c">// ← nhớ huỷ ở ngOnDestroy</span>
+}</pre>
+      <div class="trap"><b>Bẫy →</b> "<code>ngOnInit</code> chạy mấy lần?" — Một lần cho mỗi <em>instance</em>. Nhưng khi router (bộ định tuyến — thứ đổi màn hình theo URL) dùng lại cùng một component cho URL khác (ví dụ <code>/user/1</code> → <code>/user/2</code>), Angular <em>không</em> tạo instance mới ⇒ <code>ngOnInit</code> <em>không</em> chạy lại. Phải lắng nghe <code>route.params</code>.</div>
+    </div>
+
+    <div class="hook repeat">
+      <div class="hook-top"><span class="hook-name">ngDoCheck()</span><span class="pill t">mỗi nhịp CD</span><span class="pill t">1 chỗ</span></div>
+      <p style="margin:0">Chạy ở <em>mọi</em> nhịp change detection — có thể vài trăm lần mỗi giây khi người dùng gõ phím hay rê chuột. Dùng khi bạn cần phát hiện thay đổi mà Angular không thấy được (ví dụ sửa field bên trong object cũ, hoặc trạng thái của <code>FormControl</code>).</p>
+<pre><span class="c">// projects/ui/src/custom/validation/core/validation.directive.ts:230</span>
+<span class="k">ngDoCheck</span>(): <span class="k">void</span> {
+  <span class="k">if</span> (!<span class="k">this</span>.control) <span class="k">return</span>;                <span class="c">// thoát sớm — rẻ nhất có thể</span>
+  <span class="k">const</span> currentTouched = <span class="k">this</span>.control.touched;
+  <span class="k">let</span> hasChange = <span class="k">false</span>;
+  <span class="k">if</span> (<span class="k">this</span>.previousTouched !== currentTouched) {   <span class="c">// tự so sánh thủ công</span>
+    <span class="k">this</span>.previousTouched = currentTouched; hasChange = <span class="k">true</span>;
+  }
+  <span class="c">// ... dirty / valid / disabled ... rồi mới cập nhật giao diện nếu hasChange</span>
+}</pre>
+      <div class="trap"><b>Bẫy →</b> Đây là hook dễ giết hiệu năng nhất. Quy tắc: thoát sớm, chỉ so sánh giá trị nguyên thuỷ (số, chuỗi, boolean), <em>tuyệt đối không</em> gọi HTTP, không tạo object mới, không <code>console.log</code>. Cả repo chỉ có duy nhất 1 chỗ dùng — đó là con số lành mạnh.</div>
+    </div>
+
+    <div class="hook">
+      <div class="hook-top"><span class="hook-name">ngAfterContentInit()</span><span class="pill">1 lần</span><span class="pill">0 chỗ</span></div>
+      <p style="margin:0">Chạy sau khi phần <strong>content</strong> (nội dung do component cha "chiếu" vào qua <code>&lt;ng-content&gt;</code> — gọi là <strong>content projection</strong>, chiếu nội dung) đã được khởi tạo. Đây là lúc <code>@ContentChild</code> / <code>contentChild()</code> có giá trị.</p>
+      <div class="trap"><b>Bẫy →</b> Phân biệt <em>content</em> và <em>view</em> là câu hỏi phỏng vấn rất hay gặp — xem sơ đồ mục 04.</div>
+    </div>
+
+    <div class="hook repeat">
+      <div class="hook-top"><span class="hook-name">ngAfterContentChecked()</span><span class="pill t">mỗi nhịp CD</span></div>
+      <p style="margin:0">Bản "chạy lại mỗi nhịp" của hook trên. Gần như không bao giờ cần dùng trong code sản phẩm.</p>
+    </div>
+
+    <div class="hook">
+      <div class="hook-top"><span class="hook-name">ngAfterViewInit()</span><span class="pill">1 lần</span><span class="pill">35 chỗ</span></div>
+      <p style="margin:0">Chạy sau khi template của chính component <em>và</em> toàn bộ component con đã được dựng thành DOM. Đây là thời điểm sớm nhất được phép đo đạc, focus, khởi tạo thư viện bên thứ ba (chart, map, editor…).</p>
+<pre><span class="c">// projects/ubck-echarts/src/directives/ubck-echarts-core.ts:200</span>
+<span class="k">ngAfterViewInit</span>() {
+  <span class="k">if</span> (!isPlatformBrowser(<span class="k">this</span>.platformId)) { <span class="k">return</span> }
+  <span class="k">this</span>.initChartTimer = window.setTimeout(() => <span class="k">this</span>.initChart());
+}</pre>
+      <div class="trap"><b>Bẫy →</b> Vì sao bọc trong <code>setTimeout</code>? Hai lý do: (1) đợi trình duyệt tính xong kích thước thật của thẻ chứa biểu đồ; (2) tránh lỗi <strong>ExpressionChangedAfterItHasBeenCheckedError</strong> — lỗi kinh điển: bạn đổi dữ liệu <em>sau khi</em> Angular đã kiểm tra xong vòng hiện tại, khiến giá trị hiển thị khác giá trị vừa kiểm. <code>setTimeout</code> đẩy việc sang nhịp sau nên hết lỗi.</div>
+    </div>
+
+    <div class="hook repeat">
+      <div class="hook-top"><span class="hook-name">ngAfterViewChecked()</span><span class="pill t">mỗi nhịp CD</span></div>
+      <p style="margin:0">Chạy cuối mỗi nhịp CD, sau khi view đã kiểm tra xong. Đổi state trong đây là cách nhanh nhất để tạo vòng lặp vô tận + lỗi <code>ExpressionChangedAfterItHasBeenChecked</code>.</p>
+    </div>
+
+    <div class="hook">
+      <div class="hook-top"><span class="hook-name">ngOnDestroy()</span><span class="pill">1 lần</span><span class="pill">45 chỗ</span></div>
+      <p style="margin:0">Chạy ngay trước khi Angular gỡ component khỏi DOM. Nhiệm vụ duy nhất: <strong>dọn rác</strong>. Không dọn ⇒ memory leak: <code>setInterval</code> vẫn chạy, <code>ResizeObserver</code> vẫn theo dõi thẻ đã chết, subscription vẫn giữ tham chiếu tới component đã "chết" nên bộ nhớ không được thu hồi.</p>
+<pre><span class="c">// projects/ubck-echarts/src/directives/ubck-echarts-core.ts:181</span>
+<span class="k">ngOnDestroy</span>() {
+  window.clearTimeout(<span class="k">this</span>.initChartTimer);        <span class="c">// 1. huỷ timer</span>
+  <span class="k">if</span> (<span class="k">this</span>.resizeSub) <span class="k">this</span>.resizeSub.unsubscribe(); <span class="c">// 2. huỷ subscription</span>
+  <span class="k">if</span> (<span class="k">this</span>.animationFrameID) window.cancelAnimationFrame(<span class="k">this</span>.animationFrameID);
+  <span class="k">if</span> (<span class="k">this</span>.resizeOb) <span class="k">this</span>.resizeOb.unobserve(<span class="k">this</span>.el.nativeElement); <span class="c">// 3. ngắt observer</span>
+  <span class="k">if</span> (<span class="k">this</span>.loadingSub) <span class="k">this</span>.loadingSub.unsubscribe();
+  <span class="k">this</span>.changeFilter.unObserve();
+  <span class="k">this</span>.dispose();                                  <span class="c">// 4. trả bộ nhớ cho ECharts</span>
+}</pre>
+      <div class="trap"><b>Bẫy →</b> "Có phải Observable nào cũng cần unsubscribe?" Không. Những cái tự kết thúc (<code>HttpClient</code> gọi xong là complete, <code>ActivatedRoute</code> được router tự dọn, hoặc dùng pipe <code>async</code> trong template) thì không cần. Cái cần dọn là luồng <em>không bao giờ complete</em>: <code>interval</code>, <code>fromEvent</code>, <code>Subject</code> dùng chung trong service.</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">04</span><h2>Content và View khác nhau chỗ nào</h2></div>
+
+  <p>Câu hỏi phỏng vấn: <em>"Khác nhau giữa <code>ngAfterContentInit</code> và <code>ngAfterViewInit</code>?"</em>. Trả lời ngắn: <strong>content</strong> là HTML do <em>người khác</em> viết rồi nhét vào tôi; <strong>view</strong> là HTML do <em>chính tôi</em> viết trong template của mình.</p>
+
+  <figure>
+    <svg viewBox="0 0 660 300" role="img" aria-label="Sơ đồ phân biệt content projection và view: nội dung cha viết được chiếu vào ng-content bên trong template của component con">
+      <defs>
+        <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#C41C3F"/>
+        </marker>
+      </defs>
+      <g font-family="JetBrains Mono, monospace" font-size="12">
+        <!-- parent -->
+        <rect x="20" y="40" width="250" height="150" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="32" y="30" font-size="11" fill="currentColor" opacity=".6">template của CHA</text>
+        <text x="36" y="70" fill="currentColor">&lt;ubck-card&gt;</text>
+        <rect x="48" y="86" width="200" height="58" rx="6" fill="none" stroke="#C41C3F" stroke-width="2"/>
+        <text x="60" y="110" fill="currentColor" font-size="11.5">&lt;p&gt;Xin chào&lt;/p&gt;</text>
+        <text x="60" y="130" font-size="10.5" fill="#C41C3F">↑ đây là CONTENT</text>
+        <text x="36" y="170" fill="currentColor">&lt;/ubck-card&gt;</text>
+
+        <!-- arrow -->
+        <path d="M275,115 L370,115" fill="none" stroke="#C41C3F" stroke-width="2" marker-end="url(#ar2)"/>
+        <text x="322" y="105" text-anchor="middle" font-size="10.5" fill="#C41C3F">chiếu vào</text>
+        <text x="322" y="133" text-anchor="middle" font-size="10.5" fill="#C41C3F">(projection)</text>
+
+        <!-- child -->
+        <rect x="378" y="40" width="262" height="150" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <text x="390" y="30" font-size="11" fill="currentColor" opacity=".6">template của ubck-card = VIEW</text>
+        <text x="394" y="70" fill="currentColor">&lt;div class="card"&gt;</text>
+        <rect x="406" y="86" width="180" height="34" rx="6" fill="none" stroke="#C41C3F" stroke-width="2" stroke-dasharray="5 4"/>
+        <text x="418" y="108" fill="currentColor" font-size="11.5">&lt;ng-content /&gt;</text>
+        <text x="394" y="145" fill="currentColor">&lt;/div&gt;</text>
+        <text x="394" y="170" font-size="10.5" fill="currentColor" opacity=".6">+ mọi component con bên trong</text>
+
+        <!-- hooks -->
+        <line x1="20" y1="222" x2="640" y2="222" stroke="currentColor" stroke-width="1" opacity=".25"/>
+        <circle cx="150" cy="250" r="4" fill="#C41C3F"/>
+        <text x="164" y="248" font-size="11.5" fill="currentColor">ngAfterContentInit()</text>
+        <text x="164" y="266" font-size="10.5" fill="currentColor" opacity=".65">nội dung chiếu đã vào chỗ → đọc được contentChild()</text>
+        <circle cx="150" cy="288" r="4" fill="#0D6A7C"/>
+        <text x="164" y="286" font-size="11.5" fill="currentColor">ngAfterViewInit()</text>
+        <text x="164" y="300" font-size="10.5" fill="currentColor" opacity=".65">template riêng đã thành DOM → đọc được viewChild()</text>
+      </g>
+    </svg>
+    <figcaption>Content đi vào qua <span class="mono">&lt;ng-content&gt;</span> và sẵn sàng <em>trước</em>; view của chính component sẵn sàng <em>sau</em>. Vì thế <span class="mono">ngAfterContentInit</span> luôn chạy trước <span class="mono">ngAfterViewInit</span>.</figcaption>
+  </figure>
+
+  <h3>Thứ tự giữa cha và con</h3>
+  <p>Câu hỏi tiếp theo thường là: <em>"Cha và con, ai chạy trước?"</em> Quy tắc: <strong>Init đi từ cha xuống con; AfterViewInit đi từ con lên cha</strong> — vì cha chỉ "xong view" khi tất cả con đã xong.</p>
+
+  <figure>
+    <svg viewBox="0 0 620 210" role="img" aria-label="Thứ tự bốn bước: cha ngOnInit, con ngOnInit, con ngAfterViewInit, cha ngAfterViewInit">
+      <g font-family="JetBrains Mono, monospace" font-size="12">
+        <text x="70" y="26" text-anchor="middle" font-size="11" fill="currentColor" opacity=".6">CHA</text>
+        <text x="330" y="26" text-anchor="middle" font-size="11" fill="currentColor" opacity=".6">CON</text>
+        <line x1="70" y1="38" x2="70" y2="190" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
+        <line x1="330" y1="38" x2="330" y2="190" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
+
+        <circle cx="70" cy="60" r="5" fill="#C41C3F"/>
+        <text x="88" y="64" fill="currentColor">1 · ngOnInit</text>
+        <circle cx="330" cy="100" r="5" fill="#C41C3F"/>
+        <text x="348" y="104" fill="currentColor">2 · ngOnInit</text>
+        <circle cx="330" cy="140" r="5" fill="#0D6A7C"/>
+        <text x="348" y="144" fill="currentColor">3 · ngAfterViewInit</text>
+        <circle cx="70" cy="180" r="5" fill="#0D6A7C"/>
+        <text x="88" y="184" fill="currentColor">4 · ngAfterViewInit</text>
+
+        <path d="M78,66 L322,96" fill="none" stroke="currentColor" stroke-width="1" opacity=".3" stroke-dasharray="3 3"/>
+        <path d="M322,146 L78,176" fill="none" stroke="currentColor" stroke-width="1" opacity=".3" stroke-dasharray="3 3"/>
+      </g>
+    </svg>
+    <figcaption>Khởi tạo chảy xuôi từ cha xuống con; "view đã xong" chảy ngược từ con lên cha. <span class="mono">ngOnDestroy</span> cũng chạy cha trước, con sau.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 5 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">05</span><h2>Vì sao hook lại chạy: Change Detection</h2></div>
+
+  <p>Bảy trong tám hook nằm bên trong <em>nhịp change detection</em>. Vậy cái gì kích hoạt nhịp đó?</p>
+
+  <p>Mặc định Angular dùng <strong>Zone.js</strong> — một thư viện "vá" (monkey-patch) các API bất đồng bộ của trình duyệt (<code>setTimeout</code>, sự kiện click, <code>XMLHttpRequest</code>…). Mỗi lần một trong số đó chạy xong, Zone.js báo cho Angular: "có thể có gì đó đổi, quét lại đi". Repo này vẫn đang chạy chế độ Zone.js:</p>
+
+<pre><span class="c">// src/app/app.config.ts:41</span>
+provideZoneChangeDetection({ eventCoalescing: <span class="k">true</span> }),
+<span class="c">// eventCoalescing: gộp nhiều sự kiện xảy ra sát nhau thành 1 nhịp CD → đỡ tốn</span></pre>
+
+  <p><strong>OnPush</strong> (<code>ChangeDetectionStrategy.OnPush</code>) là cách hãm bớt: component chỉ được kiểm tra lại khi input đổi tham chiếu, khi có sự kiện phát ra từ chính nó, hoặc khi một signal nó đang đọc thay đổi. Repo dùng OnPush ở <strong>427</strong> chỗ — nghĩa là gần như mọi component.</p>
+
+  <div class="note t">
+    <span class="tag">Điểm cộng khi phỏng vấn</span>
+    <p>Nói thêm về <strong>zoneless</strong> (chế độ không Zone.js, ổn định từ Angular 20): khi bỏ Zone.js, CD được kích hoạt bởi chính signal thay vì bởi "vá" API trình duyệt. <em>Các lifecycle hook không đổi tên, không đổi thứ tự</em> — chỉ có <em>tần suất</em> các hook <code>*Checked</code> giảm mạnh. Repo này chưa bật zoneless, và có thể nói thẳng: đó là bước nâng cấp tiếp theo hợp lý sau khi đã phủ OnPush + signal.</p>
+  </div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">06</span><h2>Thời signal: những hook "kiểu mới"</h2></div>
+
+  <p>Từ Angular 16 đến 21, ba nhóm API mới đã thay thế phần lớn công dụng của lifecycle hook cổ điển. Repo này là ví dụ sống: <strong>526</strong> chỗ dùng <code>computed()</code> nhưng chỉ <strong>3</strong> chỗ dùng <code>ngOnChanges</code>.</p>
+
+  <h3>1 · <code>DestroyRef.onDestroy()</code> — thay <code>ngOnDestroy</code></h3>
+  <p><strong>DestroyRef</strong> là một service Angular tiêm vào cho bạn, cho phép đăng ký hàm dọn dẹp mà <em>không cần</em> class phải <code>implements OnDestroy</code>. Nhờ vậy code dọn dẹp nằm ngay cạnh code khởi tạo, và dùng được cả trong hàm tiện ích (không phải class).</p>
+
+<pre><span class="c">// projects/ui/src/custom/deferered-section/deferered-section.component.ts:39</span>
+<span class="k">constructor</span>() {
+  afterNextRender({ read: () => <span class="k">this</span>.handleImplementWhenDomStable() });
+  <span class="k">this</span>.destroyRef.onDestroy(() => <span class="k">this</span>.handleComponentDestroy());
+}</pre>
+  <span class="src">Khởi tạo và dọn dẹp đứng cạnh nhau — đọc một chỗ là thấy đủ cặp.</span>
+
+  <h3>2 · <code>afterNextRender()</code> / <code>afterEveryRender()</code> — lấy phần lớn việc của <code>ngAfterViewInit</code></h3>
+  <p><strong>Render</strong> ở tên hàm này là <em>Angular dựng xong DOM</em>, chưa phải trình duyệt vẽ lên màn hình — hai việc khác nhau và của hai chủ thể khác nhau. <code>afterNextRender</code> chạy <em>một lần</em>, sau khi cả cây component đã dựng xong DOM và <em>trước</em> lúc trình duyệt vẽ (nhờ vậy sửa thẻ ở đây thì người dùng không thấy màn hình nháy); <code>afterEveryRender</code> (tên cũ là <code>afterRender</code>, đổi tên từ Angular 20) chạy sau <em>mọi</em> lần vẽ. Hai điểm hơn hẳn <code>ngAfterViewInit</code>:</p>
+  <ul>
+    <li>Chỉ chạy trên trình duyệt — tự động bỏ qua khi SSR, không cần tự viết <code>if (isPlatformBrowser(...))</code>.</li>
+    <li>Có các "phase" (giai đoạn) <code>earlyRead</code> / <code>write</code> / <code>read</code>, giúp gom việc đọc và ghi DOM lại, tránh <strong>layout thrashing</strong> (đọc–ghi DOM xen kẽ khiến trình duyệt phải tính lại bố cục liên tục).</li>
+  </ul>
+
+<pre><span class="c">// projects/ui/src/utils/dropdown-helpers.ts:19</span>
+afterNextRender({
+  read: () => {
+    <span class="k">if</span> (isDestroyed) {
+      <span class="c">// Prevent early destroyed component causing memory leak in afterNextRender</span>
+      <span class="k">return</span>;
+    }
+    <span class="k">const</span> elementRef = elementRefFn();
+    width.set(Math.round(elementRef.nativeElement.clientWidth));
+    resizeObserver = <span class="k">new</span> ResizeObserver(...);
+  },
+});</pre>
+  <div class="note">
+    <span class="tag">Chi tiết đáng kể ra khi phỏng vấn</span>
+    <p>Đoạn trên là bài học thật từ repo: component có thể bị huỷ <em>trước</em> khi lần render kế tiếp xảy ra. Vì vậy cờ <code>isDestroyed</code> được bật trong <code>destroyRef.onDestroy()</code> và kiểm tra lại ở đầu callback. Đây đúng là loại chi tiết mà người phỏng vấn muốn nghe: bạn đã gặp bug thật, không chỉ đọc tài liệu.</p>
+  </div>
+
+  <h3>2b · Vậy <code>ngAfterViewInit</code> còn để làm gì?</h3>
+  <p>Chữ "thay" ở trên dễ gây hiểu nhầm là hook cũ đã chết. Angular 21 <em>không</em> đánh dấu <code>ngAfterViewInit</code> là <strong>deprecated</strong> (không khuyến khích dùng, sẽ bị gỡ ở bản sau), và nó vẫn giữ ba việc mà <code>afterNextRender</code> không làm được:</p>
+  <ol class="steps">
+    <li><strong>Chạy cả trên máy chủ.</strong> <code>afterNextRender</code> bị Angular bỏ qua hoàn toàn khi dựng SSR. Việc nào cần view đã dựng nhưng <em>không</em> đụng số đo, và kết quả của nó <em>phải có mặt trong HTML máy chủ trả về</em>, thì chỉ <code>ngAfterViewInit</code> làm được.</li>
+    <li><strong>Gọi được ở mọi chỗ trong class.</strong> <code>ngAfterViewInit</code> là một phương thức bình thường. <code>afterNextRender</code> đòi <strong>injection context</strong> (ngữ cảnh tiêm — khoảnh khắc Angular đang dựng đối tượng và biết nó thuộc về ai, tức trong <code>constructor</code> hoặc lúc gán giá trị đầu cho thuộc tính); ra khỏi đó là lỗi <code>NG0203</code>, phải tự cầm <code>Injector</code> truyền vào.</li>
+    <li><strong>Chạy sớm hơn.</strong> <code>afterNextRender</code> đợi <em>cả cây</em> component dựng xong. Việc chỉ cần view của chính mình thì đợi cả cây là trễ vô ích.</li>
+  </ol>
+
+<pre><span class="c">// Nối nhãn với ô nhập cho trình đọc màn hình.</span>
+<span class="c">// Vì sao KHÔNG dùng afterNextRender: thuộc tính này phải nằm sẵn trong</span>
+<span class="c">// HTML máy chủ trả về — trình đọc màn hình và bộ máy tìm kiếm đọc bản đó.</span>
+<span class="c">// Vì sao ngAfterViewInit là đủ: chỉ GHI thuộc tính, không đọc số đo nào,</span>
+<span class="c">// nên không cần đợi trình duyệt tính bố cục.</span>
+export class ONhapCoNhan <span class="k">implements</span> AfterViewInit {
+  <span class="k">private readonly</span> nhan = viewChild.required&lt;ElementRef&lt;HTMLElement&gt;&gt;(<span class="s">'nhan'</span>);
+  <span class="k">private readonly</span> o    = viewChild.required&lt;ElementRef&lt;HTMLInputElement&gt;&gt;(<span class="s">'o'</span>);
+
+  <span class="k">ngAfterViewInit</span>() {
+    <span class="k">this</span>.o().nativeElement.setAttribute(<span class="s">'aria-labelledby'</span>, <span class="k">this</span>.nhan().nativeElement.id);
+  }
+}</pre>
+  <span class="src">Ghi thuộc tính tĩnh, không đổi state Angular ⇒ không có nguy cơ ExpressionChangedAfterItHasBeenChecked.</span>
+
+  <div class="rule"><strong>Quy tắc chọn:</strong> việc có đụng <em>số đo thật</em> hoặc <code>window</code>/<code>document</code> không? Có ⇒ <code>afterNextRender</code>. Không, mà cần <em>theo dõi</em> một truy vấn view xuất hiện/biến mất ⇒ <code>effect()</code>. Không, chạy một lần, và cần cả trên máy chủ ⇒ <code>ngAfterViewInit</code>.</div>
+
+  <div class="note t">
+    <span class="tag">Chỗ bị cắt nhiều nhất</span>
+    <p>Việc phổ biến nhất mà <code>ngAfterViewInit</code> từng gánh là <em>"đợi tới đây thì <code>@ViewChild</code> mới có giá trị"</em>. Việc đó nay thuộc về <code>viewChild()</code> đọc trong <code>effect()</code> — vừa chạy khi thẻ có, vừa chạy <em>lại</em> nếu khối <code>@if</code> tắt rồi bật, thứ mà một hook chạy đúng một lần không làm được. Cộng lại: <code>afterNextRender</code> lấy phần "đụng DOM thật", <code>effect()</code> lấy phần "đợi truy vấn có giá trị", phần còn lại cho <code>ngAfterViewInit</code> là khúc giữa — không nhiều, nhưng có thật.</p>
+  </div>
+
+  <h3>3 · <code>input()</code> + <code>computed()</code> + <code>effect()</code> — thay <code>ngOnChanges</code>/<code>ngDoCheck</code></h3>
+  <p><strong>Signal</strong> (tín hiệu) là ô chứa giá trị biết ai đang đọc mình; khi giá trị đổi, nó tự báo cho những chỗ phụ thuộc. <code>computed()</code> là signal dẫn xuất (tự tính lại từ signal khác). <code>effect()</code> là "hiệu ứng phụ": chạy lại mỗi khi signal nó đọc thay đổi.</p>
+
+<pre><span class="c">// Cách cũ                              // Cách mới (repo đang dùng)</span>
+<span class="k">ngOnChanges</span>(c: SimpleChanges) {        fullName = computed(() =>
+  <span class="k">if</span> (c[<span class="s">'first'</span>] || c[<span class="s">'last'</span>])            <span class="k">this</span>.first() + <span class="s">' '</span> + <span class="k">this</span>.last()
+    <span class="k">this</span>.fullName = ...;               );
+}</pre>
+
+  <div class="note t">
+    <span class="tag">Ranh giới cần nhớ</span>
+    <p><code>computed()</code> dùng khi bạn cần <em>giá trị dẫn xuất</em> — luôn ưu tiên. <code>effect()</code> chỉ dùng khi cần <em>tác động ra bên ngoài</em>: ghi <code>localStorage</code>, gọi thư viện thứ ba, đồng bộ với DOM. Đặt <code>effect()</code> mà chỉ để gán vào một field khác là dấu hiệu bạn nên dùng <code>computed()</code>. Muốn đọc một signal trong effect mà <em>không</em> đăng ký phụ thuộc vào nó thì bọc bằng <code>untracked()</code> — repo dùng đúng kỹ thuật này ở <span class="mono">dropdown-checkbox.component.ts:320</span>.</p>
+  </div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">07</span><h2>Bộ câu hỏi phỏng vấn + đáp án</h2></div>
+
+  <div class="qa">
+    <details>
+      <summary>Kể đủ 8 lifecycle hook theo thứ tự.</summary>
+      <div class="ans"><p><code>ngOnChanges</code> → <code>ngOnInit</code> → <code>ngDoCheck</code> → <code>ngAfterContentInit</code> → <code>ngAfterContentChecked</code> → <code>ngAfterViewInit</code> → <code>ngAfterViewChecked</code> → <code>ngOnDestroy</code>. <code>constructor</code> chạy trước tất cả nhưng không phải hook của Angular.</p></div>
+    </details>
+    <details>
+      <summary>Vì sao gọi HTTP nên đặt ở <code>ngOnInit</code> chứ không phải <code>constructor</code>?</summary>
+      <div class="ans"><p>Vì input chỉ được gán sau khi constructor kết thúc — trong constructor bạn sẽ gọi API với tham số <code>undefined</code>. Ngoài ra tách side effect (tác dụng phụ) ra khỏi constructor giúp unit test dễ hơn: test có thể tạo instance mà không kích hoạt gọi mạng.</p></div>
+    </details>
+    <details>
+      <summary><code>ngOnChanges</code> không nổ dù dữ liệu rõ ràng đã đổi — vì sao?</summary>
+      <div class="ans"><p>Bạn sửa nội dung bên trong object/mảng cũ. Angular chỉ so sánh <em>tham chiếu</em>. Sửa <code>this.items.push(x)</code> ⇒ vẫn cùng địa chỉ ⇒ không nổ. Phải <code>this.items = [...this.items, x]</code>. (Nếu dùng signal thì <code>update()</code> với giá trị mới cũng phải theo nguyên tắc bất biến tương tự.)</p></div>
+    </details>
+    <details>
+      <summary>Lỗi <code>ExpressionChangedAfterItHasBeenCheckedError</code> là gì, sửa thế nào?</summary>
+      <div class="ans"><p>Ở chế độ dev, Angular chạy kiểm tra hai lần mỗi nhịp để bắt lỗi. Nếu ở lần hai giá trị đã khác lần một — thường do bạn đổi state trong <code>ngAfterViewInit</code> hoặc <code>ngAfterViewChecked</code> — Angular báo lỗi này. Cách sửa theo thứ tự ưu tiên: (1) chuyển logic lên <code>ngOnInit</code>; (2) dùng <code>computed()</code> thay vì gán tay; (3) hoãn sang nhịp sau bằng <code>setTimeout</code> hoặc <code>afterNextRender</code> — chính là cách <span class="mono">ubck-echarts-core.ts:200</span> đang làm.</p></div>
+    </details>
+    <details>
+      <summary>Có phải mọi subscription đều phải unsubscribe trong <code>ngOnDestroy</code>?</summary>
+      <div class="ans"><p>Không. Luồng tự complete (<code>HttpClient</code>, <code>toSignal</code>, pipe <code>async</code> trong template) thì Angular/RxJS tự dọn. Chỉ luồng vô hạn mới cần: <code>interval</code>, <code>fromEvent</code>, <code>Subject</code> dùng chung. Cách gọn nhất hiện nay là toán tử <code>takeUntilDestroyed()</code> từ <code>@angular/core/rxjs-interop</code>, hoặc <code>destroyRef.onDestroy()</code> như repo đang dùng ở 65 chỗ.</p></div>
+    </details>
+    <details>
+      <summary>Signal đã thay được toàn bộ lifecycle hook chưa?</summary>
+      <div class="ans"><p>Chưa và cũng không nên. Signal thay tốt cho <code>ngOnChanges</code> (bằng <code>computed</code>) và <code>ngDoCheck</code> (không cần nữa). <code>afterNextRender</code> thay tốt cho <code>ngAfterViewInit</code>, <code>DestroyRef</code> thay tốt cho <code>ngOnDestroy</code>. Nhưng <code>ngOnInit</code> vẫn hữu ích và vẫn được khuyến nghị cho khởi tạo phụ thuộc input — repo còn 140 chỗ dùng. Câu trả lời chuẩn là: "cùng tồn tại, chọn theo việc", không phải "cái mới xoá cái cũ".</p></div>
+    </details>
+    <details>
+      <summary>Chuyển sang zoneless thì lifecycle có đổi không?</summary>
+      <div class="ans"><p>Tên và thứ tự hook <em>không</em> đổi. Cái đổi là <em>khi nào</em> nhịp CD chạy: thay vì Zone.js báo sau mỗi tác vụ bất đồng bộ, CD chỉ chạy khi có signal thay đổi hoặc có <code>markForCheck()</code>. Hệ quả thực tế: các hook <code>*Checked</code> chạy ít hơn nhiều — nên code nào lỡ dựa vào việc <code>ngAfterViewChecked</code> "chạy liên tục" sẽ hỏng khi bật zoneless.</p></div>
+    </details>
+    <details>
+      <summary>Directive có lifecycle không?</summary>
+      <div class="ans"><p>Có. <strong>Directive</strong> (chỉ thị — class gắn hành vi vào một thẻ HTML sẵn có, không có template riêng) dùng chung hầu hết các hook, trừ nhóm liên quan tới view/content của chính nó. Bằng chứng trong repo: <span class="mono">ubck-echarts-core.ts</span> là một <code>@Directive</code> cài đủ <code>OnChanges, OnInit, AfterViewInit, OnDestroy</code>.</p></div>
+    </details>
+  </div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">08</span><h2>Bảng thuật ngữ</h2></div>
+  <div class="gloss-wrap">
+  <table class="gloss">
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt / giải thích</th></tr></thead>
+    <tbody>
+      <tr><td>component</td><td>Thành phần giao diện — một mẩu màn hình có HTML, CSS và logic riêng.</td></tr>
+      <tr><td>directive</td><td>Chỉ thị — class gắn thêm hành vi vào một thẻ HTML có sẵn, không có template riêng.</td></tr>
+      <tr><td>lifecycle hook</td><td>Móc vòng đời — hàm có tên quy ước, do Angular tự gọi tại một thời điểm cố định.</td></tr>
+      <tr><td>constructor</td><td>Hàm khởi tạo của class, chạy khi đối tượng vừa được tạo trong bộ nhớ.</td></tr>
+      <tr><td>template</td><td>Khuôn mẫu — file HTML của component.</td></tr>
+      <tr><td>DOM</td><td>Document Object Model — cây các thẻ HTML thật mà trình duyệt đang hiển thị.</td></tr>
+      <tr><td>render</td><td>Dựng ra giao diện. Trong tên <code>afterNextRender</code> nghĩa là <em>Angular dựng xong DOM</em>, chưa phải trình duyệt tô pixel.</td></tr>
+      <tr><td>paint (vẽ)</td><td>Bước trình duyệt tô pixel lên màn hình, sau khi đã tính bố cục. Đây mới là lúc người dùng thấy.</td></tr>
+      <tr><td>injection context</td><td>Ngữ cảnh tiêm — khoảnh khắc Angular đang dựng đối tượng và biết nó thuộc về ai; ra ngoài đó gọi <code>inject()</code>/<code>afterNextRender()</code> là lỗi <code>NG0203</code>.</td></tr>
+      <tr><td>deprecated</td><td>Không khuyến khích dùng nữa, sẽ bị gỡ ở bản sau. <code>ngAfterViewInit</code> <em>chưa</em> ở trạng thái này.</td></tr>
+      <tr><td>CD</td><td>Change Detection — cơ chế Angular quét lại dữ liệu để cập nhật giao diện. Một lần quét = một "nhịp".</td></tr>
+      <tr><td>OnPush</td><td>Chiến lược CD chỉ kiểm tra component khi input đổi tham chiếu, có sự kiện, hoặc signal đang đọc thay đổi.</td></tr>
+      <tr><td>Zone.js</td><td>Thư viện "vá" các API bất đồng bộ của trình duyệt để báo cho Angular biết khi nào cần quét lại.</td></tr>
+      <tr><td>zoneless</td><td>Chế độ chạy không Zone.js; CD được kích hoạt bởi signal. Ổn định từ Angular 20.</td></tr>
+      <tr><td>input</td><td>Dữ liệu component cha truyền xuống con. Kiểu mới: <code>input()</code> trả về signal.</td></tr>
+      <tr><td>binding</td><td>Ràng buộc — nối dữ liệu trong class với chỗ hiển thị trong template.</td></tr>
+      <tr><td>content projection</td><td>Chiếu nội dung — cha viết HTML rồi nhét vào chỗ <code>&lt;ng-content&gt;</code> của con.</td></tr>
+      <tr><td>view</td><td>Phần DOM do template của chính component tạo ra (khác với content).</td></tr>
+      <tr><td>signal</td><td>Tín hiệu — ô chứa giá trị biết ai đang đọc mình và tự báo khi đổi.</td></tr>
+      <tr><td>computed</td><td>Signal dẫn xuất — tự tính lại từ các signal khác, có nhớ kết quả (memo hoá).</td></tr>
+      <tr><td>effect</td><td>Hiệu ứng phụ — hàm chạy lại mỗi khi signal nó đọc thay đổi; dùng cho tác động ra ngoài.</td></tr>
+      <tr><td>untracked</td><td>Đọc signal mà không đăng ký phụ thuộc vào nó bên trong effect/computed.</td></tr>
+      <tr><td>Observable</td><td>Luồng dữ liệu phát ra nhiều giá trị theo thời gian (thư viện RxJS).</td></tr>
+      <tr><td>subscribe</td><td>Đăng ký lắng nghe một Observable; ngược lại là <code>unsubscribe</code> (huỷ đăng ký).</td></tr>
+      <tr><td>memory leak</td><td>Rò rỉ bộ nhớ — code cũ vẫn chạy/vẫn bị giữ tham chiếu sau khi component đã bị gỡ.</td></tr>
+      <tr><td>DI</td><td>Dependency Injection — tiêm phụ thuộc: Angular tự cấp service cho class qua <code>inject()</code>.</td></tr>
+      <tr><td>DestroyRef</td><td>Đối tượng cho phép đăng ký hàm dọn dẹp mà không cần implement <code>OnDestroy</code>.</td></tr>
+      <tr><td>SSR</td><td>Server-Side Rendering — kết xuất HTML ở phía máy chủ; lúc đó không có <code>window</code>/<code>document</code>.</td></tr>
+      <tr><td>polyfill</td><td>Đoạn mã bù tính năng còn thiếu cho trình duyệt cũ.</td></tr>
+      <tr><td>immutable</td><td>Bất biến — không sửa dữ liệu cũ mà tạo bản mới; giúp so sánh tham chiếu hoạt động đúng.</td></tr>
+      <tr><td>reference</td><td>Tham chiếu — địa chỉ của object trong bộ nhớ, thứ Angular dùng để so sánh input.</td></tr>
+      <tr><td>ResizeObserver</td><td>API trình duyệt theo dõi thay đổi kích thước của một phần tử.</td></tr>
+      <tr><td>IntersectionObserver</td><td>API trình duyệt báo khi một phần tử lọt vào vùng nhìn thấy — dùng cho lazy load.</td></tr>
+      <tr><td>layout thrashing</td><td>Đọc và ghi DOM xen kẽ khiến trình duyệt phải tính lại bố cục nhiều lần, gây giật.</td></tr>
+      <tr><td>eventCoalescing</td><td>Gộp nhiều sự kiện xảy ra sát nhau thành một nhịp CD để giảm tải.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<footer>
+  <p>Nguồn: source code <code>repo-ubck-core-fe</code> — Angular 21.2.5. Các dòng code trích nguyên văn kèm đường dẫn và số dòng, kiểm chứng được bằng cách mở đúng file.</p>
+</footer>
+
+</div>
+</body>
+</html>

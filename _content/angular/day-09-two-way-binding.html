@@ -1,0 +1,82 @@
+<!--meta
+title: Day 9 — Two-way binding tự viết
+eyebrow: Angular · Day 9
+short: Day 9
+lede: [(abc)] không phải phép màu: nó chỉ là quy ước đặt tên. Hiểu quy ước đó là bạn tự làm được liên kết hai chiều cho component của mình.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Đường tắt của hai thứ có sẵn</h2></div>
+  <p>Angular quy ước: nếu component có một input tên <code>x</code> và một output tên <code>xChange</code>, thì <code>[(x)]="bien"</code> tự động được dịch thành:</p>
+<pre><code>&lt;app-con [x]="bien" (xChange)="bien = $event" /&gt;</code></pre>
+  <p>Chỉ vậy thôi. <code>[(ngModel)]</code> cũng chạy đúng luật đó (<code>ngModel</code> + <code>ngModelChange</code>).</p>
+<pre><code><span class="cm">// Cách mới nhất — model() lo cả hai đầu</span>
+export class ONhapSo {
+  gia = model(0);                       <span class="cm">// vừa là input, vừa phát giaChange</span>
+  tang() { <span class="kw">this</span>.gia.update((v) =&gt; v + 1); }
+}
+
+<span class="cm">// Cách viết tay tương đương</span>
+export class ONhapSo {
+  gia = input(0);
+  giaChange = output&lt;number&gt;();
+  tang() { <span class="kw">this</span>.giaChange.emit(<span class="kw">this</span>.gia() + 1); }
+}
+
+<span class="cm">// Dùng ở cha</span>
+&lt;app-o-nhap-so [(gia)]="soLuong" /&gt;</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Template ngắn gọn.</b> Một dòng thay cho hai, ý định rõ ràng: "ô này gắn với biến kia".</li>
+        <li><b>Chuẩn hoá.</b> Ai đọc cũng hiểu ngay, không phải tự đặt tên sự kiện mỗi nơi một kiểu.</li>
+        <li><b><code>model()</code> gọn nhất.</b> Con đọc/ghi như một signal bình thường, Angular tự phát sự kiện.</li>
+        <li><b>Hợp cho component ô nhập</b> dùng lại nhiều nơi (chọn ngày, nhập tiền, chọn nhiều mục).</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Component ô nhập số dùng lại khắp nơi, một dòng là xong</span>
+&lt;qp45-o-nhap-so [(gia)]="soLuong" /&gt;
+&lt;qp45-o-nhap-so [(gia)]="tonKhoToiThieu" /&gt;
+
+<span class="cm">// Bên trong chỉ cần: gia = model(0); gia.update((v) =&gt; v + 1);</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Che mất luồng dữ liệu.</b> Nhìn <code>[(x)]</code> không thấy rõ ai là người thay đổi giá trị — khó lần khi có bug.</li>
+        <li><b>Dễ tạo vòng lặp cập nhật.</b> Con phát sự kiện trong lúc đang nhận giá trị mới có thể gây <code>ExpressionChangedAfterItHasBeenChecked</code>.</li>
+        <li><b>Không có chỗ chặn/validate.</b> Cần kiểm tra trước khi nhận giá trị thì phải tách lại thành input + output riêng.</li>
+        <li><b>Trái với luồng một chiều.</b> Dùng tràn lan làm state bị phân tán, khó đưa lên một nơi quản lý tập trung.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&lt;qp45-o-nhap-so [(gia)]="soLuong" /&gt;
+<span class="cm">// ✗ muốn chặn giá trị âm trước khi nhận thì không có chỗ nào để chặn</span>
+<span class="cm">// phải tách lại thành:</span>
+&lt;qp45-o-nhap-so [gia]="soLuong()" (giaChange)="datGia($event)" /&gt;
+
+datGia(v: number) { <span class="kw">if</span> (v &gt;= 0) <span class="kw">this</span>.soLuong.set(v); }</code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Nên dùng khi:</strong> component là một "ô nhập" đúng nghĩa, giá trị đơn giản, không cần xử lý gì thêm. <strong>Nên tách hai chiều thành input/output riêng khi:</strong> thay đổi cần được kiểm tra, ghi log, hoặc phải đi qua một facade.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>two-way binding</td><td>Liên kết hai chiều — dữ liệu đi xuống và đi lên cùng lúc.</td></tr>
+      <tr><td>banana in a box</td><td>Cách gọi vui cú pháp <code>[( )]</code>.</td></tr>
+      <tr><td>model()</td><td>API mới: khai một signal vừa nhận vừa phát thay đổi.</td></tr>
+      <tr><td>ngModel</td><td>Directive liên kết hai chiều cho form kiểu template-driven.</td></tr>
+      <tr><td>ExpressionChanged…</td><td>Lỗi khi giá trị đổi sau khi Angular đã kiểm tra xong vòng vẽ.</td></tr>
+    </tbody>
+  </table></div>
+</section>

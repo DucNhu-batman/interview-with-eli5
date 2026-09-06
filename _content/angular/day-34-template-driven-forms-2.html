@@ -1,0 +1,81 @@
+<!--meta
+title: Day 34 — Template-driven Forms, phần 2
+eyebrow: Angular · Day 34
+short: Day 34
+lede: Nhóm control, validator tự viết dạng directive, và các mẹo hiển thị lỗi cho tử tế trong form kiểu template.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Nhóm</p><h2>ngModelGroup và cấu trúc lồng</h2></div>
+  <p><code>ngModelGroup</code> gom vài control thành một nhóm có trạng thái riêng — tiện khi cần kiểm tra hợp lệ theo cụm (địa chỉ, thông tin liên hệ).</p>
+<pre><code>&lt;div ngModelGroup="diaChi" #dc="ngModelGroup"&gt;
+  &lt;input name="tinh" [(ngModel)]="kho.diaChi.tinh" required /&gt;
+  &lt;input name="huyen" [(ngModel)]="kho.diaChi.huyen" required /&gt;
+&lt;/div&gt;
+&#64;if (dc.invalid &amp;&amp; dc.touched) { &lt;small&gt;Chưa đủ thông tin địa chỉ&lt;/small&gt; }</code></pre>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Validator riêng</p><h2>Viết luật kiểm tra của mình</h2></div>
+  <p>Trong form kiểu template, validator phải được bọc thành directive rồi đăng ký vào <code>NG_VALIDATORS</code> — đây chính là chỗ khiến nhiều người thấy template-driven "dễ lúc đầu, khó về sau".</p>
+<pre><code>&#64;Directive({
+  selector: <span class="str">'[maKhoHopLe]'</span>,
+  providers: [{ provide: NG_VALIDATORS, useExisting: MaKhoDirective, multi: <span class="kw">true</span> }],
+})
+export class MaKhoDirective <span class="kw">implements</span> Validator {
+  validate(c: AbstractControl): ValidationErrors | <span class="kw">null</span> {
+    <span class="kw">return</span> /^KHO-\d{4}$/.test(c.value ?? <span class="str">''</span>) ? <span class="kw">null</span> : { maKho: <span class="kw">true</span> };
+  }
+}</code></pre>
+  <div class="callout bad">
+    <p><strong>Khi nào nên dừng lại và chuyển sang reactive form:</strong> khi form cần thêm/bớt ô lúc chạy, khi một ô đổi làm ô khác đổi luật, khi phải kiểm tra hợp lệ với máy chủ, hoặc khi bạn cần viết unit test cho logic form. Cố đấm ăn xôi với template-driven ở những ca này tốn hơn nhiều so với viết lại.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm khi form lớn dần</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Validator dạng directive dùng lại được</b> ở mọi form, khai như một thuộc tính HTML.</li>
+        <li><b>Nhóm control cho trạng thái theo cụm,</b> hiển thị lỗi gọn hơn.</li>
+        <li><b>Vẫn giữ được sự đơn giản</b> cho phần lớn form vừa và nhỏ.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>&lt;input name="ma" [(ngModel)]="kho.ma" maKhoHopLe /&gt;
+<span class="cm">// Luật kiểm tra dùng lại như một thuộc tính HTML,</span>
+<span class="cm">// mọi form trong hệ thống chỉ cần gắn thêm một chữ.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Mỗi luật là một directive</b> — nhiều thủ tục hơn hẳn so với truyền một hàm.</li>
+        <li><b>Logic rải rác giữa template và directive,</b> khó nhìn tổng thể.</li>
+        <li><b>Không thể lập trình trực tiếp</b> để đặt giá trị, bật/tắt, hay reset một cách chắc chắn.</li>
+        <li><b>Async validator rất khó cài</b> so với reactive form.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// Yêu cầu mới: "loại doanh nghiệp thì mã số thuế là bắt buộc"</span>
+&lt;input name="mst" [(ngModel)]="kho.mst"
+       [required]="loai === 'DN'" /&gt;
+<span class="cm">// ✗ đổi luật động trong template-driven phải xoay qua directive riêng,</span>
+<span class="cm">// và trạng thái hợp lệ không phải lúc nào cũng cập nhật kịp</span>
+<span class="cm">// → tới đây thì viết lại bằng reactive form rẻ hơn là cố chữa</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>ngModelGroup</td><td>Nhóm các control thành một cụm có trạng thái riêng.</td></tr>
+      <tr><td>NG_VALIDATORS</td><td>Token nơi Angular gom mọi validator của một control.</td></tr>
+      <tr><td>ValidationErrors</td><td>Object mô tả lỗi, ví dụ <code>{ required: true }</code>.</td></tr>
+      <tr><td>AbstractControl</td><td>Lớp cha chung của control, group và array.</td></tr>
+      <tr><td>multi: true</td><td>Cho phép nhiều provider cùng đăng ký vào một token.</td></tr>
+    </tbody>
+  </table></div>
+</section>

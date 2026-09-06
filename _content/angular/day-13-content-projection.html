@@ -1,0 +1,82 @@
+<!--meta
+title: Day 13 — Content Projection
+eyebrow: Angular · Day 13
+short: Day 13
+lede: Cho phép người dùng component tự quyết định phần ruột bên trong — cách dựng những component khung như card, dialog, panel.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Cái khung ảnh để trống</h2></div>
+  <p>Component thường tự vẽ hết phần ruột. Nhưng có loại component chỉ nên lo cái khung (viền, tiêu đề, khoảng cách, nút đóng) và để bên ngoài quyết định nội dung. Đó là content projection (chiếu nội dung), thực hiện bằng thẻ <code>&lt;ng-content&gt;</code>.</p>
+<pre><code><span class="cm">// card.component.html — cái khung</span>
+&lt;div class="card"&gt;
+  &lt;header&gt;&lt;ng-content select="[card-title]" /&gt;&lt;/header&gt;
+  &lt;div class="body"&gt;&lt;ng-content /&gt;&lt;/div&gt;          <span class="cm">// khe mặc định</span>
+  &lt;footer&gt;&lt;ng-content select="[card-footer]" /&gt;&lt;/footer&gt;
+&lt;/div&gt;
+
+<span class="cm">// nơi dùng — nội dung do bên ngoài đưa vào</span>
+&lt;qp45-card&gt;
+  &lt;h3 card-title&gt;Thông tin kho&lt;/h3&gt;
+  &lt;p&gt;Nội dung chính…&lt;/p&gt;
+  &lt;button card-footer&gt;Lưu&lt;/button&gt;
+&lt;/qp45-card&gt;</code></pre>
+  <div class="callout">
+    <p><strong>Nội dung chiếu vào thuộc về nơi <em>khai</em> nó, không thuộc về component khung.</strong> Binding trong đó dùng dữ liệu của component cha, và nó được tạo ra <em>ngay cả khi</em> component khung không hiển thị nó — đây là khác biệt lớn so với <code>ng-template</code> (bài Day 14).</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Component khung dùng lại vô hạn.</b> Một <code>card</code> phục vụ mọi màn hình mà không cần biết ruột là gì.</li>
+        <li><b>Không phải bịa input cho từng mẩu HTML.</b> Đỡ hẳn kiểu <code>[tieuDe]</code>, <code>[noiDung]</code>, <code>[chuThich]</code>…</li>
+        <li><b>Nhiều khe (multi-slot)</b> cho phép khung sắp đặt bố cục, bên ngoài chỉ cấp nội dung.</li>
+        <li><b>Giữ nguyên ngữ cảnh của cha</b> nên binding và sự kiện hoạt động tự nhiên.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Một component khung, mọi màn hình dùng lại</span>
+&lt;qp45-card&gt;
+  &lt;h3 card-title&gt;Tồn kho&lt;/h3&gt;
+  &lt;qp45-bieu-do [data]="dl()" /&gt;
+&lt;/qp45-card&gt;
+<span class="cm">// Khung không cần biết bên trong là biểu đồ, bảng hay chữ.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Nội dung luôn được tạo</b> dù khung có vẽ nó hay không — nếu nặng, hãy dùng <code>ng-template</code> thay vì <code>ng-content</code>.</li>
+        <li><b>Khung không kiểm soát được chất lượng nội dung.</b> Bên ngoài nhét gì cũng vào, dễ vỡ bố cục.</li>
+        <li><b>Chọn khe bằng selector là hợp đồng ngầm</b> — không khai đúng thuộc tính thì nội dung rơi vào khe mặc định mà không có cảnh báo nào.</li>
+        <li><b>Style xuyên biên khó.</b> Muốn khung tạo dáng cho nội dung chiếu vào thường phải dùng <code>::ng-deep</code> — thứ nên hạn chế.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&lt;qp45-tab-an&gt;
+  &lt;qp45-bieu-do-nang /&gt;    <span class="cm">// tab đang ẩn</span>
+&lt;/qp45-tab-an&gt;
+<span class="cm">// ✗ ng-content VẪN tạo biểu đồ dù khung không hiển thị nó</span>
+<span class="cm">// → gọi API, tính toán vô ích. Ca này phải dùng ng-template (Day 14).</span>
+
+&lt;qp45-card&gt;&lt;h3&gt;Tồn kho&lt;/h3&gt;&lt;/qp45-card&gt;
+<span class="cm">// ✗ quên thuộc tính card-title → rơi vào khe mặc định, header trống trơn,</span>
+<span class="cm">// không có cảnh báo nào</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>content projection</td><td>Chiếu nội dung — đưa HTML từ ngoài vào bên trong component.</td></tr>
+      <tr><td>ng-content</td><td>Khe nhận nội dung chiếu vào.</td></tr>
+      <tr><td>multi-slot</td><td>Nhiều khe, phân biệt bằng <code>select</code>.</td></tr>
+      <tr><td>view / content</td><td>Phần component tự vẽ / phần được chiếu từ ngoài vào.</td></tr>
+      <tr><td>::ng-deep</td><td>Cách phá vỡ cô lập style để tác động vào phần tử con.</td></tr>
+    </tbody>
+  </table></div>
+</section>

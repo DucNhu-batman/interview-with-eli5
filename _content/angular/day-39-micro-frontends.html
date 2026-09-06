@@ -1,0 +1,72 @@
+<!--meta
+title: Day 39 — Micro Frontends
+eyebrow: Angular · Day 39
+short: Day 39
+lede: Chia một ứng dụng lớn thành nhiều ứng dụng nhỏ do các đội khác nhau phát hành độc lập — được rất nhiều, nhưng phải trả giá bằng hạ tầng.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Nhiều ứng dụng, một màn hình</h2></div>
+  <p>Micro frontend (giao diện siêu nhỏ) là cách áp mô hình microservice lên phía trình duyệt: mỗi khu vực nghiệp vụ là một ứng dụng riêng, build riêng, phát hành riêng; một ứng dụng "vỏ" (shell/host) ghép chúng lại lúc chạy. Cách phổ biến nhất là Module Federation của Webpack.</p>
+<pre><code><span class="cm">// shell — nạp một màn hình từ ứng dụng khác lúc chạy</span>
+{
+  path: <span class="str">'kho'</span>,
+  loadChildren: () =&gt; loadRemoteModule({
+    remoteEntry: <span class="str">'https://kho.noi-bo/remoteEntry.js'</span>,
+    exposedModule: <span class="str">'./Routes'</span>,
+  }).then((m) =&gt; m.KHO_ROUTES),
+}</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Phát hành độc lập.</b> Đội A lên bản mới không phải chờ đội B.</li>
+        <li><b>Ranh giới rõ ràng</b> giữa các miền nghiệp vụ, giảm giẫm chân nhau.</li>
+        <li><b>Nâng cấp dần được:</b> phần cũ giữ nguyên, phần mới viết bằng công nghệ mới.</li>
+        <li><b>Build nhanh hơn</b> vì mỗi ứng dụng nhỏ đi nhiều.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Đội Kho sửa lỗi lúc 10h, deploy lúc 10h30</span>
+<span class="cm">// Shell không build lại, đội Báo cáo không bị ảnh hưởng</span>
+<span class="cm">// Người dùng tải lại trang là thấy bản mới của riêng khu vực Kho</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Hạ tầng phức tạp hẳn lên:</b> nhiều pipeline, nhiều tên miền, nhiều nơi để hỏng.</li>
+        <li><b>Lệch phiên bản thư viện.</b> Hai ứng dụng dùng hai bản Angular khác nhau là nguồn lỗi rất khó chẩn đoán.</li>
+        <li><b>Tải nặng hơn</b> nếu không chia sẻ được thư viện chung.</li>
+        <li><b>Giao diện dễ thiếu nhất quán</b> khi mỗi đội tự làm component riêng.</li>
+        <li><b>Gỡ lỗi xuyên ứng dụng rất mệt,</b> stack trace đi qua nhiều gói từ nhiều nguồn.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// Shell dùng Angular 18, remote build bằng Angular 17</span>
+<span class="cm">// → NG0203: inject() must be called from an injection context</span>
+<span class="cm">// Lỗi chỉ xuất hiện trên môi trường thật, sau khi deploy riêng lẻ</span>
+
+shared: { <span class="str">'@angular/core'</span>: { singleton: <span class="kw">true</span>, strictVersion: <span class="kw">true</span> } }
+<span class="cm">// ↑ khai thiếu dòng này là mỗi remote nạp một bản Angular riêng</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Khi nào nên dùng:</strong> nhiều đội độc lập, nhiều nhịp phát hành khác nhau, ứng dụng đủ lớn để chia. Một sản phẩm do một đội làm thì lazy loading theo feature đã đủ — micro frontend chỉ thêm chi phí.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>micro frontend</td><td>Chia giao diện thành nhiều ứng dụng độc lập.</td></tr>
+      <tr><td>shell / host</td><td>Ứng dụng vỏ, chịu trách nhiệm ghép các phần lại.</td></tr>
+      <tr><td>remote</td><td>Ứng dụng con được vỏ nạp vào lúc chạy.</td></tr>
+      <tr><td>Module Federation</td><td>Cơ chế của Webpack cho phép chia sẻ mô-đun giữa các bản build.</td></tr>
+      <tr><td>singleton (thư viện)</td><td>Chỉ nạp một bản duy nhất của thư viện dùng chung.</td></tr>
+    </tbody>
+  </table></div>
+</section>

@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="vi" data-track="angular">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 54 — interface hay type: bốn khác biệt thật, còn lại là phong cách</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><a href="index.html">Angular</a><span>/</span><span class="now">interface vs type</span></nav>
+<header class="hero col">
+<p class="eyebrow">Angular · Day 54</p>
+<h1>Day 54 — interface hay type: bốn khác biệt thật, còn lại là phong cách</h1>
+<p class="lede">TypeScript cho bạn hai cách đặt tên cho một kiểu. Chúng giống nhau tới chín phần mười. Bốn chỗ khác nhau còn lại mới là thứ quyết định bạn chọn cái nào — và là thứ người phỏng vấn muốn nghe.</p>
+</header>
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Một cuốn sổ để ngỏ và một cái nhãn đã niêm phong</h2></div>
+  <p><strong>TypeScript</strong> (ngôn ngữ bổ sung hệ thống kiểu dữ liệu cho JavaScript) có hai từ khoá để đặt tên cho một kiểu. <code>interface</code> là <em>bản mô tả hình dạng của một đối tượng</em>: nó có những trường nào, mỗi trường kiểu gì. <code>type</code> là <em>cái nhãn dán lên một biểu thức kiểu bất kỳ</em> — dán xong là khoá lại.</p>
+<pre><code><span class="kw">interface</span> User  { id: <span class="kw">number</span>; name: <span class="kw">string</span> }
+<span class="kw">type</span>      UserT = { id: <span class="kw">number</span>; name: <span class="kw">string</span> }
+
+<span class="kw">function</span> chao(u: User) { <span class="kw">return</span> <span class="str">'Chào '</span> + u.name }
+
+<span class="kw">const</span> lan: UserT = { id: <span class="kw">1</span>, name: <span class="str">'Lan'</span> };
+chao(lan);   <span class="cm">// ✓ chạy được — TS so hình dạng, không so tên</span></code></pre>
+  <p>Đoạn trên chạy được vì TypeScript dùng <strong>structural typing</strong> (so kiểu theo cấu trúc — hai kiểu cùng hình dạng thì dùng lẫn được, bất kể khai bằng từ khoá nào). Cả hai cũng đều nhận <strong>generic</strong> (kiểu tổng quát — kiểu nhận tham số như một cái hàm), đều dùng được với <code>extends</code> (mở rộng) và <code>implements</code> (lớp cam kết làm đúng bản mô tả). Ai bảo "type không kế thừa được" là đang nhắc TypeScript của mười năm trước.</p>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> chỉ có bốn khác biệt thật — <b>gộp khai báo</b>, <b>phạm vi đặt tên</b>, <b>chỗ báo lỗi khi trộn</b>, và <b>tên hiển thị trong thông báo lỗi</b>. Ngoài bốn cái đó ra, chọn cái nào cũng chạy như nhau, vì cả hai đều bị xoá sạch khi biên dịch.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Khác 1</p><h2>Gộp khai báo: cùng một tên, hai số phận</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 300" role="img" aria-label="Hai khai báo interface trùng tên Box được TypeScript gộp thành một kiểu duy nhất chứa cả hai trường. Hai khai báo type trùng tên Bag thì va nhau và cho lỗi trùng định danh mã ts 2300.">
+        <defs>
+          <marker id="ivtA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="#2F6FB8"></path>
+          </marker>
+        </defs>
+
+        <text x="14" y="24" font-size="11.5" font-weight="700" fill="#2F6FB8" font-family="monospace">INTERFACE — GỘP LẠI</text>
+        <rect x="14" y="38" width="206" height="42" rx="8" fill="#2F6FB8" fill-opacity=".08" stroke="#2F6FB8" stroke-width="1.6"></rect>
+        <text x="30" y="64" font-size="12" font-family="monospace" fill="currentColor">interface Box { w: number }</text>
+        <rect x="14" y="92" width="206" height="42" rx="8" fill="#2F6FB8" fill-opacity=".08" stroke="#2F6FB8" stroke-width="1.6"></rect>
+        <text x="30" y="118" font-size="12" font-family="monospace" fill="currentColor">interface Box { h: number }</text>
+
+        <path d="M220 59 L310 78" fill="none" stroke="#2F6FB8" stroke-width="1.6" marker-end="url(#ivtA)"></path>
+        <path d="M220 113 L310 94" fill="none" stroke="#2F6FB8" stroke-width="1.6" marker-end="url(#ivtA)"></path>
+        <text x="238" y="74" font-size="10.5" font-family="monospace" fill="#2F6FB8">gộp</text>
+
+        <rect x="324" y="60" width="222" height="52" rx="8" fill="#2F6FB8" fill-opacity=".16" stroke="#2F6FB8" stroke-width="1.8"></rect>
+        <text x="338" y="92" font-size="12" font-family="monospace" fill="currentColor">Box { w: number; h: number }</text>
+        <text x="562" y="92" font-size="12" font-family="monospace" fill="var(--good)">✓ hợp lệ</text>
+
+        <line x1="0" y1="158" x2="720" y2="158" stroke="currentColor" stroke-opacity=".16"></line>
+
+        <text x="14" y="190" font-size="11.5" font-weight="700" fill="#8C3A80" font-family="monospace">TYPE — VA NHAU</text>
+        <rect x="14" y="204" width="206" height="42" rx="8" fill="#8C3A80" fill-opacity=".08" stroke="#8C3A80" stroke-width="1.6"></rect>
+        <text x="30" y="230" font-size="12" font-family="monospace" fill="currentColor">type Bag = { w: number }</text>
+        <rect x="14" y="252" width="206" height="42" rx="8" fill="none" stroke="#8C3A80" stroke-width="1.6" stroke-dasharray="4 3"></rect>
+        <text x="30" y="278" font-size="12" font-family="monospace" fill="currentColor">type Bag = { h: number }</text>
+
+        <path d="M220 225 L282 244" fill="none" stroke="var(--bad)" stroke-width="1.6"></path>
+        <path d="M220 273 L282 258" fill="none" stroke="var(--bad)" stroke-width="1.6"></path>
+        <circle cx="302" cy="251" r="15" fill="none" stroke="var(--bad)" stroke-width="2"></circle>
+        <path d="M296 245 L308 257 M308 245 L296 257" stroke="var(--bad)" stroke-width="2"></path>
+        <text x="336" y="246" font-size="12" font-family="monospace" fill="var(--bad)">Duplicate identifier 'Bag'.</text>
+        <text x="336" y="266" font-size="12" font-family="monospace" fill="var(--bad)">ts(2300)</text>
+      </svg>
+    </div>
+    <figcaption>Khai <code>interface</code> trùng tên thì TypeScript lặng lẽ gộp lại — cơ chế tên là <b>declaration merging</b> (gộp khai báo). Khai <code>type</code> trùng tên thì lỗi ngay.</figcaption>
+  </figure>
+  <p class="col">Đây không phải chuyện học thuật. Nó là cách <em>duy nhất</em> để thêm trường vào một kiểu do thư viện bên ngoài định nghĩa — gọi là <strong>module augmentation</strong> (bổ sung kiểu cho gói mã có sẵn mà không sửa mã nguồn của nó):</p>
+<pre><code><span class="cm">// src/global.d.ts — file chỉ chứa khai báo kiểu, không sinh ra mã chạy</span>
+<span class="kw">interface</span> Window { dataLayer: <span class="kw">unknown</span>[] }   <span class="cm">// thêm trường vào Window có sẵn</span>
+
+window.dataLayer.push({ event: <span class="str">'login'</span> });   <span class="cm">// ✓ TS đã biết trường này</span></code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Khác 2</p><h2>Phạm vi đặt tên: nhãn dán được lên mọi thứ</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 360" role="img" aria-label="Sáu loại kiểu xếp dọc ở giữa. Chỉ loại hình dạng đối tượng đi được sang phía interface bên trái; năm loại còn lại bị chặn. Cả sáu loại đều đi được sang phía type bên phải.">
+        <defs>
+          <marker id="ivtI" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="#2F6FB8"></path>
+          </marker>
+          <marker id="ivtT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="#8C3A80"></path>
+          </marker>
+        </defs>
+
+        <text x="14" y="26" font-size="12" font-weight="700" fill="#2F6FB8" font-family="monospace">interface X {…}</text>
+        <text x="706" y="26" text-anchor="end" font-size="12" font-weight="700" fill="#8C3A80" font-family="monospace">type X = …</text>
+        <line x1="140" y1="40" x2="140" y2="344" stroke="#2F6FB8" stroke-width="2.4"></line>
+        <line x1="580" y1="40" x2="580" y2="344" stroke="#8C3A80" stroke-width="2.4"></line>
+
+        <rect x="240" y="50" width="240" height="36" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-opacity=".4"></rect>
+        <text x="360" y="73" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">{ id: number; name: string }</text>
+        <path d="M236 68 L152 68" fill="none" stroke="#2F6FB8" stroke-width="1.6" marker-end="url(#ivtI)"></path>
+        <path d="M484 68 L568 68" fill="none" stroke="#8C3A80" stroke-width="1.6" marker-end="url(#ivtT)"></path>
+        <text x="162" y="60" font-size="11" font-family="monospace" fill="#2F6FB8">✓</text>
+
+        <rect x="240" y="98" width="240" height="36" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-opacity=".4"></rect>
+        <text x="360" y="121" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">'draft' | 'sent' | 'paid'</text>
+        <path d="M236 116 L200 116" fill="none" stroke="var(--bad)" stroke-width="1.6"></path>
+        <path d="M194 110 L184 122 M184 110 L194 122" stroke="var(--bad)" stroke-width="2"></path>
+        <path d="M484 116 L568 116" fill="none" stroke="#8C3A80" stroke-width="1.6" marker-end="url(#ivtT)"></path>
+
+        <rect x="240" y="146" width="240" height="36" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-opacity=".4"></rect>
+        <text x="360" y="169" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">[number, number]</text>
+        <path d="M236 164 L200 164" fill="none" stroke="var(--bad)" stroke-width="1.6"></path>
+        <path d="M194 158 L184 170 M184 158 L194 170" stroke="var(--bad)" stroke-width="2"></path>
+        <path d="M484 164 L568 164" fill="none" stroke="#8C3A80" stroke-width="1.6" marker-end="url(#ivtT)"></path>
+
+        <rect x="240" y="194" width="240" height="36" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-opacity=".4"></rect>
+        <text x="360" y="217" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">string</text>
+        <path d="M236 212 L200 212" fill="none" stroke="var(--bad)" stroke-width="1.6"></path>
+        <path d="M194 206 L184 218 M184 206 L194 218" stroke="var(--bad)" stroke-width="2"></path>
+        <path d="M484 212 L568 212" fill="none" stroke="#8C3A80" stroke-width="1.6" marker-end="url(#ivtT)"></path>
+
+        <rect x="240" y="242" width="240" height="36" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-opacity=".4"></rect>
+        <text x="360" y="265" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">T extends P&lt;infer U&gt; ? U : T</text>
+        <path d="M236 260 L200 260" fill="none" stroke="var(--bad)" stroke-width="1.6"></path>
+        <path d="M194 254 L184 266 M184 254 L194 266" stroke="var(--bad)" stroke-width="2"></path>
+        <path d="M484 260 L568 260" fill="none" stroke="#8C3A80" stroke-width="1.6" marker-end="url(#ivtT)"></path>
+
+        <rect x="240" y="290" width="240" height="36" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-opacity=".4"></rect>
+        <text x="360" y="313" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">`on${Capitalize&lt;E&gt;}`</text>
+        <path d="M236 308 L200 308" fill="none" stroke="var(--bad)" stroke-width="1.6"></path>
+        <path d="M194 302 L184 314 M184 302 L194 314" stroke="var(--bad)" stroke-width="2"></path>
+        <path d="M484 308 L568 308" fill="none" stroke="#8C3A80" stroke-width="1.6" marker-end="url(#ivtT)"></path>
+      </svg>
+    </div>
+    <figcaption>Chỉ hàng đầu tiên đi được về phía <code>interface</code>. Năm hàng còn lại không có cú pháp <code>interface</code> nào diễn tả nổi — đó là lý do một dự án thật luôn cần cả hai từ khoá.</figcaption>
+  </figure>
+<pre><code><span class="kw">type</span> Status = <span class="str">'draft'</span> | <span class="str">'sent'</span> | <span class="str">'paid'</span>        <span class="cm">// union — hoặc cái này hoặc cái kia</span>
+<span class="kw">type</span> Point  = [<span class="kw">number</span>, <span class="kw">number</span>]                     <span class="cm">// tuple — mảng cố định vị trí và kiểu</span>
+<span class="kw">type</span> Id     = <span class="kw">string</span>                              <span class="cm">// primitive — kiểu nguyên thuỷ</span>
+<span class="kw">type</span> Ev     = <span class="str">`on${Capitalize&lt;'click' | 'blur'&gt;}`</span>  <span class="cm">// template literal — ghép chuỗi ở tầng kiểu</span>
+<span class="kw">type</span> Opt&lt;T&gt;  = { [K <span class="kw">in keyof</span> T]?: T[K] }            <span class="cm">// mapped type — sinh trường từ kiểu có sẵn</span>
+<span class="kw">type</span> Un&lt;T&gt;   = T <span class="kw">extends</span> Promise&lt;<span class="kw">infer</span> U&gt; ? U : T   <span class="cm">// conditional type — rẽ nhánh kiểu</span>
+
+<span class="kw">interface</span> Status2 = <span class="str">'draft'</span> | <span class="str">'sent'</span>
+<span class="out">//              ~ không có cú pháp này. interface luôn phải là { … }</span></code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Khác 3</p><h2>Cùng một lỗi, hai chỗ nổ cách nhau năm chục dòng</h2></div>
+  <p class="col">Trộn hai kiểu có cùng một trường nhưng khác kiểu dữ liệu. <code>interface … extends</code> chặn ngay tại dòng khai báo. <strong>Intersection</strong> (kiểu giao — dấu <code>&amp;</code>, gộp mọi trường của cả hai) thì không nói gì cả: nó lặng lẽ biến trường đó thành <code>never</code> (kiểu rỗng — không giá trị nào hợp lệ), rồi để lỗi nổ ở một chỗ hoàn toàn khác.</p>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 250" role="img" aria-label="Với interface extends, lỗi hiện ngay tại dòng khai báo. Với intersection bằng dấu và, dòng khai báo im lặng không lỗi, trường id âm thầm trở thành kiểu never, và lỗi chỉ nổ ở nơi sử dụng cách đó năm chục dòng.">
+        <defs>
+          <marker id="ivtC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <text x="14" y="22" font-size="11" font-weight="700" fill="currentColor" opacity=".7" font-family="monospace">A.id: number  +  B.id: string</text>
+
+        <text x="14" y="56" font-size="11.5" font-weight="700" fill="#2F6FB8" font-family="monospace">INTERFACE</text>
+        <rect x="14" y="68" width="290" height="46" rx="8" fill="#2F6FB8" fill-opacity=".1" stroke="#2F6FB8" stroke-width="1.6"></rect>
+        <text x="30" y="97" font-size="12" font-family="monospace" fill="currentColor">interface B extends A { id: string }</text>
+        <path d="M316 91 L350 91" fill="none" stroke="var(--bad)" stroke-width="1.6" marker-end="url(#ivtC)" color="var(--bad)"></path>
+        <text x="362" y="87" font-size="12" font-family="monospace" fill="var(--bad)">✗ lỗi ngay dòng này — ts(2430)</text>
+        <text x="362" y="107" font-size="11" fill="currentColor" opacity=".72">bạn sửa trong năm giây</text>
+
+        <line x1="0" y1="140" x2="720" y2="140" stroke="currentColor" stroke-opacity=".16"></line>
+
+        <text x="14" y="172" font-size="11.5" font-weight="700" fill="#8C3A80" font-family="monospace">TYPE &amp; TYPE</text>
+        <rect x="14" y="184" width="222" height="46" rx="8" fill="#8C3A80" fill-opacity=".1" stroke="#8C3A80" stroke-width="1.6"></rect>
+        <text x="28" y="206" font-size="11.5" font-family="monospace" fill="currentColor">type B2 = A2 &amp; { id: string }</text>
+        <text x="28" y="223" font-size="10.5" font-family="monospace" fill="var(--good)">im lặng, không lỗi</text>
+
+        <path d="M240 207 L290 207" fill="none" stroke="currentColor" stroke-width="1.6" marker-end="url(#ivtC)"></path>
+        <rect x="296" y="184" width="120" height="46" rx="8" fill="none" stroke="currentColor" stroke-opacity=".5" stroke-dasharray="4 3"></rect>
+        <text x="356" y="212" text-anchor="middle" font-size="12" font-family="monospace" fill="currentColor">id: never</text>
+
+        <path d="M420 207 L470 207" fill="none" stroke="currentColor" stroke-width="1.6" marker-end="url(#ivtC)"></path>
+        <text x="418" y="196" font-size="10" fill="currentColor" opacity=".65" font-family="monospace">50 dòng sau</text>
+        <rect x="476" y="184" width="214" height="46" rx="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.6"></rect>
+        <text x="490" y="206" font-size="11.5" font-family="monospace" fill="currentColor">const v: B2 = { id: 1 }</text>
+        <text x="490" y="223" font-size="10.5" font-family="monospace" fill="var(--bad)">✗ lỗi nổ ở ĐÂY</text>
+      </svg>
+    </div>
+    <figcaption>Khác biệt không nằm ở "cái nào đúng" mà ở <b>khoảng cách giữa chỗ sai và chỗ báo lỗi</b>. Đó là lý do nên ưu tiên <code>interface … extends</code> khi chỉ cần gộp hình dạng đối tượng.</figcaption>
+  </figure>
+  <div class="cards">
+    <div class="card">
+      <h3>interface — chặn tại nguồn</h3>
+<pre><code><span class="kw">interface</span> A { id: <span class="kw">number</span> }
+<span class="kw">interface</span> B <span class="kw">extends</span> A { id: <span class="kw">string</span> }
+<span class="out">//        ~ Interface 'B' incorrectly
+//          extends interface 'A'.
+//          Type 'string' is not
+//          assignable to 'number'. ts(2430)</span></code></pre>
+    </div>
+    <div class="card">
+      <h3>type — trôi xuống hạ nguồn</h3>
+<pre><code><span class="kw">type</span> A2 = { id: <span class="kw">number</span> }
+<span class="kw">type</span> B2 = A2 &amp; { id: <span class="kw">string</span> }  <span class="cm">// ✓ không lỗi</span>
+
+<span class="kw">declare const</span> b: B2
+b.id                        <span class="cm">// hover: never</span>
+<span class="kw">const</span> v: B2 = { id: <span class="kw">1</span> }
+<span class="out">// ✗ 'number' is not assignable to 'never'.</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Khác 4</p><h2>Tên trong thông báo lỗi, và giây build</h2></div>
+  <p class="col">Khi rê chuột lên một biến, <strong>IDE</strong> (trình soạn thảo mã có gợi ý và báo lỗi) hiện <strong>tooltip</strong> (bảng chú thích nhỏ). Với <code>interface</code>, tooltip in đúng cái tên bạn đặt. Với một chuỗi <code>&amp;</code> dài, TypeScript thường bung hết ra — và thông báo lỗi dài theo.</p>
+  <div class="cards">
+    <div class="card">
+      <h3>hover trên interface</h3>
+<pre><code><span class="kw">interface</span> Props <span class="kw">extends</span> Base, Audit {
+  id: <span class="kw">number</span>
+}
+<span class="cm">// hover →</span>  Props
+<span class="cm">// đọc phát hiểu, lỗi ngắn gọn</span></code></pre>
+    </div>
+    <div class="card">
+      <h3>hover trên intersection</h3>
+<pre><code><span class="kw">type</span> PropsT = Base &amp; Audit &amp; {
+  id: <span class="kw">number</span>
+}
+<span class="cm">// hover →</span>  <span class="out">Base &amp; Audit &amp; { id: number }</span>
+<span class="cm">// lỗi kéo dài mấy chục dòng</span></code></pre>
+    </div>
+  </div>
+  <div class="callout col">
+    <p><strong>Câu bonus khiến người phỏng vấn gật đầu:</strong> tài liệu hiệu năng của chính đội TypeScript khuyên ưu tiên <code>interface</code> hơn intersection khi chỉ cần gộp các hình dạng đối tượng. Lý do: <code>interface</code> tạo ra một kiểu phẳng duy nhất và được <strong>cache</strong> (nhớ đệm — ghi lại kết quả đã tính để khỏi tính lại) theo tên, còn intersection phải tính lại quan hệ mỗi lần dùng. Trên mã nguồn lớn, khác biệt này đo được bằng giây <strong>build</strong> (bước dịch toàn bộ dự án ra sản phẩm chạy được).</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Toàn bộ khác biệt, không thiếu không thừa</h2></div>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Tiêu chí</th><th>interface</th><th>type</th></tr></thead>
+    <tbody>
+      <tr><td>Khai trùng tên</td><td>Gộp lại thành một</td><td><span class="no">Lỗi ts(2300)</span></td></tr>
+      <tr><td>Đặt tên cho union, tuple, kiểu nguyên thuỷ</td><td><span class="no">Không</span></td><td><span class="yes">Có</span></td></tr>
+      <tr><td>Mapped type, conditional type, chuỗi ghép</td><td><span class="no">Không</span></td><td><span class="yes">Có</span></td></tr>
+      <tr><td>Trộn kiểu có trường xung đột</td><td><span class="yes">Báo lỗi tại dòng khai báo</span></td><td>Im lặng, trường thành <code>never</code></td></tr>
+      <tr><td>Tên hiện trong tooltip và thông báo lỗi</td><td><span class="yes">Giữ nguyên tên</span></td><td>Hay bị bung phẳng</td></tr>
+      <tr><td>Bổ sung kiểu cho thư viện bên ngoài</td><td><span class="yes">Cách duy nhất</span></td><td><span class="no">Không làm được</span></td></tr>
+      <tr><td>Nhận generic, <code>extends</code>, <code>implements</code></td><td>Có</td><td>Có</td></tr>
+      <tr><td>Còn lại gì sau khi biên dịch</td><td>Không gì cả</td><td>Không gì cả</td></tr>
+    </tbody>
+  </table></div>
+  <ol class="steps">
+    <li><strong>Là hình dạng đối tượng, và người ngoài cần mở rộng</strong> (thư viện, API công khai) → <code>interface</code>.</li>
+    <li><strong>Là union, tuple, kiểu nguyên thuỷ, hay một phép biến đổi kiểu</strong> → <code>type</code>, không có lựa chọn nào khác.</li>
+    <li><strong>Là hình dạng đối tượng dùng nội bộ</strong> → không có đáp án đúng. Cái sai duy nhất là mỗi file chọn một kiểu khác nhau — hãy ghi quy ước vào ESLint (công cụ tự động soát mã theo quy tắc của đội) thay vì tranh luận ở từng lần review.</li>
+  </ol>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của interface</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Mở rộng được từ bên ngoài</b> — cách duy nhất bổ sung kiểu cho <code>Window</code>, <code>Express.Request</code>, hay bất kỳ gói nào bạn không sửa được mã nguồn.</li>
+        <li><b>Bắt xung đột ngay tại dòng khai báo</b> thay vì để lỗi trôi xuống chỗ dùng.</li>
+        <li><b>Giữ tên trong tooltip và thông báo lỗi</b>, nên lỗi ngắn và đọc ra nghĩa.</li>
+        <li><b>Nhanh hơn khi biên dịch</b> — một kiểu phẳng được nhớ đệm theo tên, không phải tính lại mỗi lần dùng.</li>
+        <li><b>Diễn tả ý định rõ hơn</b>: thấy <code>interface</code> là biết đây là một bản hợp đồng về hình dạng, không phải một phép tính kiểu.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Thêm trường vào kiểu của thư viện — chỉ interface làm được</span>
+<span class="kw">declare global</span> {
+  <span class="kw">interface</span> Window { dataLayer: <span class="kw">unknown</span>[] }
+}</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Chỉ mô tả được hình dạng đối tượng</b> — union, tuple, kiểu nguyên thuỷ đều nằm ngoài tầm với.</li>
+        <li><b>Gộp khai báo là con dao hai lưỡi:</b> người khác có thể âm thầm nhét thêm trường vào <code>interface</code> của bạn ở một file khác mà không có lỗi nào báo.</li>
+        <li><b>Không làm được phép biến đổi kiểu</b>: <code>Partial</code>, <code>Pick</code>, kiểu điều kiện… đều phải viết bằng <code>type</code>.</li>
+        <li><b>Trộn nhiều nguồn thì dài dòng hơn</b> so với một dấu <code>&amp;</code>.</li>
+        <li><b>Không cứu được gì lúc chạy</b> — cũng như <code>type</code>, nó bị xoá sạch sau khi biên dịch.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// Cả ba dòng này interface đều bó tay</span>
+<span class="kw">type</span> Status  = <span class="str">'draft'</span> | <span class="str">'sent'</span>;
+<span class="kw">type</span> Point   = [<span class="kw">number</span>, <span class="kw">number</span>];
+<span class="kw">type</span> Ro&lt;T&gt;    = { <span class="kw">readonly</span> [K <span class="kw">in keyof</span> T]: T[K] };</code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> hình dạng đối tượng công khai — kiểu trả về của API, props của component dùng chung — thì dùng <code>interface</code>. Mọi tổ hợp kiểu còn lại dùng <code>type</code>. Đừng đổi qua đổi lại giữa hai từ khoá cho cùng một khái niệm: cái giá của việc chọn "sai" nhỏ hơn nhiều cái giá của việc mỗi file một kiểu.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> Cả hai đều đặt tên cho một kiểu và đều bị xoá sạch khi biên dịch. Khác biệt thật chỉ có bốn: <code>interface</code> <b>gộp được nhiều lần khai báo</b> còn <code>type</code> trùng tên là lỗi; <code>type</code> <b>dán được lên mọi biểu thức kiểu</b> chứ không riêng hình dạng đối tượng; trộn kiểu xung đột thì <code>interface … extends</code> <b>báo lỗi ngay dòng khai báo</b> còn <code>&amp;</code> im lặng biến trường thành <code>never</code>; và <code>interface</code> <b>giữ tên trong thông báo lỗi</b>. Quy ước: hình dạng đối tượng công khai dùng <code>interface</code>, mọi tổ hợp kiểu còn lại dùng <code>type</code>.</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Class <code>implements</code> được cả hai chứ?</h3>
+      <p>Được, miễn kiểu đó có hình dạng đối tượng — nói thêm được vế sau mới ăn điểm: <code>implements</code> một union thì không, vì lớp phải biết chắc mình có những trường nào. Lỗi là <code>A class can only implement an object type… ts(2422)</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>type</code> có đệ quy được không?</h3>
+      <p>Trả lời “không” là đang nhắc TypeScript của mười năm trước. Được từ bản 3.7: <code>type Json = string | number | Json[]</code> chạy tốt. Cái không được là đệ quy trực tiếp không qua đối tượng hay mảng — <code>type T = T</code> cho <code>ts(2456)</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Gộp khai báo là ưu hay nhược?</h3>
+      <p>Trả lời được <em>cả hai mặt</em> mới là câu của người có kinh nghiệm. Ưu: cách duy nhất bổ sung kiểu cho gói bên ngoài. Nhược: trong mã của chính đội mình, ai đó nhét thêm trường vào <code>interface</code> của bạn ở file khác mà không có lỗi nào báo.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Chọn sai thì hỏng gì lúc chạy?</h3>
+      <p>Không hỏng gì cả — và đó chính là điểm phải nói ra. Cả hai bị xoá sạch khi biên dịch, <strong>runtime</strong> (lúc chương trình chạy trên máy người dùng) không biết chúng tồn tại. Cái giá thật là thông báo lỗi khó đọc, giây build, và những lần tranh luận ở khâu review.</p>
+    </div>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> “Dùng <code>type</code> cho mọi thứ cho nhất quán, <code>interface</code> là di sản.” Sai ở hai chỗ. Bổ sung kiểu cho thư viện bên ngoài — thêm trường vào <code>Window</code> chẳng hạn — <code>type</code> không làm được, chỉ <code>interface</code> mới gộp khai báo được. Và trộn bằng <code>&amp;</code> thì xung đột trường không báo lỗi tại chỗ khai báo mà trôi xuống nơi sử dụng, cách chỗ sai có khi năm chục dòng.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>TypeScript</td><td>Ngôn ngữ bổ sung hệ thống kiểu dữ liệu cho JavaScript; dịch ra JavaScript rồi mới chạy.</td></tr>
+      <tr><td>interface</td><td>Bản mô tả hình dạng của một đối tượng: có những trường nào, mỗi trường kiểu gì.</td></tr>
+      <tr><td>type alias</td><td>Cái nhãn đặt tên cho một biểu thức kiểu bất kỳ — chính là <code>type X = …</code>.</td></tr>
+      <tr><td>compiler</td><td>Trình biên dịch — chương trình dịch mã và soát lỗi kiểu trong lúc dịch.</td></tr>
+      <tr><td>object</td><td>Đối tượng — dữ liệu gồm nhiều trường có tên, ví dụ <code>{ id: 1, name: 'Lan' }</code>.</td></tr>
+      <tr><td>property</td><td>Trường — một mục có tên bên trong đối tượng.</td></tr>
+      <tr><td>primitive</td><td>Kiểu nguyên thuỷ — kiểu đơn lẻ không phải đối tượng: <code>string</code>, <code>number</code>, <code>boolean</code>.</td></tr>
+      <tr><td>union</td><td>Kiểu hợp — "hoặc cái này hoặc cái kia", viết bằng dấu <code>|</code>.</td></tr>
+      <tr><td>intersection</td><td>Kiểu giao — gộp mọi trường của nhiều kiểu, viết bằng dấu <code>&amp;</code>.</td></tr>
+      <tr><td>tuple</td><td>Mảng cố định số phần tử, mỗi vị trí một kiểu riêng.</td></tr>
+      <tr><td>never</td><td>Kiểu rỗng — không giá trị nào hợp lệ. Thấy nó thường là dấu hiệu kiểu đã bị trộn sai.</td></tr>
+      <tr><td>generic</td><td>Kiểu tổng quát — kiểu nhận tham số như một cái hàm, ví dụ <code>Array&lt;T&gt;</code>.</td></tr>
+      <tr><td>mapped type</td><td>Kiểu sinh trường mới bằng cách duyệt qua trường của một kiểu có sẵn.</td></tr>
+      <tr><td>conditional type</td><td>Kiểu rẽ nhánh theo điều kiện, dạng <code>A extends B ? X : Y</code>.</td></tr>
+      <tr><td>template literal type</td><td>Kiểu ghép chuỗi ngay ở tầng kiểu.</td></tr>
+      <tr><td>structural typing</td><td>So kiểu theo cấu trúc — TypeScript so hai kiểu theo hình dạng chứ không theo tên khai báo.</td></tr>
+      <tr><td>declaration merging</td><td>Gộp khai báo — nhiều <code>interface</code> cùng tên tự động nhập làm một.</td></tr>
+      <tr><td>module augmentation</td><td>Bổ sung kiểu cho một gói mã có sẵn mà không sửa mã nguồn của nó.</td></tr>
+      <tr><td>index signature</td><td>Khai báo khoá động, dạng <code>[k: string]: number</code>.</td></tr>
+      <tr><td>extends</td><td>Mở rộng — kiểu mới lấy hết trường của kiểu cũ rồi thêm vào.</td></tr>
+      <tr><td>implements</td><td>Lớp cam kết làm đúng theo một bản mô tả kiểu.</td></tr>
+      <tr><td>.d.ts</td><td>File chỉ chứa khai báo kiểu, không sinh ra mã chạy.</td></tr>
+      <tr><td>IDE</td><td>Trình soạn thảo mã có gợi ý và báo lỗi trực tiếp, ví dụ VS Code.</td></tr>
+      <tr><td>hover / tooltip</td><td>Rê chuột lên một ký hiệu, IDE hiện bảng chú thích nhỏ nói kiểu của nó là gì.</td></tr>
+      <tr><td>cache</td><td>Nhớ đệm — ghi lại kết quả đã tính để lần sau khỏi tính lại.</td></tr>
+      <tr><td>build</td><td>Bước dịch toàn bộ dự án ra sản phẩm chạy được.</td></tr>
+      <tr><td>runtime</td><td>Lúc chương trình đang thật sự chạy trên máy người dùng.</td></tr>
+      <tr><td>ESLint</td><td>Công cụ tự động soát mã theo bộ quy tắc do đội đặt ra.</td></tr>
+      <tr><td>ts(2300), ts(2430)…</td><td>Mã lỗi của trình biên dịch TypeScript; tra mã này ra đúng nguyên nhân.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<nav class="pager"><a class="prev" href="day-53-pure-vs-impure-pipe.html"><span class="dir">← Bài trước</span><span class="nm">Day 53 — Pure hay impure: công tắc quyết định pipe chạy bao nhiêu lần</span></a><a class="next" href="day-55-cd-signals-zone.html"><span class="dir">Bài tiếp →</span><span class="nm">Day 55 — Đi qua hay kiểm tra: Zone.js và tối ưu mà signal bật lên</span></a></nav>
+<footer class="page-foot col"><p>Sổ tay eli5 · Angular · trang 54/55</p></footer>
+</div>
+</body>
+</html>

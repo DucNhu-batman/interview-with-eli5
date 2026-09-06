@@ -1,0 +1,225 @@
+<!--meta
+title: distinctUntilChanged — chặn giá trị lặp lại
+eyebrow: RxJS · Bài 3
+short: distinctUntilChanged
+lede: Chỉ cho giá trị đi tiếp khi nó khác giá trị liền ngay trước. Nghe đơn giản, nhưng "khác" ở đây mặc định so bằng ===, nên với đối tượng thì nó gần như không lọc được gì.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Chỉ so với người đứng ngay trước</h2></div>
+  <p><code>distinctUntilChanged</code> là toán tử (operator — hàm đặt trong <code>pipe</code> để nhào nặn luồng) giữ lại một giá trị duy nhất: <strong>giá trị vừa phát ra gần nhất</strong>. Giá trị mới đến mà bằng nó thì bị bỏ, khác nó thì được đi tiếp và trở thành mốc so sánh mới.</p>
+  <p>Điểm hay bị hiểu nhầm nhất nằm ở chữ <em>UntilChanged</em>: nó <strong>không</strong> nhớ toàn bộ lịch sử. Một giá trị đã từng xuất hiện vẫn được phát lại bình thường, miễn là ở giữa có giá trị khác chen vào.</p>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Nhớ 1 giá trị</span>
+      <h3><code>distinctUntilChanged()</code></h3>
+      <p>So với giá trị <b>liền trước</b>. Bộ nhớ không đổi dù luồng chạy cả ngày.</p>
+<pre><code>a a b b b a c
+<span class="out">→ a b a c</span>
+<span class="cm">// chữ a thứ hai vẫn đi tiếp, vì trước nó là b</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag warn">Nhớ tất cả</span>
+      <h3><code>distinct()</code></h3>
+      <p>So với <b>mọi giá trị đã từng phát</b>. Phải giữ một tập hợp lớn dần — luồng dài là phình bộ nhớ.</p>
+<pre><code>a a b b b a c
+<span class="out">→ a b c</span>
+<span class="cm">// chữ a thứ hai bị chặn vì đã từng xuất hiện</span></code></pre>
+    </div>
+  </div>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> <code>distinctUntilChanged</code> chống <b>lặp liên tiếp</b>, không chống <b>trùng lặp</b>. Nó rẻ và an toàn để đặt ở mọi nơi; <code>distinct</code> thì phải cân nhắc vì nó giữ lại mọi thứ đã đi qua.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Nhìn bằng hình: khác nhau ở chỗ nhớ bao nhiêu</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 276" role="img" aria-label="Sơ đồ ba dòng. Dòng nguồn phát bảy giá trị a a b b b a c. Dòng distinctUntilChanged cho đi bốn giá trị a b a c, chặn các giá trị lặp liền nhau. Dòng distinct chỉ cho đi ba giá trị a b c, chặn cả giá trị a xuất hiện lần thứ hai vì nó đã từng đi qua.">
+        <defs>
+          <marker id="duArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <g>
+          <rect x="0" y="12" width="720" height="64" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="40" font-size="12.5" font-weight="700" fill="currentColor" font-family="monospace">nguồn</text>
+          <text x="14" y="56" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">7 giá trị</text>
+          <line x1="130" y1="44" x2="700" y2="44" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#duArrow)"></line>
+          <circle cx="170" cy="44" r="13" fill="var(--accent)"></circle><text x="170" y="49" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="245" cy="44" r="13" fill="var(--accent)"></circle><text x="245" y="49" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="320" cy="44" r="13" fill="var(--accent)"></circle><text x="320" y="49" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">b</text>
+          <circle cx="395" cy="44" r="13" fill="var(--accent)"></circle><text x="395" y="49" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">b</text>
+          <circle cx="470" cy="44" r="13" fill="var(--accent)"></circle><text x="470" y="49" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">b</text>
+          <circle cx="545" cy="44" r="13" fill="var(--accent)"></circle><text x="545" y="49" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="620" cy="44" r="13" fill="var(--accent)"></circle><text x="620" y="49" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">c</text>
+        </g>
+
+        <g>
+          <rect x="0" y="84" width="720" height="76" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="112" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">distinctUntil-</text>
+          <text x="14" y="126" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">Changed</text>
+          <text x="14" y="142" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">nhớ 1</text>
+          <line x1="130" y1="124" x2="700" y2="124" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#duArrow)"></line>
+          <circle cx="170" cy="124" r="13" fill="var(--accent)"></circle><text x="170" y="129" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="245" cy="124" r="12" fill="none" stroke="var(--bad)" stroke-width="1.8" stroke-dasharray="3 3"></circle><text x="245" y="129" font-size="11" font-weight="700" text-anchor="middle" fill="var(--bad)">a</text>
+          <circle cx="320" cy="124" r="13" fill="var(--accent)"></circle><text x="320" y="129" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">b</text>
+          <circle cx="395" cy="124" r="12" fill="none" stroke="var(--bad)" stroke-width="1.8" stroke-dasharray="3 3"></circle><text x="395" y="129" font-size="11" font-weight="700" text-anchor="middle" fill="var(--bad)">b</text>
+          <circle cx="470" cy="124" r="12" fill="none" stroke="var(--bad)" stroke-width="1.8" stroke-dasharray="3 3"></circle><text x="470" y="129" font-size="11" font-weight="700" text-anchor="middle" fill="var(--bad)">b</text>
+          <circle cx="545" cy="124" r="13" fill="var(--accent)"></circle><text x="545" y="129" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="620" cy="124" r="13" fill="var(--accent)"></circle><text x="620" y="129" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">c</text>
+          <text x="536" y="152" font-size="10.5" fill="var(--good)" font-family="monospace">chữ a này ĐƯỢC đi tiếp — trước nó là b</text>
+        </g>
+
+        <g>
+          <rect x="0" y="168" width="720" height="76" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="200" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">distinct</text>
+          <text x="14" y="216" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">nhớ tất cả</text>
+          <line x1="130" y1="208" x2="700" y2="208" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#duArrow)"></line>
+          <circle cx="170" cy="208" r="13" fill="var(--accent)"></circle><text x="170" y="213" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="245" cy="208" r="12" fill="none" stroke="var(--bad)" stroke-width="1.8" stroke-dasharray="3 3"></circle><text x="245" y="213" font-size="11" font-weight="700" text-anchor="middle" fill="var(--bad)">a</text>
+          <circle cx="320" cy="208" r="13" fill="var(--accent)"></circle><text x="320" y="213" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">b</text>
+          <circle cx="395" cy="208" r="12" fill="none" stroke="var(--bad)" stroke-width="1.8" stroke-dasharray="3 3"></circle><text x="395" y="213" font-size="11" font-weight="700" text-anchor="middle" fill="var(--bad)">b</text>
+          <circle cx="470" cy="208" r="12" fill="none" stroke="var(--bad)" stroke-width="1.8" stroke-dasharray="3 3"></circle><text x="470" y="213" font-size="11" font-weight="700" text-anchor="middle" fill="var(--bad)">b</text>
+          <circle cx="545" cy="208" r="12" fill="none" stroke="var(--bad)" stroke-width="1.8" stroke-dasharray="3 3"></circle><text x="545" y="213" font-size="11" font-weight="700" text-anchor="middle" fill="var(--bad)">a</text>
+          <circle cx="620" cy="208" r="13" fill="var(--accent)"></circle><text x="620" y="213" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">c</text>
+          <text x="536" y="236" font-size="10.5" fill="var(--bad)" font-family="monospace">chữ a này BỊ CHẶN — đã từng xuất hiện</text>
+        </g>
+
+        <text x="14" y="266" font-size="11" fill="currentColor" opacity=".8">Vòng tròn đặc = đi tiếp. Vòng tròn nét đứt = bị chặn.</text>
+      </svg>
+    </div>
+    <figcaption>Cùng một đầu vào, khác nhau đúng ở giá trị <b>a</b> thứ ba — và đó chính là toàn bộ khác biệt giữa hai toán tử.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Vấn đề</p><h2>Mặc định so bằng <code>===</code> — nên đối tượng luôn "khác nhau"</h2></div>
+  <p class="col">Hàm so sánh mặc định của RxJS chỉ đơn giản là <code>(a, b) =&gt; a === b</code>. Với nguyên thuỷ (primitive — số, chuỗi, boolean) thì đúng như mong đợi. Với <strong>đối tượng</strong> (object — mảng, đối tượng) thì <code>===</code> so <em>địa chỉ ô nhớ</em> chứ không so nội dung, nên hai đối tượng nội dung y hệt vẫn bị coi là khác nhau:</p>
+<pre><code><span class="cm">// Angular tạo một đối tượng MỚI mỗi lần form đổi giá trị</span>
+<span class="kw">this</span>.form.valueChanges.pipe(
+  distinctUntilChanged(),   <span class="cm">// ✗ không lọc được gì cả</span>
+).subscribe(luuNhap);
+<span class="out">// { ten: 'An' } === { ten: 'An' } là false → mọi giá trị đều đi tiếp</span></code></pre>
+  <p class="col">Cách chữa là truyền vào hàm so sánh riêng (comparator — hàm nhận hai giá trị và trả về <code>true</code> nếu coi chúng là bằng nhau):</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Cách viết</th><th>So cái gì</th><th>Ghi chú</th></tr></thead>
+    <tbody>
+      <tr><td>distinctUntilChanged()</td><td><code>a === b</code></td><td>Chỉ đúng cho nguyên thuỷ. Với <code>NaN</code> cũng sai — <code>NaN === NaN</code> là <code>false</code> nên <code>NaN</code> lặp lại vẫn đi tiếp.</td></tr>
+      <tr><td>distinctUntilChanged((a, b) =&gt; a.id === b.id)</td><td>Một trường khoá</td><td>Cách dùng phổ biến nhất cho danh sách bản ghi.</td></tr>
+      <tr><td>distinctUntilKeyChanged('id')</td><td>Một trường khoá</td><td>Bản viết gọn của dòng trên, cùng ý nghĩa.</td></tr>
+      <tr><td>distinctUntilChanged(isEqual)</td><td>Toàn bộ nội dung, đệ quy</td><td>Dùng hàm so sâu (deep equal) của thư viện tiện ích. Đúng nhưng tốn, đừng đặt trên luồng phát dày.</td></tr>
+      <tr><td>distinctUntilChanged((a, b) =&gt; JSON.stringify(a) === JSON.stringify(b))</td><td>Chuỗi hoá rồi so</td><td>Viết nhanh nhưng phụ thuộc thứ tự khoá và không xử lý được <code>undefined</code>, <code>Date</code>, vòng lặp tham chiếu.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout bad">
+    <p><strong>Bẫy ngược lại:</strong> viết comparator so sâu rồi đặt lên luồng phát hàng nghìn giá trị mỗi giây. Toán tử đáng lẽ để <em>tiết kiệm</em> lại trở thành chỗ tốn nhất trong <code>pipe</code>. Nếu chỉ cần biết "bản ghi có đổi không", hãy so đúng một trường khoá.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Trong Angular</p><h2>Ba chỗ gần như luôn cần nó</h2></div>
+<pre><code><span class="cm">// 1. Ô tìm kiếm — không gọi lại API khi giá trị thật ra không đổi</span>
+<span class="kw">this</span>.form.controls.tuKhoa.valueChanges.pipe(
+  debounceTime(<span class="kw">300</span>),
+  distinctUntilChanged(),        <span class="cm">// gõ thừa rồi xoá về như cũ → không gọi lại</span>
+  switchMap((tk) =&gt; <span class="kw">this</span>.api.tim(tk)),
+).subscribe((kq) =&gt; <span class="kw">this</span>.ketQua.set(kq));
+
+<span class="cm">// 2. Tham số trên đường dẫn — chỉ tải lại khi id thật sự đổi</span>
+<span class="kw">this</span>.route.paramMap.pipe(
+  map((p) =&gt; p.get(<span class="str">'id'</span>)!),
+  distinctUntilChanged(),        <span class="cm">// đổi tham số lọc mà id giữ nguyên → không tải lại</span>
+  switchMap((id) =&gt; <span class="kw">this</span>.api.chiTiet(id)),
+).subscribe((ct) =&gt; <span class="kw">this</span>.chiTiet.set(ct));
+
+<span class="cm">// 3. Giá trị form dạng đối tượng — BẮT BUỘC có comparator</span>
+<span class="kw">this</span>.form.valueChanges.pipe(
+  debounceTime(<span class="kw">500</span>),
+  distinctUntilChanged((a, b) =&gt; a.ten === b.ten &amp;&amp; a.tuoi === b.tuoi),
+).subscribe(luuNhap);</code></pre>
+  <p>Thứ tự trong <code>pipe</code> có ý nghĩa: đặt <code>distinctUntilChanged</code> <strong>sau</strong> <code>debounceTime</code> thì nó so hai giá trị <em>đã lọc nhịp</em> — đúng ý "so với lần gọi API trước". Đặt trước <code>debounceTime</code> thì nó so từng ký tự gõ vào, gần như không chặn được gì.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Cắt request thừa</b> mà không cần biến nhớ giá trị cũ rải rác trong component.</li>
+        <li><b>Bộ nhớ cố định</b> — luôn chỉ giữ đúng một giá trị, khác hẳn <code>distinct</code>.</li>
+        <li><b>Chặn vòng lặp cập nhật</b>: luồng trạng thái phát lại cùng một giá trị sẽ không kích hoạt vẽ lại giao diện.</li>
+        <li><b>Ghép tự nhiên với <code>debounceTime</code></b> thành bộ đôi chuẩn của mọi ô tìm kiếm.</li>
+        <li><b>Comparator mở</b> — muốn so theo tiêu chí nào cũng được, không bị bó vào <code>===</code>.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Không có toán tử — phải tự giữ biến cũ:</span>
+<span class="kw">let</span> cu: <span class="kw">string</span> | <span class="kw">null</span> = <span class="kw">null</span>;
+ô$.subscribe((v) =&gt; {
+  <span class="kw">if</span> (v === cu) <span class="kw">return</span>;
+  cu = v;
+  tim(v);
+});
+
+<span class="cm">// Có toán tử — một dòng, không biến trạng thái lạc lõng:</span>
+ô$.pipe(distinctUntilChanged()).subscribe(tim);</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Vô dụng với đối tượng nếu quên comparator</b> — và nó im lặng, không báo lỗi, chỉ là không lọc gì.</li>
+        <li><b>Không chặn được trùng lặp không liền kề</b> — nhiều người tưởng nó làm việc của <code>distinct</code>.</li>
+        <li><b>Comparator so sâu rất tốn</b> nếu đặt nhầm chỗ trên luồng phát dày.</li>
+        <li><b>Sai với <code>NaN</code></b> vì mặc định dùng <code>===</code>; cần <code>Object.is</code> nếu luồng có thể chứa <code>NaN</code>.</li>
+        <li><b>Có thể nuốt mất tín hiệu "làm lại"</b> — bấm nút Tải lại mà giá trị lọc không đổi thì không có gì đi tiếp.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// ✗ tưởng chặn được trùng, thật ra không</span>
+trangThai$.pipe(distinctUntilChanged())
+<span class="out">// 'mở' 'đóng' 'mở' → cả ba đều đi tiếp</span>
+
+<span class="cm">// ✗ nút Tải lại phát cùng một giá trị lọc → bị nuốt</span>
+boLoc$.pipe(
+  distinctUntilChanged(),
+  switchMap((f) =&gt; api.tim(f)),
+)
+<span class="cm">// Bấm Tải lại mà không đổi bộ lọc → KHÔNG có request nào.</span>
+<span class="cm">// Cần một luồng "làm mới" riêng, gộp bằng merge().</span>
+
+<span class="cm">// ✗ NaN lặp lại vẫn lọt</span>
+of(NaN, NaN).pipe(distinctUntilChanged())
+<span class="out">// phát ra 2 giá trị, không phải 1</span>
+of(NaN, NaN).pipe(distinctUntilChanged(Object.is))
+<span class="out">// phát ra 1 giá trị — đúng</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> luồng phát <b>nguyên thuỷ</b> thì dùng thẳng <code>distinctUntilChanged()</code>. Luồng phát <b>đối tượng</b> thì <strong>luôn</strong> truyền comparator, và ưu tiên so một trường khoá (<code>distinctUntilKeyChanged('id')</code>) thay vì so sâu toàn bộ. Cần chặn trùng lặp trên cả lịch sử thì đó là việc của <code>distinct</code> — và khi dùng <code>distinct</code>, hãy nghĩ tới lúc luồng chạy suốt vài giờ.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>distinctUntilChanged</td><td>Chỉ cho đi tiếp khi khác giá trị liền ngay trước.</td></tr>
+      <tr><td>distinct</td><td>Chỉ cho đi tiếp khi chưa từng xuất hiện trong cả luồng.</td></tr>
+      <tr><td>distinctUntilKeyChanged</td><td>Bản rút gọn: so theo tên một trường của đối tượng.</td></tr>
+      <tr><td>comparator</td><td>Hàm so sánh — nhận hai giá trị, trả về true nếu coi là bằng nhau.</td></tr>
+      <tr><td>primitive</td><td>Nguyên thuỷ — số, chuỗi, boolean, null, undefined, symbol, bigint.</td></tr>
+      <tr><td>object</td><td>Đối tượng — mảng, đối tượng, hàm; so bằng <code>===</code> là so địa chỉ ô nhớ.</td></tr>
+      <tr><td>deep equal</td><td>So sâu — so từng trường một cách đệ quy thay vì so địa chỉ.</td></tr>
+      <tr><td>NaN</td><td>Not-a-Number — giá trị "không phải số", và không bằng chính nó.</td></tr>
+      <tr><td>Object.is</td><td>Hàm so "giống hệt" — như <code>===</code> nhưng đúng với NaN.</td></tr>
+      <tr><td>operator</td><td>Toán tử — hàm đặt trong <code>pipe</code> để nhào nặn luồng.</td></tr>
+      <tr><td>pipe</td><td>Ống nối — nơi xâu chuỗi các toán tử của một luồng.</td></tr>
+      <tr><td>request</td><td>Lời gọi tới máy chủ để lấy hoặc ghi dữ liệu.</td></tr>
+      <tr><td>valueChanges</td><td>Luồng Angular phát ra mỗi khi giá trị của form đổi.</td></tr>
+      <tr><td>paramMap</td><td>Luồng Angular phát ra tham số trên đường dẫn của màn hình.</td></tr>
+    </tbody>
+  </table></div>
+</section>

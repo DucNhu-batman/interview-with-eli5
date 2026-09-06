@@ -1,0 +1,108 @@
+<!--meta
+title: Fn.bind() — phần 1: cơ bản
+eyebrow: JavaScript · Bài 10
+short: bind (1)
+lede: bind không gọi hàm. Nó đóng một cái hàm MỚI, đã khoá sẵn this — và nếu muốn, khoá sẵn cả vài đối số đầu.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Cái điều khiển đã dán sẵn tên</h2></div>
+  <p>Hãy tưởng tượng một cái điều khiển từ xa dùng được cho mọi TV trong nhà — bấm nút thì TV nào bật là tuỳ lúc đó bạn đang chĩa vào đâu. Đó là một hàm dùng <code>this</code>.</p>
+  <p><code>bind</code> giống việc bạn dán nhãn “chỉ dùng cho TV phòng khách” lên một chiếc điều khiển <em>mới</em>: từ giờ bấm ở đâu cũng chỉ điều khiển đúng cái TV đó. Chiếc điều khiển cũ vẫn còn nguyên, không bị đổi.</p>
+<pre><code><span class="kw">const</span> hamMoi = hamCu.bind(thisArg, doiSo1, doiSo2);</code></pre>
+  <div class="callout">
+    <p><strong>Ba điều phải nhớ:</strong> (1) <code>bind</code> <em>không</em> gọi hàm — nó trả về hàm mới; (2) hàm mới có <code>this</code> bị khoá vĩnh viễn; (3) các đối số truyền cho <code>bind</code> được nhét sẵn vào <em>đầu</em> danh sách đối số.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Công dụng 1</p><h2>Cứu this bị mất</h2></div>
+  <p>Đây là 90% lý do người ta dùng <code>bind</code>. Khi tách một method ra khỏi đối tượng — gán vào biến, truyền làm callback — dấu chấm biến mất, và <code>this</code> mất theo.</p>
+<pre><code><span class="kw">class</span> GioHang {
+  items = [];
+  them(sp) { <span class="kw">this</span>.items.push(sp); }
+}
+<span class="kw">const</span> gio = <span class="kw">new</span> GioHang();
+
+nut.addEventListener(<span class="str">'click'</span>, gio.them);              <span class="cm">// ✗ this là phần tử DOM → lỗi</span>
+nut.addEventListener(<span class="str">'click'</span>, gio.them.bind(gio));    <span class="cm">// ✓ this luôn là gio</span>
+nut.addEventListener(<span class="str">'click'</span>, (e) =&gt; gio.them(e));   <span class="cm">// ✓ cách khác, cũng đúng</span></code></pre>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Công dụng 2</p><h2>Partial application — khoá sẵn đối số</h2></div>
+  <p>Partial application (áp dụng từng phần) là việc tạo ra một phiên bản chuyên biệt của hàm bằng cách điền trước một vài đối số. Khi không cần <code>this</code>, truyền <code>null</code> vào chỗ đầu tiên.</p>
+<pre><code><span class="kw">function</span> nhan(a, b) { <span class="kw">return</span> a * b; }
+
+<span class="kw">const</span> gapDoi = nhan.bind(<span class="kw">null</span>, 2);   <span class="cm">// khoá a = 2</span>
+gapDoi(5);   <span class="out">// 10</span>
+gapDoi(21);  <span class="out">// 42</span>
+
+<span class="cm">// Thực tế hơn: một logger đã gắn sẵn nhãn</span>
+<span class="kw">const</span> logLoi = console.log.bind(console, <span class="str">'[LỖI]'</span>);
+logLoi(<span class="str">'không gọi được API'</span>);   <span class="out">// [LỖI] không gọi được API</span></code></pre>
+  <div class="callout bad">
+    <p><strong>Chỉ khoá được từ trái sang.</strong> Không có cách nào dùng <code>bind</code> để điền sẵn đối số thứ hai mà bỏ trống đối số thứ nhất. Muốn vậy phải tự bọc bằng arrow function: <code>(a) =&gt; nhan(a, 2)</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Khoá <code>this</code> một lần, yên tâm mãi.</b> Hàm đã bind thì truyền đi bao nhiêu tầng cũng không mất ngữ cảnh.</li>
+        <li><b>Không đụng vào hàm gốc.</b> <code>bind</code> tạo bản mới, hàm cũ vẫn dùng bình thường cho đối tượng khác.</li>
+        <li><b>Tạo hàm chuyên biệt gọn gàng.</b> Partial application giúp bớt lặp lại đối số cố định.</li>
+        <li><b>Chạy được ở mọi trình duyệt.</b> Có từ ES5 (2009), không cần công cụ biên dịch.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="kw">const</span> logLoi = console.log.bind(console, <span class="str">'[LỖI]'</span>);
+logLoi(<span class="str">'mất kết nối'</span>);       <span class="out">// [LỖI] mất kết nối</span>
+
+<span class="cm">// Và cứu this khi truyền method đi làm callback</span>
+<span class="kw">const</span> onClick = gio.them.bind(gio);
+nut.addEventListener(<span class="str">'click'</span>, onClick);
+nut.removeEventListener(<span class="str">'click'</span>, onClick);   <span class="cm">// gỡ được vì đã cất vào biến</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Mỗi lần gọi là một hàm mới.</b> <code>f.bind(o) !== f.bind(o)</code> — hai lần bind cho hai hàm khác nhau.</li>
+        <li><b>Gỡ sự kiện thất bại.</b> <code>removeEventListener('click', f.bind(o))</code> không gỡ được gì cả, vì đó là một hàm khác với hàm đã đăng ký.</li>
+        <li><b>Bind trong template/render là lãng phí.</b> Mỗi lần vẽ lại sinh một hàm mới, phá vỡ tối ưu so sánh tham chiếu (Angular <code>OnPush</code>, React <code>memo</code>).</li>
+        <li><b>Không bind lại được.</b> Bind chồng lần hai không có tác dụng (chi tiết ở phần 2).</li>
+        <li><b>Khó debug.</b> Trong stack trace (dấu vết lỗi) hàm hiện tên <code>bound xyz</code>, khó lần về nơi tạo ra nó.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>nut.addEventListener(<span class="str">'click'</span>, gio.them.bind(gio));
+nut.removeEventListener(<span class="str">'click'</span>, gio.them.bind(gio));
+<span class="cm">// ✗ không gỡ được gì: hai lần bind là hai hàm KHÁC NHAU</span>
+console.log(gio.them.bind(gio) === gio.them.bind(gio));   <span class="out">// false</span>
+
+&lt;app-con [cb]="xuLy.bind(this)" /&gt;
+<span class="cm">// ✗ mỗi lần vẽ lại sinh hàm mới → component con luôn thấy input "đã đổi"</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Khi nào chọn gì:</strong> trong class hiện đại, ưu tiên <em>class field mũi tên</em> (<code>them = (sp) =&gt; { ... }</code>) — mỗi instance chỉ tạo hàm một lần và <code>this</code> luôn đúng. Chỉ dùng <code>bind</code> khi cần gắn <code>this</code> cho một hàm bạn không sở hữu, hoặc để khoá đối số. Và <strong>luôn bind một lần rồi cất vào biến</strong> nếu sau này còn cần gỡ sự kiện.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>bind</td><td>Khoá ngữ cảnh — tạo hàm mới với <code>this</code> (và đối số đầu) cố định.</td></tr>
+      <tr><td>bound function</td><td>Hàm đã bị bind — bản sao đã khoá <code>this</code>.</td></tr>
+      <tr><td>partial application</td><td>Áp dụng từng phần — điền trước một số đối số để tạo hàm chuyên biệt.</td></tr>
+      <tr><td>callback</td><td>Hàm gọi lại — hàm giao cho bên khác chạy hộ về sau.</td></tr>
+      <tr><td>event listener</td><td>Bộ lắng nghe sự kiện, đăng ký bằng <code>addEventListener</code>.</td></tr>
+      <tr><td>class field</td><td>Thuộc tính khai trực tiếp trong thân class.</td></tr>
+      <tr><td>stack trace</td><td>Dấu vết lỗi — danh sách các hàm dẫn tới chỗ lỗi.</td></tr>
+      <tr><td>OnPush</td><td>Chiến lược phát hiện thay đổi của Angular dựa trên so sánh tham chiếu.</td></tr>
+    </tbody>
+  </table></div>
+</section>

@@ -1,0 +1,74 @@
+<!--meta
+title: Day 38 — Dynamic Component
+eyebrow: Angular · Day 38
+short: Day 38
+lede: Tạo component bằng code lúc chạy, không khai sẵn trong template — nền tảng của mọi hệ thống dialog, toast và màn hình cấu hình được.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Khi không biết trước sẽ vẽ cái gì</h2></div>
+  <p>Bình thường template quyết định component nào được vẽ. Nhưng có lúc thứ cần vẽ chỉ biết lúc chạy: một dialog do service mở, một widget do cấu hình từ máy chủ, một bước wizard tuỳ loại hồ sơ. Khi đó dùng <code>ViewContainerRef.createComponent()</code>.</p>
+<pre><code><span class="kw">private</span> vcr = inject(ViewContainerRef);
+
+mo(loai: <span class="str">'them'</span> | <span class="str">'sua'</span>) {
+  <span class="kw">this</span>.vcr.clear();
+  <span class="kw">const</span> ref = <span class="kw">this</span>.vcr.createComponent(loai === <span class="str">'them'</span> ? FormThem : FormSua);
+  ref.setInput(<span class="str">'id'</span>, <span class="kw">this</span>.id());
+  ref.instance.dong.subscribe(() =&gt; ref.destroy());   <span class="cm">// phải tự huỷ</span>
+}</code></pre>
+  <div class="callout">
+    <p><strong>Trong dự án này bạn hiếm khi gọi API đó trực tiếp:</strong> <code>IamDialogService</code> đã bọc sẵn (và tự đóng dialog khi đổi route qua <code>closeDialogOnNavigation</code>). Hiểu cơ chế bên dưới để biết vì sao dialog nằm ngoài cây route và vì sao nó không tự chết khi chuyển màn.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Giao diện lắp ghép theo dữ liệu:</b> máy chủ trả cấu hình, ứng dụng dựng đúng widget tương ứng.</li>
+        <li><b>Dialog/toast dùng chung</b> mở được từ bất kỳ đâu, không cần khai thẻ trong template từng màn.</li>
+        <li><b>Chỉ tải khi cần:</b> kết hợp <code>import()</code> để không đưa component nặng vào gói chính.</li>
+        <li><b>Tách bạch:</b> nơi gọi chỉ cần biết "mở form sửa", không cần biết form đó trông thế nào.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Widget do cấu hình quyết định, thêm loại mới không phải sửa template</span>
+<span class="kw">const</span> BANG = { bieuDo: BieuDoWidget, bang: BangWidget, the: TheWidget };
+<span class="kw">for</span> (<span class="kw">const</span> w <span class="kw">of</span> cauHinh.widgets) {
+  <span class="kw">const</span> ref = vcr.createComponent(BANG[w.loai]);
+  ref.setInput(<span class="str">'props'</span>, w.props);
+}</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Phải tự dọn.</b> Quên <code>destroy()</code> là component sống mãi ngoài cây view — rò rỉ thật sự.</li>
+        <li><b>Mất kiểm tra kiểu trong template.</b> Truyền sai tên input chỉ biết khi chạy.</li>
+        <li><b>Không nằm trong cây route</b> nên đổi route không tự đóng — nguồn của lỗi "popup còn treo trên màn mới".</li>
+        <li><b>Khó đọc, khó lần.</b> Tìm trong template không ra component nào đang hiện.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="kw">const</span> ref = vcr.createComponent(FormSua);
+<span class="cm">// … không ai gọi ref.destroy()</span>
+<span class="cm">// → subscription bên trong FormSua chạy tiếp sau khi rời màn</span>
+
+ref.setInput(<span class="str">'idKho'</span>, id);   <span class="cm">// input thật tên là 'id'</span>
+<span class="cm">// → không lỗi biên dịch, chỉ là dữ liệu không bao giờ tới</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>dynamic component</td><td>Component được tạo bằng code lúc chạy.</td></tr>
+      <tr><td>ViewContainerRef</td><td>Vị trí trong view để chèn component/khuôn.</td></tr>
+      <tr><td>ComponentRef</td><td>Tham chiếu tới component đã tạo, có <code>instance</code> và <code>destroy()</code>.</td></tr>
+      <tr><td>setInput</td><td>Gán giá trị vào input của component tạo động.</td></tr>
+      <tr><td>DynamicDialog</td><td>Dialog của PrimeNG, gắn vào body chứ không vào cây route.</td></tr>
+    </tbody>
+  </table></div>
+</section>

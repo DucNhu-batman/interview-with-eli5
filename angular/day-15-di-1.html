@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="vi" data-track="angular">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 15 — Dependency Injection, phần 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><a href="index.html">Angular</a><span>/</span><span class="now">Day 15</span></nav>
+<header class="hero col">
+<p class="eyebrow">Angular · Day 15</p>
+<h1>Day 15 — Dependency Injection, phần 1</h1>
+<p class="lede">Component không tự đi tạo thứ nó cần, mà khai ra là được đưa tận tay. Đó là toàn bộ ý tưởng của DI — và là lý do code Angular test được.</p>
+</header>
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Đừng tự đi chợ, hãy đặt hàng</h2></div>
+  <p>Không có DI, component phải tự tạo thứ nó cần: <code>const api = new ApiService(new HttpClient(...))</code>. Nó phải biết cách dựng, biết cả những thứ mà thứ đó cần — và khi muốn thay bằng bản giả để test thì không thay nổi.</p>
+  <p>Dependency Injection (tiêm phụ thuộc) đảo ngược việc đó: bạn chỉ <em>khai</em> mình cần gì, một cái kho tên là injector (bộ tiêm) lo tìm hoặc tạo rồi đưa cho bạn.</p>
+<pre><code>&#64;Injectable({ providedIn: <span class="str">'root'</span> })       <span class="cm">// đăng ký ở cấp ứng dụng</span>
+export class SanPhamService {
+  <span class="kw">private</span> http = inject(HttpClient);
+  danhSach() { <span class="kw">return</span> <span class="kw">this</span>.http.get&lt;SanPham[]&gt;(<span class="str">'/api/san-pham'</span>); }
+}
+
+export class ManSanPham {
+  <span class="kw">private</span> service = inject(SanPhamService);   <span class="cm">// cách mới, khuyên dùng</span>
+  <span class="cm">// constructor(private service: SanPhamService) {}  // cách cũ</span>
+}</code></pre>
+  <div class="callout">
+    <p><strong>Ba khái niệm phải phân biệt:</strong> <em>token</em> (mã định danh — thường là chính cái class) là thứ bạn hỏi; <em>provider</em> (nhà cung cấp) là công thức tạo ra nó; <em>injector</em> (bộ tiêm) là cái kho tra công thức rồi giao hàng.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Quan trọng</p><h2>providedIn: 'root' nghĩa là một bản duy nhất</h2></div>
+  <p>Service khai <code>providedIn: 'root'</code> là singleton (thể hiện duy nhất) cho cả ứng dụng: mọi nơi <code>inject</code> nó đều nhận đúng một object. Đó là cách chia sẻ state (trạng thái — dữ liệu đang sống trong bộ nhớ) giữa các màn hình mà không cần biến toàn cục.</p>
+  <p>Ngược lại, service khai trong <code>providers</code> của một component thì <em>mỗi thể hiện component có một bản riêng</em>, và bản đó chết theo component. Đây chính là cách dự án này dùng cho facade (lớp bọc — nơi gom state và logic của một màn): mỗi màn hình một facade riêng, không dùng chung.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Angular cất service ở đâu?</h2></div>
+  <div class="col">
+    <p>Câu trả lời ngắn: <b>trong injector, và injector thì có nhiều tầng xếp thành cây</b>. Không có một cái kho duy nhất — có một chuỗi kho lồng nhau, kho con không tìm thấy thì hỏi kho cha.</p>
+    <p>Khi bạn viết <code>inject(X)</code>, Angular bắt đầu tìm ở tầng gần bạn nhất rồi đi ra ngoài dần. Gặp tầng đầu tiên có công thức cho <code>X</code> thì dừng lại: nếu tầng đó đã tạo <code>X</code> trước đây, bạn nhận lại đúng bản cũ; nếu chưa, nó tạo <em>ngay lúc đó</em>, cất vào tầng đó, rồi mới đưa cho bạn.</p>
+  </div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 470" role="img" aria-label="Sáu tầng injector xếp dọc theo thứ tự tìm kiếm: NodeInjector của chính component, NodeInjector của các component cha, EnvironmentInjector của route, Root EnvironmentInjector nơi chứa các service providedIn root, Platform injector, và cuối cùng NullInjector ném lỗi NullInjectorError.">
+        <defs>
+          <marker id="di-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"></polygon>
+          </marker>
+          <marker id="di-ar-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="#B92F55"></polygon>
+          </marker>
+        </defs>
+
+        <text x="90" y="10" font-size="11" font-weight="700" fill="var(--accent)">inject(X) bắt đầu tìm từ đây</text>
+
+        <rect x="90" y="18" width="540" height="52" rx="13" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="110" y="41" font-size="13" font-weight="700" fill="currentColor">NodeInjector của chính component đang gọi</text>
+        <text x="110" y="59" font-size="11.5" fill="currentColor" opacity=".72" font-family="monospace">providers: [ManXFacade] — chết theo component</text>
+
+        <line x1="150" y1="70" x2="150" y2="90" stroke="currentColor" stroke-width="1.6" marker-end="url(#di-ar)"></line>
+        <text x="168" y="85" font-size="11" fill="currentColor" opacity=".75">mình không có → hỏi ra ngoài</text>
+
+        <rect x="90" y="96" width="540" height="52" rx="13" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="110" y="119" font-size="13" font-weight="700" fill="currentColor">NodeInjector của các component cha</text>
+        <text x="110" y="137" font-size="11.5" fill="currentColor" opacity=".72">leo ngược cây giao diện lên tới component gốc</text>
+
+        <line x1="150" y1="148" x2="150" y2="168" stroke="currentColor" stroke-width="1.6" marker-end="url(#di-ar)"></line>
+        <text x="168" y="163" font-size="11" fill="currentColor" opacity=".75">cha cũng không có</text>
+
+        <rect x="90" y="174" width="540" height="52" rx="13" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="110" y="197" font-size="13" font-weight="700" fill="currentColor">EnvironmentInjector của route</text>
+        <text x="110" y="215" font-size="11.5" fill="currentColor" opacity=".72" font-family="monospace">providers khai trên route — chết khi rời nhánh route</text>
+
+        <line x1="150" y1="226" x2="150" y2="246" stroke="currentColor" stroke-width="1.6" marker-end="url(#di-ar)"></line>
+        <text x="168" y="241" font-size="11" fill="currentColor" opacity=".75">route cũng không có</text>
+
+        <rect x="90" y="252" width="540" height="60" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></rect>
+        <text x="110" y="276" font-size="13.5" font-weight="700" fill="var(--accent)">Root EnvironmentInjector</text>
+        <text x="110" y="295" font-size="11.5" fill="currentColor" opacity=".82" font-family="monospace">providedIn: 'root' + providers trong app.config.ts</text>
+        <text x="618" y="276" font-size="11" font-weight="700" text-anchor="end" fill="var(--accent)">singleton nằm ở đây</text>
+        <text x="618" y="295" font-size="11" text-anchor="end" fill="currentColor" opacity=".72">sống tới khi tải lại trang</text>
+
+        <line x1="150" y1="312" x2="150" y2="332" stroke="currentColor" stroke-width="1.6" marker-end="url(#di-ar)"></line>
+        <text x="168" y="327" font-size="11" fill="currentColor" opacity=".75">root cũng không có (hiếm)</text>
+
+        <rect x="90" y="338" width="540" height="52" rx="13" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="110" y="361" font-size="13" font-weight="700" fill="currentColor">Platform injector</text>
+        <text x="110" y="379" font-size="11.5" fill="currentColor" opacity=".72">dùng chung khi một trang chạy nhiều ứng dụng Angular</text>
+
+        <line x1="150" y1="390" x2="150" y2="410" stroke="#B92F55" stroke-width="2" marker-end="url(#di-ar-bad)"></line>
+        <text x="168" y="405" font-size="11" font-weight="700" fill="var(--bad)">hết chỗ để hỏi</text>
+
+        <rect x="90" y="416" width="540" height="46" rx="13" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.6"></rect>
+        <text x="110" y="446" font-size="12.5" font-weight="700" fill="var(--bad)" font-family="monospace">NullInjector → NullInjectorError: No provider for X!</text>
+      </svg>
+    </div>
+    <figcaption>Không tìm thấy ở tầng nào thì đi ra tầng ngoài; rơi tới đáy là ném lỗi lúc chạy.</figcaption>
+  </figure>
+  <div class="col">
+    <p>Thực tế trong bộ nhớ: mỗi injector môi trường giữ một <em>bảng tra</em> dạng <code>token → bản đã tạo</code>; injector theo component thì gắn bản đã tạo vào chính vùng dữ liệu của khung nhìn (view) component đó. Vì vậy <b>service không được tạo lúc khởi động app</b> — nó chỉ ra đời ở lần <code>inject</code> đầu tiên, rồi nằm lại đúng tầng đã tạo ra nó cho tới khi tầng đó bị huỷ.</p>
+    <p>Đó cũng là lý do <code>providedIn: 'root'</code> tree-shake được: công thức tạo service được gắn thẳng vào class, không có mảng <code>providers</code> nào trỏ tới, nên không ai <code>inject</code> thì bộ đóng gói (build) loại luôn.</p>
+  </div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Khai ở đâu</th><th>Bản service nằm trong</th><th>Sống bao lâu</th><th>Hợp cho</th></tr></thead>
+    <tbody>
+      <tr><td>providedIn: 'root'</td><td>Root EnvironmentInjector</td><td>Tới khi tải lại trang</td><td>Token đăng nhập, thông tin người dùng, quyền, cấu hình</td></tr>
+      <tr><td>providers · app.config.ts</td><td>Root EnvironmentInjector</td><td>Tới khi tải lại trang</td><td>Interceptor (bộ chặn HTTP), cấu hình thư viện ngoài</td></tr>
+      <tr><td>providers trên route</td><td>EnvironmentInjector của nhánh route</td><td>Đến khi rời nhánh route đó</td><td>State dùng chung cho vài màn cùng một nghiệp vụ</td></tr>
+      <tr><td>providers của component</td><td>NodeInjector của component</td><td>Chết cùng component</td><td>Facade của một màn — chuẩn của dự án này</td></tr>
+      <tr><td>providedIn: 'platform'</td><td>Platform injector</td><td>Cả vòng đời trang</td><td>Rất hiếm — chỉ khi nhiều app Angular chung một trang</td></tr>
+    </tbody>
+  </table></div>
+  <div class="col">
+<pre><code><span class="cm">// Ép Angular tìm ở tầng nào — tuỳ chọn của inject()</span>
+inject(Cha, { skipSelf: <span class="kw">true</span> });   <span class="cm">// bỏ qua tầng của mình, hỏi từ cha trở ra</span>
+inject(Cha, { self: <span class="kw">true</span> });       <span class="cm">// CHỈ tầng của mình, không thấy là gãy</span>
+inject(Cha, { optional: <span class="kw">true</span> });   <span class="out">// null nếu không ai cung cấp — không ném lỗi</span></code></pre>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Vấn đề</p><h2>“Singleton là state toàn cục trá hình” là sao?</h2></div>
+  <div class="col">
+    <p>Ai cũng biết <code>window.boLoc = { tuKhoa: 'abc' }</code> là biến toàn cục và là thói quen xấu. Nhưng viết thế này thì trông rất “kiến trúc”:</p>
+<pre><code>&#64;Injectable({ providedIn: <span class="str">'root'</span> })
+<span class="kw">class</span> BoLocStore { tuKhoa = signal(<span class="str">''</span>); trang = signal(1); }</code></pre>
+    <p>Hai thứ đó <b>giống hệt nhau ở ba điểm quan trọng nhất</b>: chỉ có đúng một bản, sống từ lúc mở tab tới lúc tải lại trang, và bất kỳ chỗ nào trong app cũng đọc–ghi được. Khác nhau chỉ ở <em>cách bạn cầm được nó</em> (qua injector nên test thay được, không dùng thì build loại được) — chứ không khác ở tuổi thọ và phạm vi. Cái vỏ <code>&#64;Injectable</code> làm ta quên mất điều đó, nên gọi là <b>trá hình</b>.</p>
+    <p>Đặt token, người dùng, quyền vào <code>root</code> là đúng — chúng vốn dĩ toàn cục. Đặt <em>dữ liệu của một màn hình</em> vào <code>root</code> mới là bẫy, vì màn hình thì đóng lại còn service thì không.</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag bad">Triệu chứng thường gặp</span>
+      <h3>Rò rỉ sang nơi không ai ngờ</h3>
+      <ul>
+        <li><b>Giữa các lần vào màn.</b> Lọc “abc” ở màn A, sang màn B, quay lại A — bộ lọc và số trang cũ vẫn còn.</li>
+        <li><b>Giữa các bản ghi.</b> Mở chi tiết hồ sơ A, quay ra, mở hồ sơ B — vẫn thấy lướt qua dữ liệu của A.</li>
+        <li><b>Giữa các tài khoản.</b> Đăng xuất rồi đăng nhập người khác mà danh sách, quyền cũ vẫn nằm nguyên trong service.</li>
+        <li><b>Giữa các test.</b> Test chạy trước để lại state, test sau đỏ hay xanh tuỳ thứ tự chạy.</li>
+        <li><b>Rò bộ nhớ.</b> Mảng 5.000 dòng vừa tải vẫn nằm trong RAM sau khi rời màn, vì root injector không bao giờ bị huỷ.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Câu hỏi để phân loại</span>
+      <h3>“Rời màn này, dữ liệu đó có nên biến mất không?”</h3>
+      <p><b>Có</b> → khai trong <code>providers</code> của component (hoặc của route), để nó chết cùng màn.<br><b>Không</b> → mới được lên <code>root</code>.</p>
+<pre><code><span class="cm">// ✗ state của MÀN nhưng để ở root — không ai xoá hộ bạn</span>
+&#64;Injectable({ providedIn: <span class="str">'root'</span> })
+<span class="kw">class</span> ManXFacade { boLoc = signal({ tuKhoa: <span class="str">''</span> }); }
+
+<span class="cm">// ✓ state của MÀN thì buộc vào vòng đời của màn</span>
+&#64;Injectable()                       <span class="cm">// không providedIn</span>
+<span class="kw">class</span> ManXFacade { boLoc = signal({ tuKhoa: <span class="str">''</span> }); }
+
+&#64;Component({ providers: [ManXFacade] })   <span class="out">// mở màn: tạo mới · đóng màn: dọn sạch</span>
+<span class="kw">class</span> ManX { <span class="kw">private</span> facade = inject(ManXFacade); }</code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Test dễ.</b> Thay service thật bằng bản giả chỉ bằng một dòng cấu hình provider.</li>
+        <li><b>Ghép nối lỏng.</b> Component phụ thuộc vào một hợp đồng, không phụ thuộc vào cách hiện thực.</li>
+        <li><b>Chia sẻ state gọn gàng</b> nhờ singleton, không cần biến toàn cục.</li>
+        <li><b>Chọn được tuổi thọ.</b> Cùng một service, khai ở root thì sống cả app, khai ở component thì chết theo màn.</li>
+        <li><b>Tree-shaking.</b> Service <code>providedIn: 'root'</code> không ai dùng sẽ bị loại khỏi bản build.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Test: thay service thật bằng bản giả, không gọi mạng</span>
+TestBed.configureTestingModule({
+  providers: [{ provide: SanPhamService, useValue: { danhSach: () =&gt; of([]) } }],
+});
+<span class="cm">// Component không phải sửa một dòng nào.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Khó lần nguồn.</b> Nhìn <code>inject(X)</code> không biết bản X đến từ tầng injector nào — nhất là khi có nhiều tầng provider.</li>
+        <li><b>Lỗi "NullInjectorError" khó hiểu</b> với người mới: quên khai provider là gãy lúc chạy chứ không phải lúc build.</li>
+        <li><b>Singleton là state toàn cục trá hình.</b> Nhét dữ liệu màn hình vào service <code>root</code> sẽ rò dữ liệu sang màn khác.</li>
+        <li><b>Phụ thuộc vòng tròn.</b> Hai service inject lẫn nhau là kẹt; dự án này quy ước service không inject service khác.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&#64;Injectable({ providedIn: <span class="str">'root'</span> })
+<span class="kw">class</span> ManHinhStore { boLoc = signal({ tuKhoa: <span class="str">''</span> }); }
+<span class="cm">// ✗ state của MÀN HÌNH nhưng để ở root:</span>
+<span class="cm">// vào màn A lọc "abc" → sang màn B → quay lại A: bộ lọc cũ vẫn còn,</span>
+<span class="cm">// dữ liệu rò từ phiên làm việc này sang phiên khác</span>
+
+inject(KhoService);   <span class="out">// NullInjectorError: No provider for KhoService!</span>
+<span class="cm">// → lỗi chỉ hiện lúc chạy, không có cảnh báo khi build</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> <code>root</code> chỉ dành cho thứ thật sự thuộc về cả ứng dụng — token, người dùng, quyền, cấu hình, gọi API không mang state. Mọi thứ còn lại khai trong <code>providers</code> của component để nó sinh ra và chết đi cùng màn hình.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>dependency injection</td><td>Tiêm phụ thuộc — được đưa thứ mình cần thay vì tự tạo.</td></tr>
+      <tr><td>injector</td><td>Bộ tiêm — kho tra công thức và cấp phát phụ thuộc.</td></tr>
+      <tr><td>provider</td><td>Nhà cung cấp — công thức tạo ra một phụ thuộc.</td></tr>
+      <tr><td>token</td><td>Mã định danh dùng để hỏi injector.</td></tr>
+      <tr><td>singleton</td><td>Thể hiện duy nhất, dùng chung cho cả ứng dụng.</td></tr>
+      <tr><td>state</td><td>Trạng thái — dữ liệu đang sống trong bộ nhớ của app.</td></tr>
+      <tr><td>facade</td><td>Lớp bọc — service gom state và logic của một màn hình.</td></tr>
+      <tr><td>injector tree</td><td>Cây injector — các tầng injector lồng nhau, con hỏi cha khi không tìm thấy.</td></tr>
+      <tr><td>EnvironmentInjector</td><td>Injector cấp môi trường — của ứng dụng (root) hoặc của một nhánh route.</td></tr>
+      <tr><td>NodeInjector</td><td>Injector gắn vào một component trên cây giao diện.</td></tr>
+      <tr><td>NullInjectorError</td><td>Lỗi lúc chạy khi tìm hết mọi tầng vẫn không có provider cho token.</td></tr>
+      <tr><td>route</td><td>Tuyến đường — một địa chỉ URL ứng với một màn hình.</td></tr>
+      <tr><td>interceptor</td><td>Bộ chặn — chen vào giữa mọi lời gọi HTTP để sửa hoặc theo dõi.</td></tr>
+      <tr><td>build</td><td>Bước đóng gói mã nguồn thành file chạy được trên trình duyệt.</td></tr>
+      <tr><td>tree-shaking</td><td>Loại bỏ code không ai dùng khỏi bản build.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<nav class="pager"><a class="prev" href="day-14-ng-template.html"><span class="dir">← Bài trước</span><span class="nm">Day 14 — ng-template, ngTemplateOutlet và ng-container</span></a><a class="next" href="day-16-di-2.html"><span class="dir">Bài tiếp →</span><span class="nm">Day 16 — Dependency Injection, phần 2</span></a></nav>
+<footer class="page-foot col"><p>Sổ tay eli5 · Angular · trang 15/55</p></footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!--meta
+title: Pass by value và pass by reference
+eyebrow: JavaScript · Bài 5
+short: Tham trị & tham chiếu
+lede: Truyền một biến vào hàm rồi sửa — lúc thì bên ngoài đổi theo, lúc thì không. Sự thật là JavaScript chỉ có MỘT cách truyền, nhưng cái được truyền lại có hai loại.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Hai khái niệm, và cái tên thứ ba mới đúng</h2></div>
+  <p><strong>Pass by value</strong> (truyền tham trị) là đưa cho hàm một <em>bản sao</em>. Hàm sửa bản sao, bản gốc không hề hấn.</p>
+  <p><strong>Pass by reference</strong> (truyền tham chiếu) là đưa cho hàm <em>chính cái biến</em> của bạn. Hàm gán lại tham số thì biến gốc bên ngoài cũng đổi theo. C++ và C# (với từ khoá <code>ref</code>) làm được điều này.</p>
+  <div class="callout">
+    <p><strong>JavaScript luôn luôn là pass by value — không có ngoại lệ.</strong> Chỉ có điều: với object, cái “value” được chép sang chính là <em>địa chỉ</em> của object. Vì thế người ta gọi riêng trường hợp này là <strong>pass by sharing</strong> (truyền theo chia sẻ): hai bên chia sẻ cùng một object, nhưng mỗi bên giữ một tấm chìa khoá riêng.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Phép thử phân biệt: SỬA RUỘT hay GÁN LẠI</h2></div>
+  <div class="col">
+    <p>Chỉ cần nhớ một câu: <strong>sửa ruột thì bên ngoài thấy, gán lại thì không.</strong></p>
+  </div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 250" role="img" aria-label="Sửa thuộc tính bên trong object thì biến ngoài hàm thấy thay đổi; gán lại tham số chỉ đổi chìa khoá cục bộ, object gốc không đổi.">
+        <defs><marker id="v1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 10,5 0,10" fill="#12816F"></polygon></marker>
+        <marker id="v2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><polygon points="0,0 10,5 0,10" fill="#B92F55"></polygon></marker></defs>
+        <text x="20" y="26" font-size="12.5" font-weight="700" fill="var(--good)">SỬA RUỘT — o.ten = 'Bình'</text>
+        <rect x="20" y="42" width="120" height="38" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="80" y="66" font-size="12" text-anchor="middle" fill="currentColor" font-family="monospace">ngoài</text>
+        <rect x="20" y="92" width="120" height="38" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="80" y="116" font-size="12" text-anchor="middle" fill="currentColor" font-family="monospace">tham số o</text>
+        <line x1="144" y1="61" x2="214" y2="80" stroke="var(--good)" stroke-width="2" marker-end="url(#v1)"></line>
+        <line x1="144" y1="111" x2="214" y2="94" stroke="var(--good)" stroke-width="2" marker-end="url(#v1)"></line>
+        <rect x="222" y="66" width="122" height="44" rx="10" fill="var(--good)"></rect>
+        <text x="283" y="94" font-size="12.5" text-anchor="middle" fill="#F2FBF8" font-family="monospace">{ ten:'Bình' }</text>
+        <text x="20" y="160" font-size="11.5" fill="var(--good)" font-weight="700">Cùng một kho → bên ngoài thấy ngay</text>
+
+        <line x1="376" y1="16" x2="376" y2="230" stroke="currentColor" stroke-width="1" opacity=".2"></line>
+
+        <text x="400" y="26" font-size="12.5" font-weight="700" fill="var(--bad)">GÁN LẠI — o = { ten:'Bình' }</text>
+        <rect x="400" y="42" width="120" height="38" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="460" y="66" font-size="12" text-anchor="middle" fill="currentColor" font-family="monospace">ngoài</text>
+        <rect x="400" y="92" width="120" height="38" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
+        <text x="460" y="116" font-size="12" text-anchor="middle" fill="currentColor" font-family="monospace">tham số o</text>
+        <line x1="524" y1="61" x2="588" y2="61" stroke="currentColor" stroke-width="2" marker-end="url(#v1)" color="currentColor"></line>
+        <line x1="524" y1="111" x2="588" y2="140" stroke="var(--bad)" stroke-width="2" marker-end="url(#v2)"></line>
+        <rect x="596" y="40" width="112" height="42" rx="10" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="652" y="66" font-size="12" text-anchor="middle" fill="currentColor" font-family="monospace">{ ten:'An' }</text>
+        <rect x="596" y="120" width="112" height="42" rx="10" fill="var(--bad)"></rect>
+        <text x="652" y="146" font-size="12" text-anchor="middle" fill="#FFF1F5" font-family="monospace">kho MỚI</text>
+        <text x="400" y="190" font-size="11.5" fill="var(--bad)" font-weight="700">Chỉ chìa khoá cục bộ đổi → ngoài không đổi</text>
+      </svg>
+    </div>
+    <figcaption>Gán lại tham số chỉ thay tấm chìa khoá <em>bên trong hàm</em>; object mà bên ngoài đang giữ không hề bị đụng tới.</figcaption>
+  </figure>
+  <div class="col">
+<pre><code><span class="kw">function</span> suaRuot(o)  { o.ten = <span class="str">'Bình'</span>; }
+<span class="kw">function</span> ganLai(o)   { o = { ten: <span class="str">'Bình'</span> }; }
+<span class="kw">function</span> tangSo(n)   { n++; }
+
+<span class="kw">const</span> nguoi = { ten: <span class="str">'An'</span> };
+<span class="kw">let</span> tuoi = 20;
+
+suaRuot(nguoi);  console.log(nguoi.ten);  <span class="cm">// 'Bình' ← thấy</span>
+ganLai(nguoi);   console.log(nguoi.ten);  <span class="cm">// 'Bình' ← KHÔNG đổi tiếp</span>
+tangSo(tuoi);    console.log(tuoi);       <span class="cm">// 20     ← không đổi</span></code></pre>
+    <p>Chính vì <code>ganLai</code> không có tác dụng ra ngoài, ta khẳng định được JavaScript không hề pass by reference. Nếu là tham chiếu thật, dòng thứ hai đã đổi được biến <code>nguoi</code>.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Bảng tra</p><h2>Ba cách truyền, phân biệt trong 10 giây</h2></div>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Cách truyền</th><th>Cái được chép</th><th>Sửa ruột</th><th>Gán lại tham số</th></tr></thead>
+    <tbody>
+      <tr><td>Pass by value (số, chuỗi…)</td><td>Bản sao giá trị</td><td>— (không có ruột)</td><td><span class="no">Ngoài không đổi</span></td></tr>
+      <tr><td>Pass by sharing (object, mảng) — JS</td><td>Bản sao địa chỉ</td><td><span class="yes">Ngoài đổi theo</span></td><td><span class="no">Ngoài không đổi</span></td></tr>
+      <tr><td>Pass by reference (C++, C# ref)</td><td>Chính cái biến</td><td><span class="yes">Ngoài đổi theo</span></td><td><span class="yes">Ngoài cũng đổi</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Truyền object rất rẻ.</b> Một mảng khổng lồ đi qua chục lớp hàm cũng chỉ tốn bằng vài con trỏ.</li>
+        <li><b>Chia sẻ state dễ dàng.</b> Service, store, cache đều dựa vào việc nhiều nơi cùng nhìn một object.</li>
+        <li><b>Số và chuỗi luôn an toàn.</b> Không bao giờ phải lo hàm khác sửa trộm một biến nguyên thuỷ của bạn.</li>
+        <li><b>Luật đơn giản.</b> Chỉ một cơ chế duy nhất cho mọi kiểu — khác hẳn ngôn ngữ có cả <code>ref</code>/<code>out</code>/<code>const&amp;</code>.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="kw">function</span> capNhatKho(kho) { kho.tonKho -= 1; }   <span class="cm">// sửa ruột → mọi nơi thấy</span>
+<span class="kw">function</span> demLai(n) { n = 0; }                   <span class="cm">// số thì an toàn tuyệt đối</span>
+
+<span class="kw">const</span> kho = { tonKho: 10 };
+<span class="kw">let</span> soLan = 5;
+capNhatKho(kho); demLai(soLan);
+console.log(kho.tonKho, soLan);                 <span class="out">// 9 5</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Tác dụng phụ ngầm.</b> Truyền một object vào hàm của thư viện lạ, không có gì đảm bảo nó không sửa dữ liệu của bạn.</li>
+        <li><b>Bug dùng chung hằng số.</b> Một object cấu hình khai ở tầng module, bị một màn hình sửa, mọi màn hình khác lãnh đủ.</li>
+        <li><b>Không "trả về qua tham số" được.</b> Muốn hàm trả nhiều giá trị thì phải <code>return</code> object/mảng, không thể gán lại tham số.</li>
+        <li><b>Dễ giải thích sai.</b> Rất nhiều tài liệu (và phỏng vấn) nói JS "pass by reference với object" — cách nói đó khiến bạn dự đoán sai đúng ở tình huống gán lại.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="kw">function</span> sapXep(ds) { <span class="kw">return</span> ds.sort(); }   <span class="cm">// ✗ sort sửa TẠI CHỖ</span>
+
+<span class="kw">const</span> goc = [3, 1, 2];
+<span class="kw">const</span> daSap = sapXep(goc);
+console.log(goc);            <span class="out">// [1, 2, 3] — mảng gốc đã bị đổi</span>
+<span class="cm">// chữa: return [...ds].sort();</span>
+
+<span class="kw">function</span> thayThe(o) { o = { moi: <span class="kw">true</span> }; }   <span class="cm">// gán lại → không ra ngoài</span>
+<span class="kw">const</span> a = {}; thayThe(a);
+console.log(a);              <span class="out">// {} — nhiều người tưởng sẽ là { moi: true }</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Thói quen nên có:</strong> hàm không sửa tham số. Cần thay đổi thì tạo bản mới rồi <code>return</code> — <code>const moi = { ...cu, ten }</code>. Với dữ liệu quan trọng đưa ra ngoài, dùng <code>Object.freeze</code> hoặc <code>structuredClone</code> để chặn từ gốc.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>pass by value</td><td>Truyền tham trị — hàm nhận một bản sao của giá trị.</td></tr>
+      <tr><td>pass by reference</td><td>Truyền tham chiếu — hàm nhận chính biến gốc (JavaScript không có).</td></tr>
+      <tr><td>pass by sharing</td><td>Truyền theo chia sẻ — chép địa chỉ, hai bên dùng chung một object.</td></tr>
+      <tr><td>tham số (parameter)</td><td>Biến khai trong định nghĩa hàm.</td></tr>
+      <tr><td>đối số (argument)</td><td>Giá trị thực sự truyền vào khi gọi hàm.</td></tr>
+      <tr><td>mutate</td><td>Sửa tại chỗ — thay đổi ruột của một object có sẵn.</td></tr>
+      <tr><td>side effect</td><td>Tác dụng phụ — hàm thay đổi thứ nằm ngoài phạm vi của nó.</td></tr>
+      <tr><td>spread (...)</td><td>Cú pháp trải — sao chép nông object/mảng sang bản mới.</td></tr>
+    </tbody>
+  </table></div>
+</section>

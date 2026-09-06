@@ -1,0 +1,73 @@
+<!--meta
+title: Day 33 — Template-driven Forms, phần 1
+eyebrow: Angular · Day 33
+short: Day 33
+lede: Form khai ngay trong HTML: gắn ngModel, Angular tự dựng cấu trúc form phía sau. Nhanh nhất cho form nhỏ.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Template chỉ huy, TypeScript đứng ngoài</h2></div>
+  <p>Với template-driven form (form điều khiển bởi template), bạn không tạo đối tượng form trong lớp. Chỉ cần <code>ngModel</code> trên mỗi ô nhập, Angular tự dựng <code>FormControl</code> tương ứng và gom vào <code>NgForm</code>.</p>
+<pre><code>&lt;form #f="ngForm" (ngSubmit)="luu(f.value)"&gt;
+  &lt;input name="ten" [(ngModel)]="kho.ten" required minlength="3" #ten="ngModel" /&gt;
+
+  &#64;if (ten.invalid &amp;&amp; ten.touched) {
+    &lt;small class="err"&gt;Tên phải có ít nhất 3 ký tự&lt;/small&gt;
+  }
+
+  &lt;button [disabled]="f.invalid"&gt;Lưu&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+  <p>Thuộc tính <code>name</code> là bắt buộc — đó là khoá để Angular đăng ký control vào form. Trạng thái của control (<code>valid</code>, <code>touched</code>, <code>dirty</code>, <code>errors</code>) đọc trực tiếp trong template qua biến template.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Viết rất nhanh.</b> Form đăng nhập, ô tìm kiếm, hộp thoại nhỏ — vài dòng là xong.</li>
+        <li><b>Gần với HTML thuần,</b> người mới đọc hiểu ngay, dùng lại được thuộc tính chuẩn (<code>required</code>, <code>maxlength</code>).</li>
+        <li><b>Không phải đồng bộ hai nơi.</b> Model và giao diện gắn thẳng với nhau.</li>
+        <li><b>Ít code trong lớp</b> nên component gọn.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>&lt;form #f="ngForm" (ngSubmit)="luu(f.value)"&gt;
+  &lt;input name="tuKhoa" [(ngModel)]="tuKhoa" required /&gt;
+  &lt;button [disabled]="f.invalid"&gt;Tìm&lt;/button&gt;
+&lt;/form&gt;
+<span class="cm">// Toàn bộ form: 4 dòng HTML, 0 dòng TypeScript.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Khó kiểm thử.</b> Muốn test phải dựng cả template, không test riêng logic form được.</li>
+        <li><b>Bất đồng bộ ngầm.</b> Control được tạo sau khi template dựng xong, nên đụng vào quá sớm là <code>undefined</code>.</li>
+        <li><b>Validate động rất vất vả.</b> Đổi luật theo điều kiện phải xoay xở bằng directive.</li>
+        <li><b>Không hợp form lớn.</b> Form nhiều nhóm, mảng động, phụ thuộc chéo sẽ thành mớ bòng bong.</li>
+        <li><b>Kiểu dữ liệu yếu:</b> <code>f.value</code> là <code>any</code>.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&lt;input [(ngModel)]="kho.ten" required /&gt;     <span class="cm">// ✗ thiếu name=""</span>
+<span class="out">// Error: If ngModel is used within a form tag, either the name attribute</span>
+<span class="out">// must be set or the form control must be defined as 'standalone'</span>
+
+<span class="kw">const</span> dl = f.value;    <span class="cm">// kiểu any → gõ sai tên trường không ai báo</span>
+api.tao(dl.tenKho);    <span class="cm">// undefined, lỗi hiện ở tận backend</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>template-driven form</td><td>Form khai báo trong template bằng <code>ngModel</code>.</td></tr>
+      <tr><td>NgForm</td><td>Directive gom các control trong một thẻ <code>form</code>.</td></tr>
+      <tr><td>FormControl</td><td>Đối tượng đại diện một ô nhập (giá trị + trạng thái).</td></tr>
+      <tr><td>touched / dirty</td><td>Đã từng chạm vào / đã từng sửa giá trị.</td></tr>
+      <tr><td>validator</td><td>Hàm kiểm tra tính hợp lệ của giá trị.</td></tr>
+    </tbody>
+  </table></div>
+</section>

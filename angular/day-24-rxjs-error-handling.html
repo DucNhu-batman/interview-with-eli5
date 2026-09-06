@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="vi" data-track="angular">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 24 — Xử lý lỗi và toán tử điều kiện</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><a href="index.html">Angular</a><span>/</span><span class="now">Day 24</span></nav>
+<header class="hero col">
+<p class="eyebrow">Angular · Day 24</p>
+<h1>Day 24 — Xử lý lỗi và toán tử điều kiện</h1>
+<p class="lede">Trong RxJS, một lỗi giết chết cả luồng. catchError, retry và các toán tử điều kiện là cách giữ cho màn hình sống sót.</p>
+</header>
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Lỗi là dấu chấm hết, trừ khi bạn chặn nó</h2></div>
+  <p>RxJS (thư viện lập trình phản ứng — xử lý dữ liệu đến dần theo thời gian) coi mọi thứ là <strong>observable</strong> (luồng dữ liệu — thứ lần lượt phát ra từng giá trị, thay vì trả về một lần như hàm thường). Khi một luồng ném lỗi, nó <strong>chấm dứt vĩnh viễn</strong>: không phát thêm giá trị nào nữa, kể cả khi nguồn còn dữ liệu.</p>
+  <p>Với một luồng gắn vào ô tìm kiếm, điều đó nghĩa là sau một lần API (giao diện lập trình — điểm gọi tới máy chủ) lỗi, gõ tiếp cũng không còn gì xảy ra — một trong những bug (lỗi phần mềm) khó chịu nhất của người mới học RxJS.</p>
+<pre><code><span class="kw">this</span>.api.tim(tuKhoa).pipe(                        <span class="cm">// pipe = ống nối các toán tử</span>
+  retry({ count: <span class="kw">2</span>, delay: <span class="kw">1000</span> }),               <span class="cm">// thử lại 2 lần, cách nhau 1 giây</span>
+  catchError((loi) =&gt; {
+    <span class="kw">this</span>.toast.error(getApiErrorMessage(loi));    <span class="cm">// toast = thông báo nổi ở góc màn</span>
+    <span class="kw">return</span> of([]);                               <span class="cm">// trả luồng dự phòng → luồng SỐNG TIẾP</span>
+  }),
+  finalize(() =&gt; <span class="kw">this</span>.dangTai.set(<span class="kw">false</span>)),        <span class="cm">// chạy dù thành công hay lỗi</span>
+).subscribe((ds) =&gt; <span class="kw">this</span>.ketQua.set(ds));         <span class="cm">// subscribe = đăng ký nhận giá trị</span></code></pre>
+  <div class="callout">
+    <p><strong>Cả bài gói trong một câu:</strong> <code>catchError</code> không “sửa” lỗi, nó <strong>thay luồng đã chết bằng một luồng khác còn sống</strong>. Vì thế câu hỏi quan trọng nhất luôn là: <em>bạn đặt nó ở đâu</em> — luồng nào bị thay thế.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Nhìn bằng hình: luồng chết và luồng được cứu</h2></div>
+  <p class="col">Người dùng gõ <b>a</b>, rồi <b>ab</b> — request (lời gọi tới máy chủ) của <b>ab</b> lỗi. Sau đó họ gõ tiếp <b>abc</b>, <b>abcd</b>. Hai hàng dưới đây là hai kết cục:</p>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 250" role="img" aria-label="Hàng trên: không có catchError, sau khi request lỗi thì luồng chấm dứt vĩnh viễn, người dùng gõ tiếp abc và abcd nhưng không có kết quả nào được phát ra nữa. Hàng dưới: có catchError đặt bên trong switchMap, lỗi bị thay bằng mảng rỗng, luồng vẫn sống nên abc và abcd tiếp tục cho ra kết quả.">
+        <defs>
+          <marker id="d24Arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <!-- HÀNG 1: không có catchError -->
+        <g>
+          <rect x="0" y="14" width="720" height="102" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="48" font-size="12.5" font-weight="700" fill="var(--bad)" font-family="monospace">KHÔNG có</text>
+          <text x="14" y="66" font-size="12.5" font-weight="700" fill="var(--bad)" font-family="monospace">catchError</text>
+          <text x="14" y="86" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">luồng chết</text>
+
+          <text x="150" y="34" font-size="10" fill="currentColor" opacity=".7" font-family="monospace">người dùng gõ</text>
+          <line x1="150" y1="52" x2="700" y2="52" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#d24Arrow)"></line>
+          <circle cx="200" cy="52" r="11" fill="var(--accent)"></circle>
+          <text x="200" y="56" font-size="10" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="290" cy="52" r="11" fill="var(--accent)"></circle>
+          <text x="290" y="56" font-size="10" font-weight="700" text-anchor="middle" fill="var(--surface)">ab</text>
+          <circle cx="470" cy="52" r="11" fill="var(--accent)"></circle>
+          <text x="470" y="56" font-size="9" font-weight="700" text-anchor="middle" fill="var(--surface)">abc</text>
+          <circle cx="570" cy="52" r="11" fill="var(--accent)"></circle>
+          <text x="570" y="56" font-size="8" font-weight="700" text-anchor="middle" fill="var(--surface)">abcd</text>
+
+          <text x="150" y="82" font-size="10" fill="currentColor" opacity=".7" font-family="monospace">màn hình nhận</text>
+          <line x1="150" y1="98" x2="392" y2="98" stroke="currentColor" stroke-width="1.4" opacity=".45"></line>
+          <line x1="392" y1="98" x2="700" y2="98" stroke="currentColor" stroke-width="1.4" opacity=".22" stroke-dasharray="5 5" marker-end="url(#d24Arrow)"></line>
+          <circle cx="240" cy="98" r="11" fill="var(--accent)"></circle>
+          <text x="240" y="102" font-size="9" font-weight="700" text-anchor="middle" fill="var(--surface)">ds</text>
+          <circle cx="340" cy="98" r="11" fill="var(--bad)"></circle>
+          <text x="340" y="102" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">✕</text>
+          <text x="404" y="102" font-size="10.5" fill="var(--bad)" font-family="monospace">luồng chấm dứt — gõ tiếp không còn gì xảy ra</text>
+        </g>
+
+        <!-- HÀNG 2: có catchError -->
+        <g>
+          <rect x="0" y="130" width="720" height="102" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="164" font-size="12.5" font-weight="700" fill="var(--good)" font-family="monospace">CÓ</text>
+          <text x="14" y="182" font-size="12.5" font-weight="700" fill="var(--good)" font-family="monospace">catchError</text>
+          <text x="14" y="202" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">luồng sống</text>
+
+          <line x1="150" y1="168" x2="700" y2="168" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#d24Arrow)"></line>
+          <circle cx="200" cy="168" r="11" fill="var(--accent)"></circle>
+          <text x="200" y="172" font-size="10" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="290" cy="168" r="11" fill="var(--accent)"></circle>
+          <text x="290" y="172" font-size="10" font-weight="700" text-anchor="middle" fill="var(--surface)">ab</text>
+          <circle cx="470" cy="168" r="11" fill="var(--accent)"></circle>
+          <text x="470" y="172" font-size="9" font-weight="700" text-anchor="middle" fill="var(--surface)">abc</text>
+          <circle cx="570" cy="168" r="11" fill="var(--accent)"></circle>
+          <text x="570" y="172" font-size="8" font-weight="700" text-anchor="middle" fill="var(--surface)">abcd</text>
+
+          <line x1="150" y1="214" x2="700" y2="214" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#d24Arrow)"></line>
+          <circle cx="240" cy="214" r="11" fill="var(--accent)"></circle>
+          <text x="240" y="218" font-size="9" font-weight="700" text-anchor="middle" fill="var(--surface)">ds</text>
+          <circle cx="340" cy="214" r="11" fill="var(--good)"></circle>
+          <text x="340" y="218" font-size="9" font-weight="700" text-anchor="middle" fill="var(--surface)">[ ]</text>
+          <text x="358" y="218" font-size="10" fill="var(--good)" font-family="monospace">of([]) thay lỗi</text>
+          <circle cx="510" cy="214" r="11" fill="var(--accent)"></circle>
+          <text x="510" y="218" font-size="9" font-weight="700" text-anchor="middle" fill="var(--surface)">ds</text>
+          <circle cx="610" cy="214" r="11" fill="var(--accent)"></circle>
+          <text x="610" y="218" font-size="9" font-weight="700" text-anchor="middle" fill="var(--surface)">ds</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>Không chặn lỗi thì luồng đứt hẳn ở lần lỗi đầu tiên; chặn đúng chỗ thì lỗi chỉ là một giá trị dự phòng đi qua, luồng chảy tiếp.</figcaption>
+  </figure>
+  <div class="callout col">
+    <p><strong>Vị trí của <code>catchError</code> quyết định phạm vi cứu.</strong> Đặt <em>bên trong</em> <code>switchMap</code> (toán tử đổi mỗi giá trị thành một luồng mới, huỷ luồng cũ) thì chỉ request đó chết, luồng ngoài vẫn sống. Đặt <em>bên ngoài</em> thì chính luồng ngoài bị thay thế — người dùng gõ tiếp sẽ không còn phản hồi, đúng như hàng trên của hình.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Ví dụ cụ thể</p><h2>Bốn tình huống gặp hằng ngày trong dự án</h2></div>
+
+  <p class="col"><b>1 · Ô tìm kiếm chết sau một lần mạng chập.</b> Cùng một danh sách toán tử, chỉ khác chỗ đặt <code>catchError</code>, mà một bên hỏng hẳn màn hình:</p>
+  <div class="cards">
+    <div class="card">
+      <span class="tag bad">Sai — cứu nhầm luồng</span>
+      <h3><code>catchError</code> nằm ngoài</h3>
+      <p>Lỗi làm luồng <em>ngoài</em> (luồng từ khoá) bị thay bằng <code>of([])</code>. Luồng từ khoá coi như kết thúc: người dùng gõ tiếp, không ai lắng nghe nữa, phải tải lại trang mới dùng được.</p>
+<pre><code>tuKhoa$.pipe(
+  debounceTime(<span class="kw">300</span>),                       <span class="cm">// chờ 300ms ngừng gõ</span>
+  switchMap((tk) =&gt; <span class="kw">this</span>.api.tim(tk)),
+  catchError(() =&gt; of([])),               <span class="cm">// ✗ thay luôn luồng từ khoá</span>
+).subscribe((ds) =&gt; <span class="kw">this</span>.ketQua.set(ds));</code></pre>
+    </div>
+    <div class="card">
+      <span class="tag">Đúng — cứu đúng request</span>
+      <h3><code>catchError</code> nằm trong</h3>
+      <p>Lỗi chỉ giết luồng con (một request), luồng từ khoá không hề biết có lỗi và vẫn nhận phím tiếp theo.</p>
+<pre><code>tuKhoa$.pipe(
+  debounceTime(<span class="kw">300</span>),
+  switchMap((tk) =&gt;
+    <span class="kw">this</span>.api.tim(tk).pipe(
+      catchError((loi) =&gt; {              <span class="cm">// ✓ trong switchMap</span>
+        <span class="kw">this</span>.loi.set(getApiErrorMessage(loi));
+        <span class="kw">return</span> of([]);
+      }),
+    ),
+  ),
+).subscribe((ds) =&gt; <span class="kw">this</span>.ketQua.set(ds));</code></pre>
+    </div>
+  </div>
+
+  <p class="col"><b>2 · Nút Lưu: lỗi trùng dữ liệu phải hiện dưới ô nhập, lỗi khác mới toast.</b> Đây là quy ước bắt buộc của dự án — backend (máy chủ) trả HTTP 409 kèm <code>errorCode: "CONFLICT"</code> và câu chữ tiếng Việt, frontend (phía trình duyệt) in <em>nguyên câu</em> đó inline (ngay dưới ô nhập), không tự chế câu mới:</p>
+<pre><code><span class="kw">const</span> QUY_TAC: ServerFieldErrorRule[] = [
+  { control: <span class="str">'code'</span>, match: /mã/i },   <span class="cm">// câu lỗi có chữ "mã" → gắn vào ô Mã</span>
+  { control: <span class="str">'name'</span> },                <span class="cm">// rule cuối không match = mặc định</span>
+];
+
+<span class="kw">this</span>.api.taoMoi(form.getRawValue()).pipe(
+  finalize(() =&gt; <span class="kw">this</span>.dangLuu.set(<span class="kw">false</span>)),          <span class="cm">// nút Lưu luôn được mở lại</span>
+).subscribe({
+  next: () =&gt; {
+    <span class="kw">this</span>.unsavedChangesService.allowNextNavigation(); <span class="cm">// khỏi hỏi "rời trang?" sau khi lưu</span>
+    <span class="kw">this</span>.navigateToList();
+  },
+  error: (loi) =&gt; {
+    <span class="kw">if</span> (applyServerFieldError(form, loi, QUY_TAC)) <span class="kw">return</span>; <span class="cm">// đã hiện inline → KHÔNG toast</span>
+    <span class="kw">this</span>.toast.show({
+      severity: <span class="str">'error'</span>,
+      summary: getApiErrorMessage(loi) || <span class="str">'Lưu không thành công'</span>,
+      life: <span class="kw">5000</span>,
+    });
+  },
+});</code></pre>
+  <div class="callout bad col">
+    <p><strong>Chú ý sự khác nhau:</strong> <code>catchError</code> trong <code>pipe</code> giữ luồng sống, còn nhánh <code>error</code> của <code>subscribe</code> là nơi <em>nhận tin luồng đã chết</em>. Với một lần bấm Lưu thì luồng chết là đúng — không có gì để chảy tiếp, nên dùng nhánh <code>error</code> là hợp lý. Nhưng nếu nút Lưu ấy nằm trong một luồng dài (ví dụ <code>clickLuu$.pipe(exhaustMap(...))</code>) thì phải đặt <code>catchError</code> <em>bên trong</em> <code>exhaustMap</code>, không thì lỗi lần đầu làm nút Lưu chết hẳn.</p>
+  </div>
+
+  <p class="col"><b>3 · Chỉ thử lại những lỗi đáng thử lại.</b> <code>retry</code> mù quáng sẽ gọi lại cả lỗi 400 (dữ liệu sai) hay 403 (không có quyền) — vô ích và làm nặng máy chủ. Dùng <code>delay</code> dạng hàm để tự quyết định, kèm exponential backoff (giãn dần khoảng chờ):</p>
+<pre><code>retry({
+  count: <span class="kw">3</span>,
+  delay: (loi, lanThu) =&gt; {                       <span class="cm">// lanThu: 1, 2, 3…</span>
+    <span class="kw">const</span> ma = (loi <span class="kw">as</span> HttpErrorResponse).status;
+    <span class="kw">const</span> dangThuLai = ma === <span class="kw">0</span> || ma === <span class="kw">408</span> || ma &gt;= <span class="kw">500</span>; <span class="cm">// mất mạng / quá hạn / lỗi máy chủ</span>
+    <span class="kw">if</span> (!dangThuLai) <span class="kw">return</span> throwError(() =&gt; loi);  <span class="cm">// 4xx → ném ngay, không thử lại</span>
+    <span class="kw">return</span> timer(lanThu * <span class="kw">1000</span>);                    <span class="cm">// chờ 1s, 2s, 3s rồi thử lại</span>
+  },
+})</code></pre>
+
+  <p class="col"><b>4 · Màn chi tiết tải song song ba API, một cái hỏng không được làm trắng cả trang.</b> <code>forkJoin</code> (gộp nhiều luồng, chờ tất cả xong) có tính “được ăn cả ngã về không”: một nguồn lỗi là cả cụm lỗi. Vì vậy nguồn nào <em>không sống còn</em> thì bọc <code>catchError</code> riêng cho nó:</p>
+<pre><code>forkJoin({
+  chiTiet: <span class="kw">this</span>.api.layChiTiet(id),                              <span class="cm">// thiếu cái này thì màn vô nghĩa → để lỗi</span>
+  lichSu:  <span class="kw">this</span>.api.layLichSu(id).pipe(catchError(() =&gt; of([]))),   <span class="cm">// hỏng thì tab Lịch sử rỗng</span>
+  dinhKem: <span class="kw">this</span>.api.layDinhKem(id).pipe(catchError(() =&gt; of([]))),  <span class="cm">// hỏng thì không có tệp đính kèm</span>
+}).pipe(
+  finalize(() =&gt; <span class="kw">this</span>.dangTai.set(<span class="kw">false</span>)),
+).subscribe({
+  next: (kq) =&gt; <span class="kw">this</span>.duLieu.set(kq),
+  error: (loi) =&gt; <span class="kw">this</span>.loiTai.set(getApiErrorMessage(loi)),          <span class="cm">// chỉ khi chiTiet hỏng</span>
+});</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Toán tử điều kiện — dùng cái nào, lúc nào</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Toán tử</th><th>Làm gì — ví dụ trong dự án</th></tr></thead>
+    <tbody>
+      <tr><td>iif()</td><td>Chọn một trong hai luồng lúc đăng ký. Form dùng chung cho Thêm mới và Chỉnh sửa: <code>iif(() =&gt; !!id(), api.capNhat(id()!, dl), api.taoMoi(dl))</code>.</td></tr>
+      <tr><td>defaultIfEmpty()</td><td>Luồng kết thúc mà chưa phát gì thì cấp một giá trị dự phòng. Dropdown lọc rỗng: <code>defaultIfEmpty([])</code> để bảng vẫn vẽ được thay vì treo mãi ở trạng thái đang tải.</td></tr>
+      <tr><td>throwIfEmpty()</td><td>Ngược lại: luồng rỗng thì coi là lỗi. Resolver (bộ nạp dữ liệu trước khi vào route) không tìm thấy bản ghi: <code>throwIfEmpty(() =&gt; new Error('Không tìm thấy'))</code> rồi chuyển sang màn 404.</td></tr>
+      <tr><td>every()</td><td>Trả về <code>true</code>/<code>false</code> xem MỌI giá trị có thoả điều kiện không. Kiểm tra tất cả dòng đã chọn đều đang ở trạng thái Nháp trước khi cho phép xoá hàng loạt.</td></tr>
+      <tr><td>find()</td><td>Lấy giá trị ĐẦU TIÊN thoả điều kiện rồi kết thúc luôn. Chờ tới lúc quyền của người dùng được nạp xong: <code>find((ds) =&gt; ds.length &gt; 0)</code>.</td></tr>
+      <tr><td>timeout()</td><td>Không phải toán tử điều kiện, nhưng hay đi cùng: quá N mili giây chưa có phản hồi thì ném lỗi để <code>catchError</code> phía sau xử lý, tránh spinner (vòng xoay chờ) quay vô tận.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Xử lý lỗi nằm ngay trong luồng,</b> không phải rải <code>try/catch</code> (bắt lỗi kiểu đồng bộ) khắp nơi.</li>
+        <li><b><code>retry</code> chữa được lỗi mạng chập chờn</b> mà người dùng không hề biết.</li>
+        <li><b><code>finalize</code> đảm bảo tắt spinner</b> trong mọi kịch bản, kể cả khi luồng bị huỷ giữa chừng.</li>
+        <li><b>Trả luồng dự phòng</b> cho phép hiển thị dữ liệu cũ/rỗng thay vì màn hình trắng.</li>
+        <li><b>Cứu được từng phần,</b> như ví dụ 4: một API phụ hỏng không kéo sập cả màn chi tiết.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>api.tim(tk).pipe(
+  retry({ count: <span class="kw">2</span>, delay: <span class="kw">1000</span> }),
+  catchError((e) =&gt; { toast.error(getApiErrorMessage(e)); <span class="kw">return</span> of([]); }),
+  finalize(() =&gt; <span class="kw">this</span>.dangTai.set(<span class="kw">false</span>)),
+)
+<span class="cm">// Mạng chớp tắt: tự thử lại, người dùng không hề biết.</span>
+<span class="cm">// Lỗi thật: hiện thông báo, danh sách rỗng, spinner luôn được tắt.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Nuốt lỗi quá tay.</b> <code>catchError(() =&gt; EMPTY)</code> (luồng rỗng kết thúc ngay) làm lỗi biến mất không dấu vết, rất khó điều tra.</li>
+        <li><b><code>retry</code> mù quáng</b> sẽ thử lại cả lỗi 400/403 — vô ích và làm nặng máy chủ.</li>
+        <li><b>Đặt sai chỗ là hỏng luồng chính,</b> lỗi biểu hiện rất khó hiểu (ví dụ 1).</li>
+        <li><b>Trùng thông báo.</b> Vừa toast trong <code>catchError</code> vừa để interceptor (bộ chặn HTTP dùng chung) toast là người dùng thấy hai lần.</li>
+        <li><b>Thử lại việc không nên thử lại.</b> <code>retry</code> trên một request tạo mới có thể sinh ra hai bản ghi trùng.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>tuKhoa$.pipe(switchMap((tk) =&gt; api.tim(tk))).subscribe(…);
+<span class="cm">// ✗ không có catchError: API lỗi một lần → luồng CHẾT hẳn.</span>
+<span class="cm">// Từ đó gõ tiếp không còn gì xảy ra, phải F5 mới dùng lại được.</span>
+
+catchError(() =&gt; EMPTY)
+<span class="cm">// ✗ nuốt lỗi không dấu vết: người dùng bấm Lưu, không có gì xảy ra,</span>
+<span class="cm">// console sạch bong, không ai điều tra nổi</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Quy ước của dự án này:</strong> lỗi nghiệp vụ 409/<code>CONFLICT</code> phải hiện <em>inline dưới ô nhập</em> bằng đúng câu backend trả về, không toast; và endpoint (địa chỉ API) create/update phải tắt trình xử lý lỗi toàn cục (<code>ignoreErrorHandler: true</code>) để tránh toast lặp — bù lại, nhánh <code>error</code> của facade phải tự toast những lỗi không phải CONFLICT.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>RxJS</td><td>Thư viện lập trình phản ứng — xử lý dữ liệu đến dần theo thời gian.</td></tr>
+      <tr><td>observable</td><td>Luồng dữ liệu — thứ lần lượt phát ra từng giá trị theo thời gian.</td></tr>
+      <tr><td>pipe</td><td>Ống nối — nơi xâu chuỗi các toán tử của một luồng.</td></tr>
+      <tr><td>subscribe</td><td>Đăng ký nhận giá trị — luồng chỉ chạy khi có người đăng ký.</td></tr>
+      <tr><td>catchError</td><td>Bắt lỗi và thay bằng một luồng khác.</td></tr>
+      <tr><td>retry</td><td>Đăng ký lại luồng khi gặp lỗi.</td></tr>
+      <tr><td>finalize</td><td>Chạy một việc dọn dẹp khi luồng kết thúc dù lý do gì.</td></tr>
+      <tr><td>switchMap</td><td>Đổi mỗi giá trị thành một luồng mới và huỷ luồng cũ chưa xong.</td></tr>
+      <tr><td>exhaustMap</td><td>Giống switchMap nhưng bỏ qua giá trị mới khi luồng cũ chưa xong — hợp với nút Lưu.</td></tr>
+      <tr><td>debounceTime</td><td>Chờ người dùng ngừng gõ một khoảng rồi mới phát giá trị.</td></tr>
+      <tr><td>forkJoin</td><td>Gộp nhiều luồng, chờ tất cả xong mới trả kết quả một lần.</td></tr>
+      <tr><td>of()</td><td>Tạo luồng phát ra ngay giá trị cho sẵn rồi kết thúc.</td></tr>
+      <tr><td>EMPTY</td><td>Luồng rỗng — kết thúc ngay, không phát giá trị nào.</td></tr>
+      <tr><td>throwError</td><td>Tạo luồng ném lỗi ngay lập tức.</td></tr>
+      <tr><td>timer</td><td>Tạo luồng phát ra giá trị sau một khoảng chờ.</td></tr>
+      <tr><td>API</td><td>Giao diện lập trình — điểm gọi tới máy chủ để lấy/ghi dữ liệu.</td></tr>
+      <tr><td>endpoint</td><td>Địa chỉ cụ thể của một API.</td></tr>
+      <tr><td>request</td><td>Lời gọi gửi tới máy chủ.</td></tr>
+      <tr><td>HTTP 409 / CONFLICT</td><td>Mã lỗi báo dữ liệu bị trùng với bản ghi đã có.</td></tr>
+      <tr><td>backend</td><td>Phần chạy trên máy chủ.</td></tr>
+      <tr><td>frontend</td><td>Phần chạy trên trình duyệt của người dùng.</td></tr>
+      <tr><td>interceptor</td><td>Bộ chặn HTTP — xử lý chung cho mọi request/response.</td></tr>
+      <tr><td>toast</td><td>Thông báo nổi ngắn ở góc màn hình.</td></tr>
+      <tr><td>inline</td><td>Hiện ngay tại chỗ — ở đây là ngay dưới ô nhập bị lỗi.</td></tr>
+      <tr><td>spinner</td><td>Vòng xoay báo đang tải.</td></tr>
+      <tr><td>fallback</td><td>Giá trị/luồng dự phòng khi có sự cố.</td></tr>
+      <tr><td>exponential backoff</td><td>Giãn dần khoảng chờ giữa các lần thử lại.</td></tr>
+      <tr><td>facade</td><td>Lớp trung gian giữ trạng thái và logic của một màn hình.</td></tr>
+      <tr><td>resolver</td><td>Bộ nạp dữ liệu chạy trước khi vào một màn hình.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<nav class="pager"><a class="prev" href="day-23-rxjs-combination.html"><span class="dir">← Bài trước</span><span class="nm">Day 23 — RxJS Combination Operators</span></a><a class="next" href="day-25-rxjs-higher-order.html"><span class="dir">Bài tiếp →</span><span class="nm">Day 25 — Higher Order Observables và Utility Operators</span></a></nav>
+<footer class="page-foot col"><p>Sổ tay eli5 · Angular · trang 24/55</p></footer>
+</div>
+</body>
+</html>

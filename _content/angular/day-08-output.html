@@ -1,0 +1,88 @@
+<!--meta
+title: Day 8 — Cha lắng nghe sự kiện của con (@Output)
+eyebrow: Angular · Day 8
+short: Day 8
+lede: Con không được sửa dữ liệu của cha, nhưng được phép hô lên. Đó là output — cổng ra của component.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Cái chuông của component con</h2></div>
+  <p>Nếu <code>input</code> là cổng vào thì <code>output</code> là cái chuông: con rung chuông kèm một gói dữ liệu, cha nào quan tâm thì gắn tai nghe bằng cú pháp <code>(tenSuKien)</code>.</p>
+<pre><code><span class="cm">// Con</span>
+export class TheSanPham {
+  sp = input.required&lt;SanPham&gt;();
+  themVaoGio = output&lt;SanPham&gt;();          <span class="cm">// cách mới</span>
+  <span class="cm">// @Output() themVaoGio = new EventEmitter&lt;SanPham&gt;();  // cách cũ</span>
+
+  onThem() { <span class="kw">this</span>.themVaoGio.emit(<span class="kw">this</span>.sp()); }
+}
+
+<span class="cm">// Cha</span>
+&lt;app-the-san-pham [sp]="item()" (themVaoGio)="gio.them($event)" /&gt;</code></pre>
+  <p><code>$event</code> chính là gói dữ liệu mà con <code>emit</code> ra — kiểu của nó do khai báo generic quyết định, nên cha không thể dùng sai kiểu.</p>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Nguyên tắc</p><h2>Đặt tên và phạm vi trách nhiệm</h2></div>
+  <ol class="steps">
+    <li><span>Đặt tên theo <em>việc đã xảy ra</em> (<code>saved</code>, <code>rowClick</code>, <code>closed</code>), không đặt tên theo việc cha sẽ làm (<code>onSaveThenNavigate</code>).</span></li>
+    <li><span>Không thêm tiền tố <code>on</code> cho output — <code>on</code> là của phía nghe, không phải phía phát.</span></li>
+    <li><span>Con chỉ báo tin, <b>không tự quyết</b>: không gọi API, không điều hướng. Quyết định thuộc về cha (hoặc facade).</span></li>
+  </ol>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Con độc lập hoàn toàn.</b> Không biết gì về cha nên dùng lại được ở mọi màn hình.</li>
+        <li><b>Luồng dữ liệu rõ:</b> xuống bằng input, lên bằng output — đọc là truy được.</li>
+        <li><b>Kiểm thử dễ.</b> Chỉ cần bắt sự kiện và kiểm tra gói dữ liệu.</li>
+        <li><b><code>output()</code> mới tự huỷ đăng ký</b> theo vòng đời component, không lo rò rỉ.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Con chỉ báo tin, không tự quyết:</span>
+xoa = output&lt;SanPham&gt;();
+onXoa() { <span class="kw">this</span>.xoa.emit(<span class="kw">this</span>.sp()); }
+
+<span class="cm">// Màn A: xoá thật · Màn B: chỉ bỏ khỏi giỏ · Màn C: chỉ ghi log</span>
+&lt;app-dong (xoa)="facade.xoaThat($event)" /&gt;
+&lt;app-dong (xoa)="gio.boRa($event)" /&gt;</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Chuyền tay qua nhiều tầng rất phiền.</b> Con của con của con muốn báo lên tận gốc thì mỗi tầng phải phát lại.</li>
+        <li><b>Không có giá trị trả về.</b> Cha không thể "trả lời" trực tiếp; muốn hỏi–đáp thì phải dùng service.</li>
+        <li><b>Dễ biến thành cái loa.</b> Component có mười output thường là đang gánh quá nhiều trách nhiệm.</li>
+        <li><b><code>EventEmitter</code> kiểu cũ</b> hay bị dùng nhầm như một Subject nội bộ — nó chỉ nên dùng cho output.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// Cháu muốn báo lên ông: mỗi tầng phải phát lại một lần</span>
+&lt;app-con (luu)="luu.emit($event)" /&gt;        <span class="cm">// tầng 2</span>
+&lt;app-chau (luu)="luu.emit($event)" /&gt;       <span class="cm">// tầng 3</span>
+<span class="cm">// ✗ ba tầng chỉ để chuyền một sự kiện → nên dùng service dùng chung</span>
+
+<span class="cm">// Và output không trả lời được:</span>
+<span class="kw">this</span>.xoa.emit(sp);
+<span class="cm">// cha có cho phép xoá không? con không có cách nào biết</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>output</td><td>Đầu ra — cổng phát sự kiện lên component cha.</td></tr>
+      <tr><td>EventEmitter</td><td>Lớp phát sự kiện của Angular (cách khai báo cũ).</td></tr>
+      <tr><td>emit</td><td>Phát — gửi một giá trị ra ngoài qua output.</td></tr>
+      <tr><td>$event</td><td>Biến chứa dữ liệu kèm theo sự kiện trong template.</td></tr>
+      <tr><td>generic</td><td>Kiểu tổng quát <code>&lt;T&gt;</code> — cho biết dữ liệu phát ra thuộc kiểu gì.</td></tr>
+      <tr><td>facade</td><td>Lớp trung gian gom logic và state của một màn hình.</td></tr>
+    </tbody>
+  </table></div>
+</section>

@@ -1,0 +1,82 @@
+<!--meta
+title: Day 28 — Feature routes, route con và service theo route
+eyebrow: Angular · Day 28
+short: Day 28
+lede: Chia bảng route theo tính năng, lồng route con vào layout, và gắn service sống đúng bằng vòng đời một khu vực màn hình.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Mỗi tính năng tự giữ bảng route của mình</h2></div>
+  <p>Ứng dụng lớn không dồn tất cả route vào một file. Mỗi feature (tính năng) có <code>routes.ts</code> riêng, route gốc chỉ trỏ tới. Route con được vẽ vào <code>&lt;router-outlet&gt;</code> nằm trong component cha — nhờ đó dựng được layout có menu/tab giữ nguyên khi đổi màn con.</p>
+<pre><code><span class="cm">// features/kho/routes.ts</span>
+export <span class="kw">const</span> KHO_ROUTES: Routes = [
+  {
+    path: <span class="str">''</span>,
+    component: KhoLayoutComponent,          <span class="cm">// chứa router-outlet con</span>
+    providers: [KhoStore],                  <span class="cm">// service sống theo nhánh route này</span>
+    children: [
+      { path: <span class="str">''</span>, component: DsKhoComponent },
+      { path: <span class="str">':id'</span>, component: ChiTietKhoComponent },
+      { path: <span class="str">':id/sua'</span>, component: SuaKhoComponent },
+    ],
+  },
+];</code></pre>
+  <div class="callout">
+    <p><strong>Điểm hay nhất là <code>providers</code> ở cấp route:</strong> service khai ở đây được tạo khi vào nhánh và <em>huỷ khi rời đi</em>. Đây là cách sạch nhất để giữ state dùng chung cho vài màn hình mà không làm bẩn phạm vi toàn cục.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Mỗi nhóm làm một feature</b> mà không đụng file của nhau — ít xung đột khi merge.</li>
+        <li><b>Layout chung không bị vẽ lại</b> khi chuyển giữa các màn con.</li>
+        <li><b>State đúng phạm vi,</b> tự dọn khi rời khu vực.</li>
+        <li><b>Là bước chuẩn bị cho lazy loading</b> ở bài sau — mỗi feature một gói riêng.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>{ path: <span class="str">'kho'</span>, component: KhoLayout, providers: [KhoStore], children: [...] }
+<span class="cm">// Chuyển giữa /kho, /kho/12, /kho/12/sua: menu và tab KHÔNG bị vẽ lại,</span>
+<span class="cm">// KhoStore giữ nguyên bộ lọc; rời hẳn khỏi /kho thì store tự huỷ.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Đường dẫn bị chia nhỏ nhiều nơi,</b> phải ghép trong đầu mới ra URL đầy đủ.</li>
+        <li><b>Lồng quá sâu</b> làm việc gỡ lỗi điều hướng rất mệt.</li>
+        <li><b>Nhầm cấp provider</b> tạo ra nhiều bản service không mong muốn.</li>
+        <li><b>Route rỗng (<code>path: ''</code>) lồng nhau</b> là nguồn nhầm lẫn kinh điển về <code>pathMatch</code>.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>{ path: <span class="str">''</span>, component: KhoLayout, children: [
+  { path: <span class="str">''</span>, component: DsKho },          <span class="cm">// thiếu pathMatch: 'full'</span>
+  { path: <span class="str">':id'</span>, component: ChiTietKho },
+]}
+<span class="cm">// ✗ /kho/abc khớp cả hai kiểu tuỳ thứ tự → có lúc vào nhầm màn danh sách,</span>
+<span class="cm">// gỡ lỗi rất mất thời gian vì không có thông báo gì</span>
+
+canDeactivate: [unsavedChangesGuard]   <span class="cm">// ✗ khai lại trong routes.ts của feature</span>
+<span class="cm">// → guard chạy hai lần, người dùng bị hỏi hai lần liên tiếp</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Lưu ý riêng của dự án:</strong> route feature ở đây được gắn guard chống mất dữ liệu ở cấp gốc (<code>withUnsavedChangesGuard</code> trong <code>main-router.ts</code>). Đừng tự khai <code>canDeactivate</code> trong <code>routes.ts</code> của feature — nó đã được thừa kế sẵn.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>feature</td><td>Tính năng — một khu vực nghiệp vụ của ứng dụng.</td></tr>
+      <tr><td>child route</td><td>Route con, vẽ vào outlet của component cha.</td></tr>
+      <tr><td>route-level provider</td><td>Service khai ở cấp route, sống theo nhánh route đó.</td></tr>
+      <tr><td>pathMatch</td><td>Quy tắc khớp đường dẫn (<code>full</code> hay <code>prefix</code>).</td></tr>
+      <tr><td>layout component</td><td>Component khung chứa menu/tab và outlet con.</td></tr>
+    </tbody>
+  </table></div>
+</section>

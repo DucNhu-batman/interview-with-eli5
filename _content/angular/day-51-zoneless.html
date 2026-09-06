@@ -1,0 +1,392 @@
+<!--meta
+title: Day 51 — Zoneless: bỏ người canh cửa, chuyển sang tự khai báo
+eyebrow: Angular · Day 51
+short: Day 51
+lede: Zoneless không phải là "chạy nhanh hơn một chút". Nó đổi hẳn câu hỏi Angular đang trả lời: từ "vừa có việc gì xong?" sang "ai vừa báo là có thay đổi?". Bài này đi tới tận bộ hẹn giờ bên trong — đủ sâu để ngồi trả lời phỏng vấn senior.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Trả lời trong một câu</p><h2>Zoneless là gì</h2></div>
+  <p>Ở <a href="day-49-zonejs-change-detection.html">Day 49</a> ta đã thấy Zone.js làm gì: nó vá đè lên mọi API bất đồng bộ của trình duyệt, và cứ một việc chạy xong là hô lên một tiếng để Angular đi <b>quét change detection</b> (dò tìm thay đổi — lượt Angular đi khắp cây component so lại các giá trị hiển thị) toàn bộ cây. Cách đó luôn đúng, nhưng nó đúng bằng cách nghi ngờ tất cả mọi thứ.</p>
+  <div class="callout">
+    <p><strong>Câu trả lời thuộc lòng cho phỏng vấn:</strong> “<i>Zoneless là bỏ Zone.js khỏi vai trò kích hoạt change detection. Thay vì đoán qua các sự kiện bất đồng bộ của trình duyệt, Angular chỉ chạy khi chính API của nó được gọi — signal đổi, <code>markForCheck</code>, listener trong template, <code>setInput</code>. Các thông báo đó được gom lại và Angular chạy đúng một lượt <code>tick()</code>, chỉ đi vào những nhánh đã được đánh dấu.</i>”</p>
+  </div>
+  <p>Chú ý chỗ dễ nói sai: <b>zoneless không đổi thuật toán change detection</b>. Nó vẫn là cùng một lượt duyệt cây, vẫn tôn trọng <code>OnPush</code>. Cái đổi là <b>ai bấm nút bắt đầu</b>, và <b>bao nhiêu lần nút đó bị bấm</b>.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 1</p><h2>Canh cửa, so với tự khai báo</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 700 348" role="img" aria-label="So sánh hai chế độ. Bên trái có Zone.js: mọi việc bất đồng bộ của trình duyệt như click, setTimeout, fetch, Promise đều làm Zone hô lên và Angular quét toàn bộ cây component. Bên phải zoneless: chỉ các API của chính Angular như markForCheck, signal đổi, listener trong template, setInput mới báo cho scheduler, scheduler gom lại và chạy đúng một lượt tick chỉ đi vào nhánh đã đánh dấu.">
+        <defs>
+          <marker id="zl-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"></polygon>
+          </marker>
+          <marker id="zl-ar-hi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="#7B6FE0"></polygon>
+          </marker>
+        </defs>
+
+        <text x="24" y="26" font-size="13" font-weight="700" fill="currentColor">Có Zone.js</text>
+        <text x="24" y="45" font-size="11" fill="currentColor" opacity=".7">trình duyệt báo — Angular nghi ngờ tất cả</text>
+
+        <rect x="24" y="60" width="140" height="30" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1"></rect>
+        <text x="94" y="80" font-size="11" text-anchor="middle" fill="currentColor" font-family="monospace">click</text>
+        <rect x="174" y="60" width="140" height="30" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1"></rect>
+        <text x="244" y="80" font-size="11" text-anchor="middle" fill="currentColor" font-family="monospace">setTimeout</text>
+        <rect x="24" y="96" width="140" height="30" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1"></rect>
+        <text x="94" y="116" font-size="11" text-anchor="middle" fill="currentColor" font-family="monospace">fetch</text>
+        <rect x="174" y="96" width="140" height="30" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1"></rect>
+        <text x="244" y="116" font-size="11" text-anchor="middle" fill="currentColor" font-family="monospace">Promise.then</text>
+
+        <line x1="169" y1="126" x2="169" y2="154" stroke="currentColor" stroke-width="1.5" marker-end="url(#zl-ar)"></line>
+
+        <rect x="24" y="154" width="290" height="46" rx="12" fill="var(--surface)" stroke="currentColor" stroke-width="1.3"></rect>
+        <text x="169" y="174" font-size="12.5" font-weight="700" text-anchor="middle" fill="currentColor">Zone.js hô: “có việc vừa xong”</text>
+        <text x="169" y="192" font-size="11" text-anchor="middle" fill="currentColor" opacity=".7">không biết dữ liệu nào đổi</text>
+
+        <line x1="169" y1="200" x2="169" y2="228" stroke="currentColor" stroke-width="1.5" marker-end="url(#zl-ar)"></line>
+
+        <rect x="24" y="228" width="290" height="52" rx="12" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.3"></rect>
+        <text x="169" y="250" font-size="12.5" font-weight="700" text-anchor="middle" fill="currentColor" font-family="monospace">tick()</text>
+        <text x="169" y="269" font-size="11" text-anchor="middle" fill="currentColor" opacity=".75">duyệt từ gốc xuống cả cây</text>
+
+        <text x="169" y="308" font-size="11.5" text-anchor="middle" fill="#D9587A" font-weight="700">quét cả khi chẳng có gì đổi</text>
+
+        <line x1="350" y1="56" x2="350" y2="320" stroke="currentColor" stroke-width="1" opacity=".22"></line>
+
+        <text x="386" y="26" font-size="13" font-weight="700" fill="var(--accent)">Zoneless</text>
+        <text x="386" y="45" font-size="11" fill="currentColor" opacity=".7">Angular tự báo — chỉ khi thật sự có chuyện</text>
+
+        <rect x="386" y="60" width="140" height="30" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1"></rect>
+        <text x="456" y="80" font-size="11" text-anchor="middle" fill="var(--accent)" font-family="monospace">signal đổi</text>
+        <rect x="536" y="60" width="140" height="30" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1"></rect>
+        <text x="606" y="80" font-size="11" text-anchor="middle" fill="var(--accent)" font-family="monospace">markForCheck</text>
+        <rect x="386" y="96" width="140" height="30" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1"></rect>
+        <text x="456" y="116" font-size="11" text-anchor="middle" fill="var(--accent)" font-family="monospace">(click) trong template</text>
+        <rect x="536" y="96" width="140" height="30" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1"></rect>
+        <text x="606" y="116" font-size="11" text-anchor="middle" fill="var(--accent)" font-family="monospace">setInput</text>
+
+        <line x1="531" y1="126" x2="531" y2="154" stroke="#7B6FE0" stroke-width="2" marker-end="url(#zl-ar-hi)"></line>
+
+        <rect x="386" y="154" width="290" height="46" rx="12" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <text x="531" y="174" font-size="12.5" font-weight="700" text-anchor="middle" fill="var(--accent)" font-family="monospace">scheduler.notify(nguồn)</text>
+        <text x="531" y="192" font-size="11" text-anchor="middle" fill="currentColor" opacity=".7">ghi cờ, gom mọi thông báo vào một lượt</text>
+
+        <line x1="531" y1="200" x2="531" y2="228" stroke="#7B6FE0" stroke-width="2" marker-end="url(#zl-ar-hi)"></line>
+
+        <rect x="386" y="228" width="290" height="52" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <text x="531" y="250" font-size="12.5" font-weight="700" text-anchor="middle" fill="var(--accent)" font-family="monospace">tick()</text>
+        <text x="531" y="269" font-size="11" text-anchor="middle" fill="currentColor" opacity=".8">chỉ đi vào nhánh đã được đánh dấu</text>
+
+        <text x="531" y="308" font-size="11.5" text-anchor="middle" fill="#2AA08C" font-weight="700">không ai báo = không quét</text>
+      </svg>
+    </div>
+    <figcaption>Cùng một thuật toán duyệt cây, khác nhau ở đầu vào. Zone.js đưa vào <i>mọi</i> việc bất đồng bộ của trình duyệt; zoneless chỉ đưa vào những lần chính Angular biết chắc có thứ gì đó vừa đổi.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 2</p><h2>Danh sách những thứ đánh thức được Angular</h2></div>
+  <div class="col">
+    <p>Đây là phần ăn điểm trong phỏng vấn: đọc thuộc được danh sách này nghĩa là bạn hiểu zoneless chứ không chỉ nghe qua. Angular đặt tên cho từng nguồn thông báo, và chia làm hai loại — loại <b>bắt phải làm mới view</b>, và loại chỉ khiến Angular <b>chạy lại render hook</b> (các hàm đã hẹn sau khi vẽ, xem <a href="day-50-after-next-render.html">Day 50</a>) mà không đụng gì tới template.</p>
+  </div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Nguồn thông báo</th><th>Xảy ra khi nào</th><th>Hệ quả</th></tr></thead>
+    <tbody>
+      <tr><td>MarkAncestorsForTraversal</td><td>Một signal đang được template đọc bị đổi giá trị</td><td>Làm mới view</td></tr>
+      <tr><td>MarkForCheck</td><td><code>ChangeDetectorRef.markForCheck()</code> — cũng là thứ <code>AsyncPipe</code> gọi khi observable phát</td><td>Làm mới view</td></tr>
+      <tr><td>Listener</td><td>Chạy hàm gắn ở <code>(click)</code>, <code>(input)</code>, hay <code>@HostListener</code></td><td>Làm mới view</td></tr>
+      <tr><td>SetInput</td><td><code>ComponentRef.setInput()</code> đặt input từ bên ngoài template</td><td>Làm mới view</td></tr>
+      <tr><td>DeferBlockStateUpdate</td><td>Khối <code>@defer</code> đổi trạng thái (placeholder → loading → hiện thật)</td><td>Làm mới view</td></tr>
+      <tr><td>ViewAttached</td><td>Gắn một view vào cây (dialog, component tạo động)</td><td>Chạy render hook</td></tr>
+      <tr><td>ViewDetachedFromDOM</td><td>Gỡ một view khỏi DOM</td><td>Chạy render hook</td></tr>
+      <tr><td>RenderHook</td><td>Vừa đăng ký một <code>afterNextRender</code> / <code>afterEveryRender</code></td><td>Chạy render hook</td></tr>
+      <tr><td>RootEffect / ViewEffect</td><td>Một <code>effect()</code> trở nên “bẩn” và cần chạy lại</td><td>Chạy effect</td></tr>
+      <tr><td>PendingTaskRemoved</td><td>Một việc đang chặn “trạng thái rảnh” vừa xong</td><td>Chỉ để tính lại rảnh/bận</td></tr>
+    </tbody>
+  </table></div>
+  <div class="col">
+    <p>Đọc ngược danh sách này ra sẽ thấy ngay <b>cái gì KHÔNG có trong đó</b>: <code>setTimeout</code>, <code>setInterval</code>, <code>Promise.then</code>, một <code>subscribe</code> tay, một hàm callback của thư viện ngoài, một <code>addEventListener</code> bạn tự gắn. Ở chế độ zoneless, gán giá trị vào một thuộc tính thường bên trong mấy chỗ đó thì <b>màn hình không đổi</b>, và không có lỗi nào được ném ra cả.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cạm bẫy số một</p><h2>Cùng một dòng lệnh, hai kết quả</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 700 300" role="img" aria-label="Cùng một đoạn mã gán this.tong bằng 5 trong setTimeout: ở chế độ Zone.js màn hình hiện 5, ở chế độ zoneless màn hình vẫn giữ số cũ vì không có thông báo nào. Đổi sang signal set thì cả hai chế độ đều hiện 5.">
+        <rect x="24" y="20" width="652" height="46" rx="12" fill="var(--code-bg)"></rect>
+        <text x="44" y="49" font-size="12.5" fill="#E7EAF4" font-family="monospace">setTimeout(() =&gt; { this.tong = 5; }, 1000);</text>
+
+        <text x="24" y="96" font-size="12.5" font-weight="700" fill="currentColor">Có Zone.js</text>
+        <rect x="24" y="108" width="300" height="42" rx="11" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="174" y="134" font-size="11.5" text-anchor="middle" fill="currentColor">Zone đã vá setTimeout → hô lên → tick()</text>
+        <rect x="24" y="158" width="300" height="40" rx="11" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.4"></rect>
+        <text x="174" y="183" font-size="12.5" font-weight="700" text-anchor="middle" fill="var(--good)">màn hình hiện 5</text>
+
+        <text x="376" y="96" font-size="12.5" font-weight="700" fill="currentColor">Zoneless</text>
+        <rect x="376" y="108" width="300" height="42" rx="11" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="526" y="134" font-size="11.5" text-anchor="middle" fill="currentColor">setTimeout không nằm trong danh sách nguồn</text>
+        <rect x="376" y="158" width="300" height="40" rx="11" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.4"></rect>
+        <text x="526" y="183" font-size="12.5" font-weight="700" text-anchor="middle" fill="var(--bad)">màn hình giữ nguyên số cũ — im lặng</text>
+
+        <rect x="24" y="222" width="652" height="42" rx="12" fill="var(--code-bg)"></rect>
+        <text x="44" y="248" font-size="12.5" fill="#E7EAF4" font-family="monospace">setTimeout(() =&gt; { this.tong.set(5); }, 1000);</text>
+        <text x="350" y="286" font-size="12" text-anchor="middle" fill="#2AA08C" font-weight="700">đổi sang signal → cả hai chế độ đều hiện 5</text>
+      </svg>
+    </div>
+    <figcaption>Đây là toàn bộ rủi ro của việc chuyển sang zoneless, gói trong một hình. Lỗi không nổ, không có cảnh báo — chỉ có một con số trên màn hình lặng lẽ sai. Vì thế bước bắt buộc trước khi bật zoneless là chuyển trạng thái hiển thị sang <b>signal</b>.</figcaption>
+  </figure>
+<pre><code><span class="cm">// ✗ Sống được nhờ Zone.js, chết ngay khi bỏ Zone.js</span>
+export class DanhSachKhoComponent {
+  danhSach: Kho[] = [];
+
+  ngOnInit(): void {
+    <span class="kw">this</span>.service.tai().subscribe((ds) =&gt; {
+      <span class="kw">this</span>.danhSach = ds;      <span class="cm">// không ai báo cho Angular biết</span>
+    });
+  }
+}
+
+<span class="cm">// ✓ Tự báo — chạy đúng ở cả hai chế độ</span>
+export class DanhSachKhoComponent {
+  <span class="kw">readonly</span> danhSach = signal&lt;Kho[]&gt;([]);
+
+  ngOnInit(): void {
+    <span class="kw">this</span>.service.tai().subscribe((ds) =&gt; <span class="kw">this</span>.danhSach.set(ds));
+  }
+}
+
+<span class="cm">// ✓ Hoặc để AsyncPipe làm — nó gọi markForCheck() giúp bạn</span>
+<span class="cm">// template:  &#64;for (kho of danhSach$ | async; track kho.id) { … }</span></code></pre>
+  <div class="col">
+    <p>Còn một đường thoát nữa cho mã cũ chưa kịp chuyển: tự tay gọi <code>inject(ChangeDetectorRef).markForCheck()</code> sau khi gán. Nó hoạt động, nhưng hãy xem đó là <b>miếng vá tạm</b> — nếu trong buổi phỏng vấn bạn nêu nó như giải pháp chính thì người ta sẽ hỏi tiếp “<i>thế sao không dùng signal?</i>”.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 3</p><h2>Bộ hẹn giờ: cuộc đua giữa rAF và setTimeout</h2></div>
+  <div class="col">
+    <p>Đây là câu hỏi “đào sâu” hay được dùng để phân biệt người đọc tài liệu với người đã đọc mã nguồn. Khi có thông báo, Angular <b>không</b> chạy <code>tick()</code> ngay. Nó ghi một lá cờ, rồi hẹn chạy sau — và cái hẹn đó là một <b>cuộc đua giữa <code>requestAnimationFrame</code> và <code>setTimeout</code></b>: ai xong trước thì chạy, người kia bị huỷ.</p>
+  </div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 700 452" role="img" aria-label="Vòng đời một thông báo: signal đổi gọi notify, Angular ghi cờ dirtyFlags, nếu đã có một lượt đang hẹn thì thông báo được gộp vào lượt đó, nếu chưa thì đặt song song requestAnimationFrame và setTimeout, cái nào chạy trước thì gọi tick và huỷ cái còn lại.">
+        <defs>
+          <marker id="zl-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"></polygon>
+          </marker>
+          <marker id="zl-s-hi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="#7B6FE0"></polygon>
+          </marker>
+        </defs>
+
+        <rect x="180" y="16" width="340" height="46" rx="12" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="350" y="44" font-size="12.5" font-weight="700" text-anchor="middle" fill="currentColor" font-family="monospace">this.tong.set(5)</text>
+
+        <line x1="350" y1="62" x2="350" y2="92" stroke="currentColor" stroke-width="1.5" marker-end="url(#zl-s)"></line>
+
+        <rect x="180" y="92" width="340" height="46" rx="12" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="350" y="112" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor" font-family="monospace">scheduler.notify(…)</text>
+        <text x="350" y="130" font-size="11" text-anchor="middle" fill="currentColor" opacity=".72">ghi cờ vào appRef.dirtyFlags — chưa chạy gì cả</text>
+
+        <line x1="350" y1="138" x2="350" y2="168" stroke="currentColor" stroke-width="1.5" marker-end="url(#zl-s)"></line>
+
+        <rect x="180" y="168" width="340" height="46" rx="12" fill="var(--surface)" stroke="currentColor" stroke-width="1.2" stroke-dasharray="5 4"></rect>
+        <text x="350" y="196" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">Đã có một lượt đang hẹn chưa?</text>
+
+        <line x1="520" y1="191" x2="566" y2="191" stroke="#2AA08C" stroke-width="1.6" marker-end="url(#zl-s)"></line>
+        <text x="572" y="187" font-size="11" font-weight="700" fill="#2AA08C">rồi →</text>
+        <text x="572" y="203" font-size="11" fill="currentColor" opacity=".75">gộp vào lượt đó</text>
+
+        <line x1="350" y1="214" x2="350" y2="244" stroke="#7B6FE0" stroke-width="2" marker-end="url(#zl-s-hi)"></line>
+        <text x="362" y="235" font-size="11" fill="currentColor" opacity=".75">chưa →</text>
+
+        <rect x="70" y="244" width="250" height="64" rx="12" fill="var(--surface)" stroke="currentColor" stroke-width="1.3"></rect>
+        <text x="195" y="266" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor" font-family="monospace">requestAnimationFrame</text>
+        <text x="195" y="284" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".72">chạy ngay trước khi trình duyệt vẽ</text>
+        <text x="195" y="300" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".72">nhưng tab chạy nền thì đứng im</text>
+
+        <rect x="380" y="244" width="250" height="64" rx="12" fill="var(--surface)" stroke="currentColor" stroke-width="1.3"></rect>
+        <text x="505" y="266" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor" font-family="monospace">setTimeout(…, 0)</text>
+        <text x="505" y="284" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".72">tab nền vẫn chạy, test không phải chờ</text>
+        <text x="505" y="300" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".72">nhưng không đảm bảo cùng khung hình</text>
+
+        <line x1="195" y1="308" x2="300" y2="346" stroke="#7B6FE0" stroke-width="1.8" marker-end="url(#zl-s-hi)"></line>
+        <line x1="505" y1="308" x2="400" y2="346" stroke="#7B6FE0" stroke-width="1.8" marker-end="url(#zl-s-hi)"></line>
+        <text x="350" y="332" font-size="11" text-anchor="middle" fill="#7B6FE0" font-weight="700">ai xong trước thì thắng — cái kia bị huỷ</text>
+
+        <rect x="180" y="352" width="340" height="52" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.8"></rect>
+        <text x="350" y="374" font-size="13" font-weight="700" text-anchor="middle" fill="var(--accent)" font-family="monospace">ApplicationRef.tick()</text>
+        <text x="350" y="393" font-size="11" text-anchor="middle" fill="currentColor" opacity=".8">một lượt duy nhất cho mọi thông báo đã gom</text>
+
+        <text x="350" y="432" font-size="11.5" text-anchor="middle" fill="currentColor" opacity=".72">10 lần set signal trong cùng một hàm = 1 lần tick</text>
+      </svg>
+    </div>
+    <figcaption>Vì sao phải đua chứ không chọn hẳn một cái? Vì mỗi cái hỏng một kiểu. <code>requestAnimationFrame</code> cho phép chạy đúng trước lúc trình duyệt vẽ, nhưng không chạy khi tab nằm nền — mở ứng dụng ở tab ẩn thì nó không khởi động nổi; và gọi liên tiếp thì bị ghìm theo tần số màn hình (~16ms một lượt), làm test chậm thấy rõ. <code>setTimeout</code> thì ngược lại. Đua cả hai thì được cả hai.</figcaption>
+  </figure>
+  <div class="col">
+    <p>Chỗ “đã có một lượt đang hẹn chưa?” chính là <b>coalescing</b> (gộp lượt) — và nó là mặc định, miễn phí, không cần bật cờ nào. Nhớ lại Day 49: ở chế độ Zone bạn phải tự khai <code>eventCoalescing: true</code> mới có, và cũng chỉ gộp được các sự kiện DOM. Zoneless gộp <i>mọi</i> nguồn thông báo.</p>
+    <p>Một chi tiết nữa đáng nhắc nếu người phỏng vấn hỏi “thế lỡ vòng lặp vô tận thì sao”: Angular có bộ đếm, khi các thông báo cứ nối đuôi nhau không dứt trong cùng một vòng lặp sự kiện, nó ném lỗi “<i>Angular could not stabilize because there were endless change notifications</i>” kèm theo vết gọi của mấy lần cuối. Nguyên nhân kinh điển: ghi vào một signal ngay bên trong <code>afterEveryRender</code> hoặc bên trong một <code>effect</code> đọc chính signal đó.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 4</p><h2>NgZone còn không? Và “rảnh” giờ nghĩa là gì?</h2></div>
+  <div class="col">
+    <p>Bật zoneless, Angular thay <code>NgZone</code> bằng <code>NoopNgZone</code> — một bản “rỗng ruột”. Nó <b>vẫn tiêm được</b>, mã cũ vẫn biên dịch, nhưng hành vi đổi hẳn:</p>
+  </div>
+<pre><code><span class="cm">// NoopNgZone — nguyên văn phần cốt lõi</span>
+isStable = <span class="kw">true</span>;                                <span class="cm">// luôn luôn rảnh</span>
+onStable = <span class="kw">new</span> EventEmitter();                    <span class="cm">// có mà không bao giờ bắn</span>
+
+run(fn)               { <span class="kw">return</span> fn(); }        <span class="cm">// gọi thẳng, không vào vùng nào</span>
+runOutsideAngular(fn) { <span class="kw">return</span> fn(); }        <span class="cm">// cũng gọi thẳng — thành vô nghĩa</span></code></pre>
+  <div class="col">
+    <p>Hệ quả cần nói được trong phỏng vấn: <b>mọi lời gọi <code>runOutsideAngular()</code> trong mã cũ đều trở thành thừa</b>, không hại nhưng cũng không còn tác dụng gì; và <b><code>ngZone.onStable</code> im lặng vĩnh viễn</b> — đoạn mã nào đang chờ nó sẽ treo mãi mãi. Đây là một trong những chỗ hỏng âm thầm hay gặp nhất khi di trú một dự án lớn.</p>
+    <p>Vậy “ứng dụng đã rảnh” giờ tính bằng gì? Bằng <b>PendingTasks</b> (sổ việc đang chờ). <code>HttpClient</code>, router và vài dịch vụ khác tự ghi sổ giúp bạn; việc bất đồng bộ nào bạn tự làm mà cần chặn trạng thái rảnh thì phải tự ghi. Trạng thái này quan trọng ở đúng hai chỗ: <b>SSR</b> (kết xuất phía máy chủ) chỉ gửi HTML đi khi ứng dụng rảnh, và <b>test</b> chờ rảnh rồi mới kiểm tra kết quả.</p>
+  </div>
+<pre><code><span class="kw">private readonly</span> pendingTasks = inject(PendingTasks);
+
+<span class="cm">// Cách 1 — bọc cả hàm bất đồng bộ</span>
+<span class="kw">this</span>.pendingTasks.run(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> ds = <span class="kw">await</span> <span class="kw">this</span>.taiDanhSachKho();
+  <span class="kw">this</span>.danhSach.set(ds);
+});
+
+<span class="cm">// Cách 2 — tự mở sổ, tự đóng sổ</span>
+<span class="kw">const</span> xong = <span class="kw">this</span>.pendingTasks.add();
+lamViecGiDo().finally(xong);
+
+<span class="cm">// Chờ rảnh</span>
+<span class="kw">await</span> inject(ApplicationRef).whenStable();</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bật lên</p><h2>Cấu hình, và dự án này đang đứng ở đâu</h2></div>
+<pre><code><span class="cm">// app.config.ts — chỉ một dòng đổi chỗ cho provideZoneChangeDetection</span>
+export <span class="kw">const</span> appConfig: ApplicationConfig = {
+  providers: [
+    provideZonelessChangeDetection(),   <span class="out">// công khai chính thức từ Angular 20.2</span>
+    …
+  ],
+};</code></pre>
+  <div class="col">
+    <p>Hai điểm hay bị hỏi vặn ở đây. Thứ nhất, <b>tên hàm đã đổi</b>: các bài viết từ Angular 18–19 gọi nó là <code>provideExperimentalZonelessChangeDetection</code>; từ 20.2 nó thành <code>provideZonelessChangeDetection</code> và không còn là thử nghiệm. Thứ hai, <b>gỡ <code>zone.js</code> khỏi mục <code>polyfills</code> trong <code>angular.json</code></b> — nếu quên, ứng dụng vẫn chạy zoneless nhưng bạn vẫn phải tải Zone.js về; ở chế độ dev Angular sẽ in ra một cảnh báo đúng ý đó, và bạn mất luôn phần lợi ích về dung lượng gói.</p>
+    <p><b>Dự án này</b> hiện đang chạy <code>provideZoneChangeDetection({ eventCoalescing: true })</code> trong <code>app.config.ts</code> — tức là nấc “Zone + OnPush + gộp sự kiện” trong bậc thang ở cuối Day 49. Chưa zoneless, nhưng phần lớn màn đã dùng <code>OnPush</code> và signal, nên khoảng cách còn lại chủ yếu là rà soát mấy chỗ gán thẳng thuộc tính trong <code>subscribe</code>.</p>
+  </div>
+  <ul class="steps">
+    <li><b>Bật zoneless trong <code>TestBed</code> trước.</b> Thêm <code>provideZonelessChangeDetection()</code> vào providers của test — test đỏ ở đâu thì đó chính là màn sẽ hỏng khi lên thật, mà không phải trả giá trên môi trường chạy thật.</li>
+    <li><b>Rà các <code>subscribe</code> gán thẳng thuộc tính</b> và chuyển sang <code>signal.set()</code> hoặc <code>AsyncPipe</code>.</li>
+    <li><b>Tìm mọi <code>ngZone.onStable</code> và <code>runOutsideAngular</code></b> — cái đầu sẽ treo, cái sau thành vô nghĩa.</li>
+    <li><b>Ghi sổ <code>PendingTasks</code></b> cho các việc bất đồng bộ tự viết, nhất là nếu có SSR.</li>
+    <li><b>Cuối cùng mới gỡ <code>zone.js</code></b> khỏi <code>polyfills</code>, sau khi mọi thứ đã xanh.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Bớt hẳn số lượt quét.</b> Không còn chuyện gõ phím trong một ô lọc mà cả cây component bị hỏi lại.</li>
+        <li><b>Gói nhỏ đi</b> vì bỏ được Zone.js khỏi polyfill — và bỏ luôn chi phí vá đè mọi API lúc khởi động.</li>
+        <li><b>Vết gọi trong DevTools sạch sẽ.</b> Không còn hàng chục khung <code>zone.js</code> chen giữa mã của bạn.</li>
+        <li><b>Gộp lượt là mặc định,</b> áp dụng cho mọi nguồn chứ không chỉ sự kiện DOM.</li>
+        <li><b>Hợp tác tốt với mã ngoài Angular</b> — micro frontend, thư viện thứ ba, Web Component — vì không còn giành nhau việc vá các API toàn cục.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Gõ 1 phím trong ô lọc, có 200 component trên trang</span>
+Zone + Default :  200 lần so binding
+Zone + OnPush  :  chỉ nhánh bị đánh dấu, nhưng vẫn duyệt từ gốc
+Zoneless       :  <span class="out">chỉ đi vào đúng nhánh đã đánh dấu</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Hỏng trong im lặng.</b> Quên báo thì màn hình hiện số cũ, không lỗi, không cảnh báo — khó lần ra hơn hẳn một exception.</li>
+        <li><b>Thư viện thứ ba chưa sẵn sàng.</b> Bất kỳ thư viện nào gọi ngược lại bằng callback tay đều cần bạn tự <code>markForCheck</code> hoặc bọc bằng signal.</li>
+        <li><b>Mã cũ dùng <code>runOutsideAngular</code> / <code>onStable</code> hỏng câm.</b> Cái sau treo vĩnh viễn vì sự kiện không bao giờ bắn.</li>
+        <li><b>Phải kỷ luật về trạng thái.</b> Cả đội buộc phải dùng signal hoặc <code>AsyncPipe</code> nhất quán, không còn “thế nào cũng chạy”.</li>
+        <li><b>Chi phí di trú thật</b> với dự án lớn và cũ — công nằm ở việc rà soát, không nằm ở dòng <code>provideZonelessChangeDetection()</code>.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// Thư viện bản đồ gọi lại bằng callback thường</span>
+map.on(<span class="str">'moveend'</span>, () =&gt; {
+  <span class="kw">this</span>.toaDo = map.getCenter();   <span class="cm">// ✗ zoneless: màn hình không đổi</span>
+  <span class="kw">this</span>.toaDo.set(map.getCenter()); <span class="out">// ✓ phải tự báo</span>
+});</code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Luyện phỏng vấn</p><h2>Bảy câu hay bị hỏi, và ý phải nói được</h2></div>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Câu hỏi</th><th>Ý cốt lõi cần nêu</th></tr></thead>
+    <tbody>
+      <tr><td>Zoneless có làm change detection nhanh hơn không?</td><td>Không — mỗi lượt quét vẫn y hệt. Cái giảm là <b>số lượt</b> và <b>phạm vi</b>, cộng thêm bỏ được chi phí vá API của Zone.js. Nói “nhanh hơn” chung chung là mất điểm.</td></tr>
+      <tr><td>Zoneless có bắt buộc dùng signal không?</td><td>Không bắt buộc — <code>AsyncPipe</code>, <code>markForCheck()</code>, <code>setInput</code> đều đánh thức được. Nhưng signal là con đường mặc định vì nó tự báo, không phải nhớ báo.</td></tr>
+      <tr><td>Có cần đổi hết sang OnPush trước không?</td><td>Không bắt buộc, nhưng nên. Zoneless vẫn tôn trọng <code>Default</code>; điều đổi là Angular chỉ đi vào các nhánh đã được đánh dấu, nên một component <code>Default</code> nằm trong nhánh không ai đánh dấu vẫn không được kiểm tra.</td></tr>
+      <tr><td>Vì sao lại đua rAF với setTimeout?</td><td>rAF cho phép chạy trước lúc vẽ nhưng chết ở tab nền và bị ghìm theo tần số màn hình; setTimeout thì chạy mọi lúc nhưng không đảm bảo cùng khung hình. Đua cả hai lấy được ưu điểm của cả hai.</td></tr>
+      <tr><td>Bỏ Zone.js rồi thì <code>NgZone</code> đi đâu?</td><td>Được thay bằng <code>NoopNgZone</code>: vẫn tiêm được, <code>run</code> / <code>runOutsideAngular</code> chỉ gọi thẳng hàm, <code>isStable</code> luôn <code>true</code>, <code>onStable</code> không bao giờ bắn.</td></tr>
+      <tr><td>SSR biết lúc nào được gửi HTML đi?</td><td>Qua <code>PendingTasks</code> — sổ việc đang chờ. Không còn đếm macrotask/microtask của Zone nữa. Việc async tự viết phải tự ghi sổ.</td></tr>
+      <tr><td>Di trú một dự án lớn bắt đầu từ đâu?</td><td>Bật zoneless trong <code>TestBed</code> trước để lộ chỗ hỏng; rà <code>subscribe</code> gán thẳng thuộc tính; tìm <code>onStable</code>; ghi sổ <code>PendingTasks</code>; gỡ <code>zone.js</code> khỏi polyfills sau cùng.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Chốt lại</p><h2>Bậc thang, đọc lại lần cuối</h2></div>
+  <ul class="steps">
+    <li><b>Zone + Default</b> — mọi việc bất đồng bộ kéo theo một lượt quét cả cây. Dễ viết nhất, tốn nhất.</li>
+    <li><b>Zone + OnPush</b> — vẫn duyệt từ gốc, nhưng bỏ qua nhánh không bị đánh dấu bẩn.</li>
+    <li><b>Zone + OnPush + eventCoalescing</b> — thêm việc gộp sự kiện DOM để giảm số lượt. <b>Dự án này đang ở đây.</b></li>
+    <li><b>Zoneless + signal</b> — không còn ai canh cửa; chỉ nhánh được báo mới bị đi vào, và mọi thông báo trong cùng một vòng lặp gộp thành một lượt.</li>
+  </ul>
+  <p>Nếu chỉ nhớ được một câu mang vào phòng phỏng vấn, hãy nhớ câu này: <b>Zone.js trả lời “vừa có việc gì đó chạy xong”, còn zoneless trả lời “chỗ này vừa đổi”.</b> Mọi thứ còn lại — danh sách nguồn thông báo, cuộc đua rAF/setTimeout, <code>PendingTasks</code> — đều là hệ quả của việc đổi câu hỏi đó.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>zoneless</td><td>Chế độ chạy Angular không dùng Zone.js để kích hoạt dò tìm thay đổi.</td></tr>
+      <tr><td>Zone.js</td><td>Thư viện vá đè lên mọi API bất đồng bộ để biết khi nào có việc chạy xong.</td></tr>
+      <tr><td>change detection</td><td>Dò tìm thay đổi — lượt Angular đi khắp cây so lại giá trị hiển thị.</td></tr>
+      <tr><td>ApplicationRef.tick()</td><td>Một lượt dò tìm thay đổi cho toàn ứng dụng.</td></tr>
+      <tr><td>scheduler (bộ hẹn lượt)</td><td>Thành phần nhận thông báo, ghi cờ và hẹn khi nào chạy <code>tick()</code>.</td></tr>
+      <tr><td>notify (báo)</td><td>Lời báo gửi cho scheduler rằng có thứ gì đó vừa đổi.</td></tr>
+      <tr><td>dirty flag (cờ bẩn)</td><td>Dấu ghi lại rằng một view cần được kiểm tra lại.</td></tr>
+      <tr><td>coalescing (gộp lượt)</td><td>Gom nhiều thông báo trong cùng khoảng thời gian thành một lượt quét.</td></tr>
+      <tr><td>signal</td><td>Ô dữ liệu tự biết ai đang đọc mình; đổi giá trị thì tự báo cho chỗ đó.</td></tr>
+      <tr><td>effect()</td><td>Hàm tự chạy lại mỗi khi một signal nó đọc bị đổi.</td></tr>
+      <tr><td>OnPush</td><td>Chế độ chỉ kiểm tra component khi có input mới, sự kiện, hoặc signal đổi.</td></tr>
+      <tr><td>ChangeDetectorRef.markForCheck()</td><td>Đánh dấu component là bẩn, và đánh dấu cả đường lên tới gốc.</td></tr>
+      <tr><td>AsyncPipe</td><td>Pipe <code>| async</code> — tự đăng ký observable và tự gọi <code>markForCheck()</code>.</td></tr>
+      <tr><td>observable</td><td>Dòng dữ liệu phát ra nhiều giá trị theo thời gian (RxJS).</td></tr>
+      <tr><td>subscribe</td><td>Đăng ký nhận giá trị từ một observable.</td></tr>
+      <tr><td>ComponentRef.setInput()</td><td>Đặt giá trị input cho component tạo động, từ ngoài template.</td></tr>
+      <tr><td>host listener</td><td>Hàm lắng nghe sự kiện gắn trên chính thẻ của component/directive.</td></tr>
+      <tr><td>render hook</td><td>Hàm hẹn chạy sau khi Angular render xong — <code>afterNextRender</code> và họ hàng.</td></tr>
+      <tr><td>&#64;defer</td><td>Khối tải muộn — chỉ tải và dựng nội dung khi cần.</td></tr>
+      <tr><td>requestAnimationFrame (rAF)</td><td>Hẹn chạy một hàm ngay trước khung hình kế tiếp của trình duyệt.</td></tr>
+      <tr><td>setTimeout</td><td>Hẹn chạy một hàm sau một khoảng thời gian.</td></tr>
+      <tr><td>event loop (vòng lặp sự kiện)</td><td>Cơ chế trình duyệt lần lượt lấy việc ra chạy.</td></tr>
+      <tr><td>NgZone</td><td>Dịch vụ Angular bọc quanh Zone.js, cho phép chạy trong hoặc ngoài vùng.</td></tr>
+      <tr><td>NoopNgZone</td><td>Bản <code>NgZone</code> rỗng dùng khi zoneless — mọi hàm chỉ gọi thẳng.</td></tr>
+      <tr><td>runOutsideAngular</td><td>Chạy một đoạn mã ngoài vùng Zone để nó không kích hoạt quét.</td></tr>
+      <tr><td>stability (trạng thái rảnh)</td><td>Lúc ứng dụng không còn việc bất đồng bộ nào đang chờ.</td></tr>
+      <tr><td>PendingTasks</td><td>Sổ ghi các việc đang chặn trạng thái rảnh của ứng dụng.</td></tr>
+      <tr><td>ApplicationRef.whenStable()</td><td>Lời hứa hoàn tất khi ứng dụng rảnh.</td></tr>
+      <tr><td>SSR</td><td>Kết xuất phía máy chủ — dựng sẵn HTML trên máy chủ trước khi gửi về trình duyệt.</td></tr>
+      <tr><td>polyfill</td><td>Đoạn mã bù vào tính năng trình duyệt còn thiếu, nạp trước ứng dụng.</td></tr>
+      <tr><td>TestBed</td><td>Bộ dựng môi trường giả lập của Angular để viết unit test.</td></tr>
+      <tr><td>micro frontend</td><td>Kiến trúc ghép nhiều ứng dụng độc lập vào chung một trang.</td></tr>
+    </tbody>
+  </table></div>
+</section>

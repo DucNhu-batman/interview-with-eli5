@@ -1,0 +1,79 @@
+<!--meta
+title: Day 31 — Guards và Resolvers, phần 2
+eyebrow: Angular · Day 31
+short: Day 31
+lede: canDeactivate — người gác ở chiều ra. Đây là thứ đứng sau hộp thoại "Bạn có chắc muốn rời khỏi trang khi chưa lưu?".
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Gác chiều ra, không phải chiều vào</h2></div>
+  <p><code>canDeactivate</code> chạy khi người dùng <em>rời khỏi</em> route: bấm menu, bấm breadcrumb, bấm nút Back của trình duyệt. Nó nhận chính component đang hiển thị, nên hỏi được "anh còn dữ liệu chưa lưu không?".</p>
+<pre><code>export <span class="kw">const</span> unsavedChangesGuard: CanDeactivateFn&lt;unknown&gt; = () =&gt; {
+  <span class="kw">const</span> service = inject(UnsavedChangesService);
+  <span class="kw">return</span> service.coThayDoi() ? service.hoiNguoiDung() : <span class="kw">true</span>;   <span class="cm">// Observable&lt;boolean&gt;</span>
+};</code></pre>
+  <div class="callout">
+    <p><strong>Trong dự án này việc đó đã được làm sẵn ở tầng hạ tầng:</strong> <code>IamFormPageShell</code> tự đăng ký vào <code>UnsavedChangesService</code>, còn <code>withUnsavedChangesGuard(routes)</code> gắn guard cho toàn bộ cây route một lần trong <code>main-router.ts</code>. Một màn hình mới chỉ cần khai <code>confirmLeaveProps</code> và truyền <code>[unsavedChanges]</code> là có ngay hộp thoại xác nhận — không phải viết guard riêng.</p>
+  </div>
+  <div class="callout bad">
+    <p><strong>Và một luật bắt buộc đi kèm:</strong> mọi <code>navigateToList()</code> / <code>navigateBack()</code> do chính facade gọi phải gọi <code>allowNextNavigation()</code> ngay trước <code>router.navigate(...)</code>. Thiếu bước này, lưu thành công xong vẫn bị hỏi "Xác nhận huỷ" — vì form vẫn khác ảnh chụp ban đầu.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Giới hạn</p><h2>Guard không chặn được cái gì</h2></div>
+  <p>Guard chỉ hoạt động với điều hướng <em>bên trong</em> ứng dụng. Người dùng đóng tab, F5, hay gõ URL khác vào thanh địa chỉ thì router không hề biết. Muốn chặn những trường hợp đó phải dùng sự kiện <code>beforeunload</code> của trình duyệt — và trình duyệt chỉ cho hiện một hộp thoại mặc định, không tuỳ biến được nội dung.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Cứu dữ liệu người dùng.</b> Một form dài bị mất vì lỡ tay bấm menu là trải nghiệm tệ nhất có thể.</li>
+        <li><b>Áp dụng cho mọi kiểu rời trang trong app,</b> không chỉ nút Back của riêng màn hình.</li>
+        <li><b>Trả về Observable</b> nên hỏi người dùng bằng dialog tuỳ biến được.</li>
+        <li><b>Gắn tập trung một lần</b> thì mọi màn mới đều được bảo vệ mặc định.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>&lt;qp45-form-page-shell [props]="{ confirmLeaveProps: LEAVE }"
+                      [unsavedChanges]="() =&gt; hasFormChanged(form, snapshot)"&gt;
+<span class="cm">// Người dùng gõ nửa chừng rồi bấm menu bên trái:</span>
+<span class="cm">// → hộp thoại "Bạn có chắc muốn rời khỏi trang?" hiện ra, dữ liệu được cứu.</span>
+<span class="cm">// Không phải viết guard riêng cho màn này.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Không chặn được F5, đóng tab, gõ URL.</b></li>
+        <li><b>Phát hiện "đã thay đổi" rất dễ sai</b> — so sánh hời hợt sẽ hỏi cả khi người dùng chưa gõ gì.</li>
+        <li><b>Hỏi quá nhiều gây khó chịu,</b> người dùng sẽ bấm bừa cho xong.</li>
+        <li><b>Quên bỏ chặn sau khi lưu</b> là lỗi kinh điển, làm hộp thoại bật ra đúng lúc không nên.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>luuThanhCong() {
+  <span class="kw">this</span>.router.navigate([<span class="str">'/kho'</span>]);       <span class="cm">// ✗ thiếu allowNextNavigation()</span>
+}
+<span class="cm">// → Lưu xong, form vẫn khác ảnh chụp ban đầu,</span>
+<span class="cm">// guard bật hộp thoại "Xác nhận huỷ" ngay sau khi lưu thành công.</span>
+
+<span class="cm">// Và guard bất lực với:</span>
+<span class="cm">// F5, đóng tab, gõ URL khác — chỉ beforeunload xử lý được, và không tuỳ biến</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>canDeactivate</td><td>Guard chạy khi rời khỏi route.</td></tr>
+      <tr><td>dirty</td><td>Trạng thái "đã bị sửa, chưa lưu".</td></tr>
+      <tr><td>snapshot</td><td>Ảnh chụp dữ liệu form lúc mở, dùng để so sánh.</td></tr>
+      <tr><td>beforeunload</td><td>Sự kiện trình duyệt phát khi đóng/tải lại trang.</td></tr>
+      <tr><td>breadcrumb</td><td>Dải đường dẫn điều hướng ở đầu trang.</td></tr>
+    </tbody>
+  </table></div>
+</section>

@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="vi" data-track="rxjs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Observable bậc cao — luồng chứa luồng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><a href="index.html">RxJS</a><span>/</span><span class="now">Observable bậc cao</span></nav>
+<header class="hero col">
+<p class="eyebrow">RxJS · Bài 4</p>
+<h1>Observable bậc cao — luồng chứa luồng</h1>
+<p class="lede">Khi mỗi giá trị của luồng lại là một luồng khác, phải "làm phẳng" nó mới lấy được dữ liệu. Hiểu chỗ này thì switchMap / mergeMap / concatMap / exhaustMap không còn là bốn cái tên phải học thuộc.</p>
+</header>
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Cái hộp bên trong lại là một cái hộp</h2></div>
+  <p>Bình thường một Observable (luồng dữ liệu — thứ lần lượt phát ra từng giá trị theo thời gian) phát ra số, chuỗi, đối tượng. <strong>Higher-order Observable</strong> (luồng bậc cao) là luồng mà mỗi giá trị nó phát ra <em>lại là một Observable khác</em>.</p>
+  <p>Nghe trừu tượng, nhưng bạn tạo ra nó mỗi lần dùng <code>map</code> với một lời gọi API (giao diện lập trình — đường gọi mà máy chủ mở ra cho ứng dụng):</p>
+<pre><code><span class="cm">// http.get() KHÔNG trả về dữ liệu — nó trả về một Observable</span>
+<span class="kw">const</span> kq$ = tuKhoa$.pipe(
+  map((tk) =&gt; <span class="kw">this</span>.http.get(<span class="str">'/api/tim?q='</span> + tk)),
+);
+<span class="cm">// Kiểu của kq$ là Observable&lt;Observable&lt;KetQua&gt;&gt; — hai tầng!</span>
+
+kq$.subscribe((x) =&gt; console.log(x));
+<span class="out">// Observable { … }   ← không phải dữ liệu, mà là cái hộp chưa mở</span>
+<span class="cm">// Và vì chưa ai subscribe vào hộp trong, request còn chưa được gửi đi.</span></code></pre>
+  <p>Dấu hiệu nhận ra: log ra thấy <code>Observable {}</code> thay vì đối tượng mong đợi, hoặc mở tab Network thấy <strong>không có request nào</strong> dù mã trông như đã gọi API. Việc còn thiếu gọi là <strong>flattening</strong> (làm phẳng — mở hộp trong ra, đăng ký nghe nó, rồi đẩy giá trị bên trong ra ngoài).</p>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> mọi toán tử <code>*Map</code> đều là <b>map + làm phẳng</b> gộp làm một. Câu hỏi duy nhất phân biệt chúng là: <em>khi hộp trong cũ chưa mở xong mà hộp trong mới đã tới thì làm gì?</em></p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Hai tầng, và bước làm phẳng</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 306" role="img" aria-label="Sơ đồ ba tầng. Tầng trên là luồng ngoài phát ra hai giá trị a và b. Tầng giữa cho thấy mỗi giá trị mở ra một luồng con riêng, luồng con của a phát a1 a2 và luồng con của b phát b1 b2. Tầng dưới là kết quả sau khi làm phẳng, các giá trị con được gộp vào một luồng duy nhất theo chính sách của toán tử được chọn.">
+        <defs>
+          <marker id="hoArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <g>
+          <rect x="0" y="10" width="720" height="60" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="36" font-size="12" font-weight="700" fill="currentColor" font-family="monospace">luồng ngoài</text>
+          <text x="14" y="52" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">bậc cao</text>
+          <line x1="140" y1="42" x2="700" y2="42" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#hoArrow)"></line>
+          <circle cx="200" cy="42" r="13" fill="var(--accent)"></circle><text x="200" y="47" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="420" cy="42" r="13" fill="var(--accent)"></circle><text x="420" y="47" font-size="12" font-weight="700" text-anchor="middle" fill="var(--surface)">b</text>
+          <text x="222" y="30" font-size="10" fill="currentColor" opacity=".7" font-family="monospace">mỗi giá trị mở ra một luồng con</text>
+        </g>
+
+        <line x1="200" y1="70" x2="200" y2="92" stroke="currentColor" stroke-width="1.3" opacity=".5" marker-end="url(#hoArrow)"></line>
+        <line x1="420" y1="70" x2="420" y2="140" stroke="currentColor" stroke-width="1.3" opacity=".5" marker-end="url(#hoArrow)"></line>
+
+        <g>
+          <rect x="180" y="96" width="330" height="44" rx="10" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="5 4"></rect>
+          <text x="192" y="112" font-size="10.5" fill="var(--accent)" font-family="monospace">luồng con của a</text>
+          <line x1="196" y1="128" x2="500" y2="128" stroke="currentColor" stroke-width="1.2" opacity=".4" marker-end="url(#hoArrow)"></line>
+          <circle cx="260" cy="128" r="11" fill="var(--accent)" opacity=".75"></circle><text x="260" y="132" font-size="10" font-weight="700" text-anchor="middle" fill="var(--surface)">a1</text>
+          <circle cx="340" cy="128" r="11" fill="var(--accent)" opacity=".75"></circle><text x="340" y="132" font-size="10" font-weight="700" text-anchor="middle" fill="var(--surface)">a2</text>
+        </g>
+
+        <g>
+          <rect x="400" y="146" width="300" height="44" rx="10" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="5 4"></rect>
+          <text x="412" y="162" font-size="10.5" fill="var(--accent)" font-family="monospace">luồng con của b</text>
+          <line x1="416" y1="178" x2="690" y2="178" stroke="currentColor" stroke-width="1.2" opacity=".4" marker-end="url(#hoArrow)"></line>
+          <circle cx="480" cy="178" r="11" fill="var(--accent)" opacity=".75"></circle><text x="480" y="182" font-size="10" font-weight="700" text-anchor="middle" fill="var(--surface)">b1</text>
+          <circle cx="560" cy="178" r="11" fill="var(--accent)" opacity=".75"></circle><text x="560" y="182" font-size="10" font-weight="700" text-anchor="middle" fill="var(--surface)">b2</text>
+        </g>
+
+        <line x1="340" y1="140" x2="340" y2="214" stroke="currentColor" stroke-width="1.3" opacity=".5" marker-end="url(#hoArrow)"></line>
+        <line x1="560" y1="190" x2="560" y2="214" stroke="currentColor" stroke-width="1.3" opacity=".5" marker-end="url(#hoArrow)"></line>
+        <text x="352" y="210" font-size="10.5" fill="var(--good)" font-family="monospace">làm phẳng</text>
+
+        <g>
+          <rect x="0" y="222" width="720" height="60" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="248" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">kết quả</text>
+          <text x="14" y="264" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">một tầng</text>
+          <line x1="140" y1="254" x2="700" y2="254" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#hoArrow)"></line>
+          <circle cx="260" cy="254" r="13" fill="var(--accent)"></circle><text x="260" y="258" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">a1</text>
+          <circle cx="340" cy="254" r="13" fill="var(--accent)"></circle><text x="340" y="258" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">a2</text>
+          <circle cx="480" cy="254" r="13" fill="var(--accent)"></circle><text x="480" y="258" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">b1</text>
+          <circle cx="560" cy="254" r="13" fill="var(--accent)"></circle><text x="560" y="258" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">b2</text>
+        </g>
+
+        <text x="14" y="300" font-size="11" fill="currentColor" opacity=".8">Hình vẽ theo kiểu mergeMap (giữ hết). Đổi toán tử là đổi chuyện gì xảy ra khi luồng con của a chưa xong mà b đã tới.</text>
+      </svg>
+    </div>
+    <figcaption>Không có bước làm phẳng, thứ tới tay người đăng ký nghe là hai hình chữ nhật nét đứt — chứ không phải a1, a2, b1, b2.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2><code>map</code> + toán tử làm phẳng = toán tử <code>*Map</code></h2></div>
+  <p class="col">RxJS có hai bộ toán tử song song. Bộ <code>*All</code> chỉ làm phẳng một luồng vốn đã là bậc cao; bộ <code>*Map</code> gộp luôn cả bước <code>map</code>. Chúng tương đương từng cặp một:</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Viết dài</th><th>Viết gọn</th><th>Chính sách khi luồng con cũ chưa xong</th></tr></thead>
+    <tbody>
+      <tr><td>map(fn), switchAll()</td><td>switchMap(fn)</td><td>Huỷ luồng con cũ, chạy luồng con mới</td></tr>
+      <tr><td>map(fn), mergeAll()</td><td>mergeMap(fn)</td><td>Chạy song song tất cả, ai xong trước ra trước</td></tr>
+      <tr><td>map(fn), concatAll()</td><td>concatMap(fn)</td><td>Xếp hàng, xong cái này mới mở cái kia</td></tr>
+      <tr><td>map(fn), exhaustAll()</td><td>exhaustMap(fn)</td><td>Bỏ qua luồng con mới cho tới khi cái cũ xong</td></tr>
+    </tbody>
+  </table></div>
+<pre><code><span class="cm">// Ba cách viết dưới đây làm y hệt nhau:</span>
+tuKhoa$.pipe(map((tk) =&gt; api.tim(tk)), mergeAll())
+tuKhoa$.pipe(mergeMap((tk) =&gt; api.tim(tk)))
+tuKhoa$.pipe(mergeMap(api.tim))
+
+<span class="cm">// mergeAll còn nhận trần đồng thời, đúng như mergeMap:</span>
+tepTai$.pipe(map(api.tai), mergeAll(<span class="kw">3</span>))   <span class="cm">// tối đa 3 luồng con cùng lúc</span></code></pre>
+  <p class="col">Thực tế bộ <code>*All</code> hiếm khi cần: chỉ dùng khi luồng <em>đã sẵn</em> là bậc cao mà không phải do bạn <code>map</code> ra — ví dụ một <code>Subject&lt;Observable&lt;T&gt;&gt;</code> nhận luồng từ nơi khác đưa tới. Còn lại luôn dùng bản <code>*Map</code>.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Vấn đề</p><h2>Đăng ký lồng đăng ký — cái sai kinh điển</h2></div>
+  <p class="col">Người mới thường "giải" bài toán hai tầng bằng cách đăng ký nghe (subscribe) bên trong một đăng ký khác. Nó chạy được, và đó chính là điều nguy hiểm:</p>
+  <div class="cards">
+    <div class="card">
+      <span class="tag bad">Đừng làm</span>
+      <h3>Đăng ký lồng nhau</h3>
+<pre><code>tuKhoa$.subscribe((tk) =&gt; {
+  api.tim(tk).subscribe((kq) =&gt; {
+    <span class="kw">this</span>.ketQua.set(kq);
+  });
+});</code></pre>
+      <p>Không huỷ được request cũ, không xử lý lỗi tập trung, không dọn được đăng ký bên trong, và lồng thêm một tầng nữa là thành kim tự tháp.</p>
+    </div>
+    <div class="card">
+      <span class="tag">Nên làm</span>
+      <h3>Làm phẳng trong <code>pipe</code></h3>
+<pre><code>tuKhoa$.pipe(
+  switchMap((tk) =&gt; api.tim(tk)),
+  takeUntilDestroyed(<span class="kw">this</span>.destroyRef),
+).subscribe((kq) =&gt; <span class="kw">this</span>.ketQua.set(kq));</code></pre>
+      <p>Một đăng ký duy nhất, tự huỷ request cũ, lỗi đi qua một đường, dọn dẹp một chỗ.</p>
+    </div>
+  </div>
+  <div class="callout bad">
+    <p><strong>Vì sao đăng ký lồng nhau nguy hiểm:</strong> đăng ký bên trong <b>không</b> bị huỷ khi đăng ký bên ngoài bị huỷ. Rời màn hình giữa lúc request đang chạy, hàm gọi lại bên trong vẫn nổ và vẫn gán vào một component đã chết — rò rỉ bộ nhớ (memory leak) cộng với lỗi khó lần. Thấy <code>.subscribe(</code> nằm trong thân một <code>.subscribe(</code> khác thì gần như chắc chắn là chỗ cần sửa.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Ghép việc phụ thuộc nhau thành một mạch phẳng</b> — lấy id rồi lấy chi tiết rồi lấy quyền, không lồng tầng nào.</li>
+        <li><b>Chính sách đồng thời nằm ngay trong tên toán tử</b>, đọc mã là biết ngay huỷ hay xếp hàng hay song song.</li>
+        <li><b>Một đăng ký duy nhất</b> — dọn một chỗ là dọn sạch cả cây luồng con.</li>
+        <li><b>Lỗi của luồng con chảy ra luồng ngoài</b>, bắt tập trung bằng <code>catchError</code> thay vì rải rác.</li>
+        <li><b>Huỷ lan xuống dưới</b>: huỷ luồng ngoài là mọi request con đang chạy cũng bị huỷ theo.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Chuỗi ba bước phụ thuộc nhau, vẫn phẳng:</span>
+route.paramMap.pipe(
+  map((p) =&gt; p.get(<span class="str">'id'</span>)!),
+  switchMap((id) =&gt; api.chiTiet(id)),
+  switchMap((ct) =&gt; api.quyen(ct.chuSoHuu)),
+  catchError(() =&gt; of(QUYEN_MAC_DINH)),   <span class="cm">// bắt lỗi của CẢ chuỗi</span>
+).subscribe((q) =&gt; <span class="kw">this</span>.quyen.set(q));</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Quên làm phẳng thì im lặng hỏng</b> — không lỗi, không request, chỉ là dữ liệu không bao giờ tới.</li>
+        <li><b>Lỗi của luồng con giết cả luồng ngoài</b> nếu không đặt <code>catchError</code> <em>bên trong</em> luồng con: một request hỏng là ô tìm kiếm chết hẳn.</li>
+        <li><b>Kiểu dữ liệu lồng nhau khó đọc</b> — <code>Observable&lt;Observable&lt;T[]&gt;&gt;</code> làm thông báo lỗi của TypeScript (bộ kiểm kiểu) dài và khó hiểu.</li>
+        <li><b>Gỡ lỗi khó</b>: dấu vết lỗi (stack trace) chỉ tới bụng RxJS, không chỉ ra chỗ trong mã của bạn.</li>
+        <li><b>Lồng nhiều tầng <code>*Map</code></b> nhanh chóng thành thứ không ai dám sửa.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// ✗ quên làm phẳng — không có request nào được gửi</span>
+tuKhoa$.pipe(map((tk) =&gt; api.tim(tk)))
+  .subscribe((x) =&gt; console.log(x));
+<span class="out">// Observable { … }</span>
+
+<span class="cm">// ✗ lỗi luồng con giết luồng ngoài</span>
+tuKhoa$.pipe(switchMap((tk) =&gt; api.tim(tk)))
+<span class="cm">// 1 request lỗi → luồng kết thúc, gõ tiếp không còn tác dụng.</span>
+
+<span class="cm">// ✓ bắt lỗi BÊN TRONG luồng con để luồng ngoài sống tiếp</span>
+tuKhoa$.pipe(
+  switchMap((tk) =&gt; api.tim(tk).pipe(catchError(() =&gt; of([])))),
+)</code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> hễ hàm truyền vào <code>map</code> trả về một Observable thì đổi ngay sang <code>*Map</code> tương ứng. Không bao giờ đặt <code>.subscribe</code> trong <code>.subscribe</code>. Và luôn hỏi thêm một câu: <em>lỗi của luồng con nên giết luồng ngoài hay không?</em> — nếu không, đặt <code>catchError</code> vào <b>bên trong</b> luồng con, chứ không phải ở cuối <code>pipe</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>Observable</td><td>Luồng dữ liệu — thứ lần lượt phát ra từng giá trị theo thời gian.</td></tr>
+      <tr><td>higher-order Observable</td><td>Luồng bậc cao — luồng mà mỗi giá trị của nó lại là một luồng khác.</td></tr>
+      <tr><td>inner / outer observable</td><td>Luồng con / luồng ngoài — luồng bên trong và luồng sinh ra nó.</td></tr>
+      <tr><td>flattening</td><td>Làm phẳng — mở luồng con ra và đẩy giá trị bên trong nó ra luồng kết quả.</td></tr>
+      <tr><td>mergeAll / switchAll / concatAll / exhaustAll</td><td>Bốn toán tử chỉ làm phẳng, không kèm bước <code>map</code>.</td></tr>
+      <tr><td>subscribe</td><td>Đăng ký nghe — hành động khiến luồng bắt đầu chạy.</td></tr>
+      <tr><td>nested subscribe</td><td>Đăng ký lồng nhau — đặt một <code>subscribe</code> trong thân của <code>subscribe</code> khác.</td></tr>
+      <tr><td>catchError</td><td>Toán tử bắt lỗi của luồng và thay bằng một luồng dự phòng.</td></tr>
+      <tr><td>concurrency</td><td>Tính đồng thời — nhiều việc cùng chạy một lúc.</td></tr>
+      <tr><td>API</td><td>Giao diện lập trình — đường gọi mà máy chủ mở ra cho ứng dụng.</td></tr>
+      <tr><td>request</td><td>Lời gọi tới máy chủ để lấy hoặc ghi dữ liệu.</td></tr>
+      <tr><td>memory leak</td><td>Rò rỉ bộ nhớ — thứ đáng lẽ phải được dọn nhưng vẫn bị giữ lại.</td></tr>
+      <tr><td>stack trace</td><td>Dấu vết lỗi — danh sách các hàm đã gọi tới chỗ phát sinh lỗi.</td></tr>
+      <tr><td>TypeScript</td><td>Bộ kiểm kiểu cho JavaScript — bắt lỗi kiểu dữ liệu trước khi chạy.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<nav class="pager"><a class="prev" href="distinct-until-changed.html"><span class="dir">← Bài trước</span><span class="nm">distinctUntilChanged — chặn giá trị lặp lại</span></a><a class="next" href="take-until-destroyed.html"><span class="dir">Bài tiếp →</span><span class="nm">takeUntilDestroyed — huỷ đăng ký đúng lúc</span></a></nav>
+<footer class="page-foot col"><p>Sổ tay eli5 · RxJS · trang 4/10</p></footer>
+</div>
+</body>
+</html>

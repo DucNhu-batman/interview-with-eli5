@@ -1,0 +1,78 @@
+<!--meta
+title: Day 43 — Directive vô hiệu hoá control của reactive form
+eyebrow: Angular · Day 43
+short: Day 43
+lede: Angular cảnh báo khi bạn dùng [disabled] trên một control có formControlName. Bài này giải thích vì sao, và cách viết directive để làm đúng.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Vấn đề</p><h2>Hai nguồn sự thật đánh nhau</h2></div>
+  <p>Với reactive form, trạng thái bật/tắt thuộc về <em>control</em>, không thuộc về thẻ HTML. Viết <code>[disabled]="dieuKien"</code> là tạo ra nguồn sự thật thứ hai, và Angular in cảnh báo <em>"It looks like you're using the disabled attribute with a reactive form directive"</em>.</p>
+  <p>Cách đúng theo tài liệu là gọi <code>control.disable()</code>/<code>enable()</code> trong lớp — nhưng viết trong template lại tiện hơn nhiều. Một directive nhỏ dung hoà được cả hai:</p>
+<pre><code>&#64;Directive({ selector: <span class="str">'[formControl][qp45Disabled], [formControlName][qp45Disabled]'</span> })
+export class Qp45DisabledControl {
+  <span class="kw">private</span> dir = inject(NgControl);
+  qp45Disabled = input(<span class="kw">false</span>, { transform: booleanAttribute });
+
+  <span class="kw">constructor</span>() {
+    effect(() =&gt; {
+      <span class="kw">const</span> c = <span class="kw">this</span>.dir.control;
+      <span class="kw">this</span>.qp45Disabled() ? c?.disable({ emitEvent: <span class="kw">false</span> })
+                          : c?.enable({ emitEvent: <span class="kw">false</span> });
+    });
+  }
+}
+
+&lt;input formControlName="ma" [qp45Disabled]="!choPhepSua()" /&gt;</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Khai báo ngay trong template</b> nhưng vẫn đi qua API chính thức của control.</li>
+        <li><b>Hết cảnh báo trong console,</b> không còn hai nguồn sự thật.</li>
+        <li><b>Dùng lại ở mọi form,</b> không lặp <code>enable/disable</code> trong từng component.</li>
+        <li><b><code>emitEvent: false</code></b> tránh kích hoạt <code>valueChanges</code> thừa.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Thay vì rải trong lớp:</span>
+<span class="kw">if</span> (!choPhepSua) form.controls.ma.disable();
+<span class="kw">else</span> form.controls.ma.enable();
+<span class="cm">// … lặp lại ở mọi chỗ điều kiện đổi</span>
+
+<span class="cm">// Chỉ còn một dòng trong template, luôn đồng bộ:</span>
+&lt;input formControlName="ma" [qp45Disabled]="!choPhepSua()" /&gt;</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Control bị vô hiệu biến mất khỏi <code>form.value</code></b> — đây là hành vi của Angular, directive không đổi được.</li>
+        <li><b>Thêm một khái niệm riêng của dự án,</b> người mới phải học.</li>
+        <li><b>Dễ xung đột</b> nếu nơi khác cũng gọi <code>disable()</code> trên chính control đó.</li>
+        <li><b>Vô hiệu hoá không phải là bảo mật:</b> người dùng vẫn sửa được bằng công cụ trình duyệt.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&lt;input formControlName="ma" [qp45Disabled]="true" /&gt;
+api.capNhat(form.value);        <span class="cm">// ✗ payload thiếu hẳn trường "ma"</span>
+api.capNhat(form.getRawValue()); <span class="cm">// ✓</span>
+
+<span class="cm">// Và máy chủ vẫn phải tự kiểm tra quyền sửa trường đó</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>NgControl</td><td>Cầu nối giữa directive và control của form.</td></tr>
+      <tr><td>disable() / enable()</td><td>Vô hiệu hoá / bật lại một control.</td></tr>
+      <tr><td>emitEvent</td><td>Có phát sự kiện thay đổi hay không.</td></tr>
+      <tr><td>host directive</td><td>Directive gắn thêm hành vi cho phần tử/component có sẵn.</td></tr>
+    </tbody>
+  </table></div>
+</section>

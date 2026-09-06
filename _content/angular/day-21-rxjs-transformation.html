@@ -1,0 +1,81 @@
+<!--meta
+title: Day 21 — RxJS Transformation Operators
+eyebrow: Angular · Day 21
+short: Day 21
+lede: map, switchMap, mergeMap, concatMap, exhaustMap — chọn sai một cái là sinh ra bug đua nhau hoặc gọi API trùng.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Biến đổi giá trị, và biến đổi thành luồng khác</h2></div>
+  <p><code>map</code> đơn giản: đổi từng giá trị. Nhóm còn lại (gọi chung là higher-order mapping — ánh xạ bậc cao) làm việc khó hơn: mỗi giá trị đến lại mở ra <em>một luồng mới</em> (thường là một request), và câu hỏi là <strong>xử lý sao khi luồng cũ chưa xong mà giá trị mới đã tới</strong>.</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Toán tử</th><th>Khi có giá trị mới</th><th>Hợp với</th></tr></thead>
+    <tbody>
+      <tr><td>switchMap</td><td>Huỷ luồng cũ, chạy luồng mới</td><td>Ô tìm kiếm, lọc, đổi route</td></tr>
+      <tr><td>mergeMap</td><td>Chạy song song tất cả</td><td>Tải nhiều file cùng lúc</td></tr>
+      <tr><td>concatMap</td><td>Xếp hàng, xong cái này mới tới cái kia</td><td>Ghi dữ liệu cần đúng thứ tự</td></tr>
+      <tr><td>exhaustMap</td><td>Bỏ qua giá trị mới nếu luồng cũ chưa xong</td><td>Nút Lưu chống bấm hai lần</td></tr>
+    </tbody>
+  </table></div>
+<pre><code>tuKhoa$.pipe(
+  debounceTime(300),
+  distinctUntilChanged(),
+  switchMap((tk) =&gt; <span class="kw">this</span>.api.tim(tk)),   <span class="cm">// gõ tiếp → huỷ request cũ</span>
+).subscribe((kq) =&gt; <span class="kw">this</span>.ketQua.set(kq));</code></pre>
+  <div class="callout bad">
+    <p><strong>Bug kinh điển:</strong> dùng <code>mergeMap</code> cho ô tìm kiếm. Request cho "ab" có thể về sau request cho "abc", và kết quả cũ ghi đè kết quả mới — người dùng thấy danh sách không khớp từ khoá đang gõ. Đúng cho tình huống này là <code>switchMap</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Diễn đạt được chính sách đồng thời</b> chỉ bằng cách chọn đúng tên toán tử.</li>
+        <li><b>Tự huỷ request thừa</b> với <code>switchMap</code> — bớt tải cho máy chủ, hết bug kết quả cũ đè kết quả mới.</li>
+        <li><b>Không cần cờ <code>dangGui</code> thủ công</b> khi dùng <code>exhaustMap</code>.</li>
+        <li><b>Ghép chuỗi phụ thuộc gọn:</b> lấy chi tiết sau khi có id, không lồng callback.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>tuKhoa$.pipe(switchMap((tk) =&gt; api.tim(tk)))
+<span class="cm">// Gõ "a" → "ab" → "abc": hai request đầu bị huỷ ngay,</span>
+<span class="cm">// chỉ kết quả của "abc" được hiển thị. Không cần cờ, không cần đếm.</span>
+
+nutLuu$.pipe(exhaustMap(() =&gt; api.luu(dl)))
+<span class="cm">// Bấm Lưu 5 lần liên tiếp → chỉ 1 request được gửi.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Bốn cái tên rất dễ chọn nhầm,</b> mà chọn nhầm thì bug chỉ hiện khi mạng chậm — khó tái hiện.</li>
+        <li><b><code>switchMap</code> huỷ cả thao tác ghi.</b> Dùng cho lệnh lưu là mất dữ liệu.</li>
+        <li><b><code>mergeMap</code> không giới hạn</b> có thể bắn hàng trăm request cùng lúc.</li>
+        <li><b>Lồng nhiều tầng làm luồng khó đọc</b> và khó gỡ lỗi.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>tuKhoa$.pipe(mergeMap((tk) =&gt; api.tim(tk)))
+<span class="cm">// ✗ request "ab" về SAU request "abc" → kết quả cũ ghi đè kết quả mới</span>
+<span class="cm">// Người dùng thấy danh sách không khớp từ khoá đang gõ.</span>
+<span class="cm">// Tệ nhất: chỉ xảy ra khi mạng chậm, máy dev không bao giờ tái hiện được.</span>
+
+nutLuu$.pipe(switchMap(() =&gt; api.luu(dl)))
+<span class="cm">// ✗ bấm Lưu lần hai huỷ lệnh lưu lần một đang chạy → mất dữ liệu</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>transformation operator</td><td>Toán tử biến đổi giá trị trong luồng.</td></tr>
+      <tr><td>higher-order observable</td><td>Luồng mà mỗi giá trị lại là một luồng khác.</td></tr>
+      <tr><td>race condition</td><td>Tình trạng đua — kết quả phụ thuộc cái nào về trước.</td></tr>
+      <tr><td>concurrency</td><td>Tính đồng thời — nhiều việc cùng chạy.</td></tr>
+      <tr><td>distinctUntilChanged</td><td>Bỏ qua giá trị trùng với giá trị liền trước.</td></tr>
+    </tbody>
+  </table></div>
+</section>

@@ -1,0 +1,70 @@
+<!--meta
+title: Day 40 — Jira Clone 01: kế hoạch và khởi tạo dự án
+eyebrow: Angular · Day 40
+short: Day 40
+lede: Trước khi gõ dòng code đầu tiên: chốt phạm vi, vẽ cây màn hình, thống nhất cấu trúc thư mục và quy ước đặt tên.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Việc phải làm trước khi code</h2></div>
+  <ol class="steps">
+    <li><span><b>Chốt phạm vi.</b> Bản đầu làm gì, chưa làm gì. Không có ranh giới thì dự án học tập nào cũng phình ra rồi bỏ dở.</span></li>
+    <li><span><b>Vẽ cây màn hình và URL</b> tương ứng — đây chính là bảng route sau này.</span></li>
+    <li><span><b>Chọn cấu trúc thư mục:</b> chia theo tính năng (<code>features/</code>), phần dùng chung ở <code>core/</code> và <code>components/</code>.</span></li>
+    <li><span><b>Thống nhất quy ước</b> đặt tên file, tiền tố selector, cách viết state — ghi vào README ngay từ đầu.</span></li>
+  </ol>
+<pre><code>src/app/
+  core/         <span class="cm">// service hạ tầng, interceptor, guard — dùng toàn ứng dụng</span>
+  components/   <span class="cm">// component dùng chung, không dính nghiệp vụ</span>
+  features/
+    board/      <span class="cm">// mỗi tính năng: routes.ts, pages/, components/, dto/, constants/</span>
+    issue/
+  utils/</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của việc chuẩn bị kỹ</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Nhiều người làm song song được</b> vì ranh giới thư mục rõ ràng.</li>
+        <li><b>Đoán được vị trí file.</b> Cần sửa màn nào biết ngay vào đâu tìm.</li>
+        <li><b>Quy ước sớm tránh phải đổi tên hàng loạt</b> khi dự án đã lớn.</li>
+        <li><b>Cây màn hình chính là bảng route,</b> đỡ phải thiết kế lại lần nữa.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Quy ước rõ → hai người làm hai feature không đụng nhau</span>
+features/board/…    ← người A
+features/issue/…    ← người B
+components/…        ← chỉ sửa khi cả hai cùng cần, có review riêng</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Thiết kế quá sớm cho thứ chưa hiểu rõ</b> dễ thành cấu trúc thừa, phải phá đi làm lại.</li>
+        <li><b>Sa đà vào bàn bạc</b> mà chưa có gì chạy được để kiểm chứng.</li>
+        <li><b>Quy ước cứng nhắc</b> khiến việc đơn giản cũng phải qua nhiều lớp.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// Dựng sẵn 5 tầng cho một màn danh sách 1 bảng:</span>
+board.component → board.facade → board.store
+  → board.service → board.repository → http
+<span class="cm">// Sửa thêm một cột phải đụng 5 file, không ai nhớ tầng nào làm gì</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>scope</td><td>Phạm vi — những gì có và không có trong bản này.</td></tr>
+      <tr><td>feature folder</td><td>Cấu trúc thư mục chia theo tính năng nghiệp vụ.</td></tr>
+      <tr><td>facade</td><td>Lớp gom state và logic cho một màn hình.</td></tr>
+      <tr><td>selector prefix</td><td>Tiền tố thẻ component, ví dụ <code>qp45-</code>.</td></tr>
+      <tr><td>MVP</td><td>Bản chạy được tối thiểu, đủ để kiểm chứng ý tưởng.</td></tr>
+    </tbody>
+  </table></div>
+</section>

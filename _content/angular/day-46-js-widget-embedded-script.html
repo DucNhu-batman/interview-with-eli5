@@ -1,0 +1,70 @@
+<!--meta
+title: Day 46 — JavaScript Widget và Embedded Script
+eyebrow: Angular · Day 46
+short: Day 46
+lede: Đóng gói một phần ứng dụng Angular thành đoạn script nhúng được vào bất kỳ trang web nào — và cái giá phải trả về kích thước lẫn cách ly.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Bán lẻ một mẩu ứng dụng</h2></div>
+  <p>Widget (tiện ích nhúng) là một mẩu giao diện chạy được bên trong trang của người khác — hộp chat, ô tra cứu, nút đặt lịch. Cách làm trong Angular là gói component thành custom element (phần tử tuỳ chỉnh, chuẩn Web Components) rồi phát hành một file script duy nhất.</p>
+<pre><code><span class="cm">// main.ts của bản widget</span>
+<span class="kw">const</span> app = <span class="kw">await</span> createApplication({ providers: [provideHttpClient()] });
+<span class="kw">const</span> el = createCustomElement(TraCuuWidget, { injector: app.injector });
+customElements.define(<span class="str">'qp45-tra-cuu'</span>, el);
+
+<span class="cm">// Trang khách chỉ cần hai dòng</span>
+&lt;script src="https://cdn.noi-bo/tra-cuu.js" defer&gt;&lt;/script&gt;
+&lt;qp45-tra-cuu ma-kho="KHO-0001"&gt;&lt;/qp45-tra-cuu&gt;</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Dùng lại được ở mọi nơi:</b> trang WordPress, portal cũ, ứng dụng của đối tác.</li>
+        <li><b>Một nguồn code duy nhất</b> cho cả ứng dụng chính lẫn widget.</li>
+        <li><b>Tích hợp cực nhẹ cho bên nhúng:</b> chỉ một thẻ script và một thẻ HTML.</li>
+        <li><b>Nâng cấp tập trung:</b> sửa ở nguồn là mọi trang nhúng đều được bản mới.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Cùng một component, hai nơi dùng</span>
+&lt;qp45-tra-cuu [maKho]="ma()" /&gt;         <span class="cm">// trong app Angular</span>
+&lt;qp45-tra-cuu ma-kho="KHO-0001"&gt;       <span class="cm">// trong trang HTML thuần</span>
+<span class="cm">// Sửa nghiệp vụ một lần, cả hai nơi cùng cập nhật</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Nặng.</b> Widget mang theo cả runtime Angular — hàng trăm KB cho một ô tra cứu.</li>
+        <li><b>Xung đột CSS hai chiều</b> nếu không dùng Shadow DOM để cách ly.</li>
+        <li><b>Chỉ nhận chuỗi qua thuộc tính HTML,</b> muốn truyền object phải gán bằng JavaScript.</li>
+        <li><b>Vấn đề CORS và bảo mật:</b> mọi API phải mở đúng nguồn gốc, và token không được lộ.</li>
+        <li><b>Hai widget trên cùng trang</b> có thể tranh nhau đăng ký cùng một tên phần tử.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>&lt;qp45-tra-cuu bo-loc="{ tuNgay: '2026-01-01' }"&gt;
+<span class="cm">// → nhận được CHUỖI, không phải object</span>
+document.querySelector(<span class="str">'qp45-tra-cuu'</span>).boLoc = { tuNgay: … };  <span class="cm">// ✓</span>
+
+customElements.define(<span class="str">'qp45-tra-cuu'</span>, el);
+<span class="cm">// nhúng script hai lần → DOMException: name has already been used</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>widget</td><td>Tiện ích nhúng được vào trang khác.</td></tr>
+      <tr><td>custom element</td><td>Phần tử HTML tuỳ chỉnh theo chuẩn Web Components.</td></tr>
+      <tr><td>Shadow DOM</td><td>Cây DOM riêng, cách ly style với trang chủ.</td></tr>
+      <tr><td>CORS</td><td>Cơ chế cho phép trang này gọi API của tên miền khác.</td></tr>
+      <tr><td>CDN</td><td>Mạng phân phối nội dung, nơi đặt file script công khai.</td></tr>
+    </tbody>
+  </table></div>
+</section>

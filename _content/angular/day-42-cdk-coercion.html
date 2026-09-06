@@ -1,0 +1,73 @@
+<!--meta
+title: Day 42 — Angular CDK Coercion
+eyebrow: Angular · Day 42
+short: Day 42
+lede: Người dùng component viết disabled="false" — chuỗi "false" là giá trị đúng trong JavaScript. Coercion là lớp ép kiểu để đầu vào luôn đúng như bạn nghĩ.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Ép kiểu ở cổng vào</h2></div>
+  <p>Trong template, <code>&lt;my-input disabled&gt;</code> truyền vào chuỗi rỗng, còn <code>disabled="false"</code> truyền vào chuỗi <code>"false"</code> — cả hai đều là truthy (giá trị được coi là đúng). Nếu component chỉ viết <code>if (this.disabled)</code> thì cả hai đều bị khoá, trái ý người dùng.</p>
+  <p>Coercion (ép kiểu) chuẩn hoá đầu vào ngay tại cổng. Angular hiện đại làm việc này bằng <code>transform</code> của <code>input()</code>:</p>
+<pre><code>export class ONhap {
+  disabled = input(<span class="kw">false</span>, { transform: booleanAttribute });
+  soDong  = input(3, { transform: numberAttribute });
+}
+
+<span class="cm">// dùng ở ngoài — cách nào cũng cho kết quả đúng</span>
+&lt;qp45-o-nhap disabled /&gt;                &lt;!-- true --&gt;
+&lt;qp45-o-nhap disabled="false" /&gt;        &lt;!-- false --&gt;
+&lt;qp45-o-nhap [disabled]="dangKhoa()" /&gt; &lt;!-- theo biến --&gt;</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Component cư xử như thẻ HTML chuẩn,</b> người dùng không phải nhớ luật riêng.</li>
+        <li><b>Logic bên trong sạch:</b> đã chắc chắn là <code>boolean</code>/<code>number</code>, không phải kiểm tra kiểu.</li>
+        <li><b>Ép kiểu tập trung một chỗ,</b> không rải <code>Number(...)</code> khắp nơi.</li>
+        <li><b>Viết được transform riêng</b> cho trường hợp đặc thù (chuỗi ngày → <code>Date</code>).</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Không có coercion:</span>
+&lt;qp45-o-nhap disabled="false" /&gt;   <span class="cm">// → vẫn bị khoá (sai)</span>
+
+<span class="cm">// Có booleanAttribute:</span>
+&lt;qp45-o-nhap disabled="false" /&gt;   <span class="cm">// → false, đúng ý người dùng</span>
+&lt;qp45-o-nhap disabled /&gt;           <span class="cm">// → true</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Che giấu lỗi kiểu.</b> Truyền nhầm một chuỗi rác vẫn được ép thành giá trị nào đó thay vì báo lỗi.</li>
+        <li><b>Kiểu vào và kiểu ra khác nhau</b> nên đọc code phải để ý mới biết bên trong nhận gì.</li>
+        <li><b>Transform tự viết dễ nuốt lỗi</b> nếu quên xử lý <code>null</code>/<code>NaN</code>.</li>
+        <li><b>Thêm một khái niệm nữa</b> cho người mới, dù chỉ để giải quyết một đặc thù của HTML.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>soDong = input(3, { transform: numberAttribute });
+&lt;qp45-o-nhap soDong="ba" /&gt;   <span class="cm">// → NaN, không có cảnh báo nào</span>
+
+<span class="cm">// Transform tự viết quên chặn NaN:</span>
+transform: (v: unknown) =&gt; Number(v)      <span class="cm">// ✗</span>
+transform: (v: unknown) =&gt; Number(v) || 0 <span class="cm">// ✓ an toàn hơn</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>coercion</td><td>Ép kiểu — chuẩn hoá giá trị đầu vào về đúng kiểu mong muốn.</td></tr>
+      <tr><td>truthy / falsy</td><td>Giá trị được coi là đúng / sai khi ép sang boolean.</td></tr>
+      <tr><td>booleanAttribute</td><td>Hàm ép thuộc tính kiểu HTML về boolean.</td></tr>
+      <tr><td>transform</td><td>Hàm biến đổi giá trị ngay khi vào input.</td></tr>
+      <tr><td>CDK</td><td>Component Dev Kit — bộ công cụ dựng component của Angular.</td></tr>
+    </tbody>
+  </table></div>
+</section>

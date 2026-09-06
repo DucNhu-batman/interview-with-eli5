@@ -1,0 +1,77 @@
+<!--meta
+title: Day 11 — Kiểu dữ liệu TypeScript
+eyebrow: Angular · Day 11
+short: Day 11
+lede: TypeScript là JavaScript có nhãn dán. Nhãn không tồn tại lúc chạy — nhưng nó bắt lỗi trước khi code kịp ra khỏi máy bạn.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Người soát vé lúc biên dịch</h2></div>
+  <p>TypeScript thêm một lớp kiểm tra <em>trước khi chạy</em>: bạn dán nhãn cho biến, tham số, kết quả trả về; trình biên dịch đối chiếu và báo lỗi nếu lệch. Khi build xong, toàn bộ nhãn bị xoá — trình duyệt chỉ nhận JavaScript thuần.</p>
+<pre><code><span class="kw">let</span> ten: string = <span class="str">'An'</span>;
+<span class="kw">let</span> tuoi: number | <span class="kw">null</span> = <span class="kw">null</span>;          <span class="cm">// union — một trong các kiểu</span>
+<span class="kw">const</span> ds: string[] = [<span class="str">'a'</span>, <span class="str">'b'</span>];
+<span class="kw">const</span> cap: [number, string] = [1, <span class="str">'a'</span>];    <span class="cm">// tuple — bộ có thứ tự</span>
+
+<span class="kw">interface</span> SanPham { id: number; ten: string; gia?: number; }
+<span class="kw">type</span> TrangThai = <span class="str">'moi'</span> | <span class="str">'dang_xu_ly'</span> | <span class="str">'xong'</span>;   <span class="cm">// literal union</span>
+
+<span class="kw">enum</span> Vai { Admin = <span class="str">'ADMIN'</span>, User = <span class="str">'USER'</span> }
+
+<span class="kw">function</span> tinh(a: number, b = 1): number { <span class="kw">return</span> a + b; }</code></pre>
+  <div class="callout">
+    <p><strong>Ba kiểu đặc biệt phải phân biệt:</strong> <code>any</code> tắt hẳn kiểm tra (nên tránh); <code>unknown</code> cũng chứa được mọi thứ nhưng bắt bạn kiểm tra trước khi dùng (an toàn); <code>never</code> nghĩa là "không bao giờ có giá trị", dùng để bảo đảm đã xử lý hết mọi nhánh.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Bắt lỗi sớm.</b> Gõ sai tên thuộc tính, thiếu tham số, sai kiểu — biết ngay khi gõ.</li>
+        <li><b>Gợi ý code thông minh.</b> Editor biết object có gì, đỡ phải mở tài liệu.</li>
+        <li><b>Refactor an toàn.</b> Đổi tên một trường, trình biên dịch chỉ ra mọi chỗ phải sửa.</li>
+        <li><b>Kiểu là tài liệu sống.</b> <code>interface</code> mô tả dữ liệu chính xác hơn mọi comment.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="kw">interface</span> Kho { id: number; ten: string; }
+<span class="kw">function</span> hien(k: Kho) { <span class="kw">return</span> k.tenKho; }
+<span class="cm">// ✗ Báo ngay khi gõ: Property 'tenKho' does not exist on type 'Kho'.</span>
+<span class="cm">// Đổi tên trường trong interface → editor chỉ ra đủ 40 chỗ phải sửa</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Không bảo vệ lúc chạy.</b> Dữ liệu API trả về sai kiểu vẫn lọt — nhãn đã bị xoá khi build.</li>
+        <li><b>Tốn thời gian viết kiểu</b>, nhất là với dữ liệu lồng nhau nhiều tầng.</li>
+        <li><b>Lỗi kiểu đôi khi rất dài dòng</b>, người mới đọc không ra vấn đề nằm ở đâu.</li>
+        <li><b><code>any</code> lây lan.</b> Một chỗ buông là mất an toàn cả một nhánh code.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="kw">const</span> kho = <span class="kw">await</span> firstValueFrom(http.get&lt;Kho&gt;(<span class="str">'/api/kho/1'</span>));
+<span class="cm">// Máy chủ đổi "ten" thành "tenKho" mà không báo:</span>
+kho.ten.toUpperCase();   <span class="out">// ✗ TypeError lúc chạy — nhãn kiểu đã bị xoá khi build</span>
+
+<span class="kw">const</span> dl: any = phanHoi;
+dl.abc.xyz();            <span class="cm">// ✗ any lây: từ đây trở đi không còn kiểm tra gì nữa</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>type annotation</td><td>Nhãn kiểu — khai kiểu cho biến/tham số.</td></tr>
+      <tr><td>interface</td><td>Bản mô tả hình dạng của một object.</td></tr>
+      <tr><td>union type</td><td>Kiểu hợp — giá trị thuộc một trong nhiều kiểu.</td></tr>
+      <tr><td>tuple</td><td>Bộ có số phần tử và kiểu cố định theo thứ tự.</td></tr>
+      <tr><td>enum</td><td>Tập hằng số có tên.</td></tr>
+      <tr><td>any / unknown / never</td><td>Tắt kiểm tra / chưa biết kiểu / không thể có giá trị.</td></tr>
+      <tr><td>compile time</td><td>Lúc biên dịch, trước khi chương trình chạy.</td></tr>
+    </tbody>
+  </table></div>
+</section>

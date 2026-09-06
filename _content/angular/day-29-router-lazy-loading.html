@@ -1,0 +1,74 @@
+<!--meta
+title: Day 29 — Lazy Loading
+eyebrow: Angular · Day 29
+short: Day 29
+lede: Đừng bắt người dùng tải cả toà nhà chỉ để vào một căn phòng. Tải tính năng theo nhu cầu là cách giảm thời gian mở app nhanh nhất.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Chia gói và tải khi cần</h2></div>
+  <p>Mặc định mọi thứ được gói vào một file JavaScript lớn, tải hết ngay lần đầu. Lazy loading (tải trễ) cắt các feature thành gói riêng; gói chỉ được tải khi người dùng thật sự bước vào route đó.</p>
+<pre><code>{
+  path: <span class="str">'kho'</span>,
+  loadChildren: () =&gt; import(<span class="str">'./features/kho/routes'</span>).then((m) =&gt; m.KHO_ROUTES),
+},
+{
+  path: <span class="str">'bao-cao'</span>,
+  loadComponent: () =&gt; import(<span class="str">'./features/bao-cao/bao-cao.component'</span>)
+    .then((m) =&gt; m.BaoCaoComponent),      <span class="cm">// lười ở mức từng component</span>
+}</code></pre>
+  <p>Muốn nhanh hơn nữa: bật preloading (tải trước ngầm) để Angular âm thầm tải các gói còn lại sau khi màn đầu đã hiện — người dùng vừa vào nhanh, vừa không phải chờ khi bấm menu.</p>
+<pre><code>provideRouter(routes, withPreloading(PreloadAllModules));</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Mở app nhanh hơn hẳn.</b> Gói ban đầu nhỏ đi rất nhiều ở ứng dụng nhiều màn hình.</li>
+        <li><b>Người dùng không trả giá cho tính năng họ không dùng.</b></li>
+        <li><b>Chia gói theo phân quyền:</b> người không có quyền vào khu vực đó thì không bao giờ tải code khu vực đó.</li>
+        <li><b>Đi kèm sẵn với cấu trúc feature</b> — gần như không phải sửa gì thêm.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>{ path: <span class="str">'bao-cao'</span>, loadChildren: () =&gt; import(<span class="str">'./bao-cao/routes'</span>)… }
+
+<span class="cm">// Trước: main.js 2.4 MB — mọi người tải cả module báo cáo</span>
+<span class="cm">// Sau:  main.js 780 KB + bao-cao.js 640 KB (chỉ tải khi vào báo cáo)</span>
+<span class="cm">// Người dùng không có quyền vào báo cáo thì không bao giờ tải 640 KB đó.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Có độ trễ khi vào màn lần đầu,</b> nhất là mạng chậm — nên có chỉ báo tải.</li>
+        <li><b>Code dùng chung dễ bị nhân bản</b> vào nhiều gói nếu chia không khéo.</li>
+        <li><b>Chia quá vụn</b> làm tăng số request, phản tác dụng.</li>
+        <li><b>Lỗi tải gói (mạng rớt, bản build mới)</b> phải xử lý riêng, nếu không màn hình đứng im.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// Bấm menu Báo cáo trên mạng chậm:</span>
+<span class="cm">// ✗ 2 giây không có phản hồi nào — người dùng bấm lại 3 lần</span>
+<span class="cm">// chữa: hiện chỉ báo dựa trên sự kiện NavigationStart/NavigationEnd</span>
+
+<span class="cm">// Và sau khi deploy bản mới, tab đang mở của người dùng:</span>
+ChunkLoadError: Loading chunk bao-cao failed
+<span class="cm">// file cũ không còn trên máy chủ → phải bắt lỗi và gợi ý tải lại trang</span></code></pre></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>lazy loading</td><td>Tải trễ — chỉ tải code khi thật sự cần.</td></tr>
+      <tr><td>chunk / bundle</td><td>Gói code được cắt ra khi build.</td></tr>
+      <tr><td>preloading</td><td>Tải trước ngầm sau khi màn đầu đã hiện.</td></tr>
+      <tr><td>dynamic import</td><td>Cú pháp <code>import()</code> tải mô-đun lúc chạy.</td></tr>
+      <tr><td>initial bundle</td><td>Gói tải ngay lần đầu mở ứng dụng.</td></tr>
+    </tbody>
+  </table></div>
+</section>

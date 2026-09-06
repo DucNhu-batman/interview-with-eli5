@@ -1,0 +1,391 @@
+<!--meta
+title: forkJoin — chờ tất cả xong rồi mới nói
+eyebrow: RxJS · Bài 7
+short: forkJoin
+lede: Toán tử làm đúng một việc: đứng chờ mọi luồng cùng kết thúc rồi phát một lần duy nhất. Nghe đơn giản, và ba phần tư lỗi liên quan tới nó đều nằm ở chữ "kết thúc".
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Người điểm danh: chỉ mở lời khi ai cũng đã về</h2></div>
+  <p>Bạn cần ba thứ dữ liệu để dựng một màn hình: chi tiết bản ghi, danh mục loại, danh mục đơn vị. Ba lời gọi máy chủ, ba thời điểm trả về khác nhau. Không màn nào nên hiện ra khi mới có một phần ba dữ liệu.</p>
+  <p><code>forkJoin</code> là người đứng chờ đó. Nó <strong>đăng ký</strong> (subscribe — hành động khiến luồng bắt đầu chạy) tất cả các luồng cùng lúc, im lặng cho tới khi <strong>mọi luồng đều complete</strong> (hoàn tất — luồng báo "tôi hết dữ liệu rồi"), rồi phát ra <strong>đúng một lần</strong> một gói gồm <strong>giá trị cuối cùng</strong> của từng luồng, xong tự đóng.</p>
+<pre><code><span class="kw">import</span> { forkJoin } <span class="kw">from</span> <span class="str">'rxjs'</span>;
+
+forkJoin({
+  user:  <span class="kw">this</span>.http.get&lt;User&gt;(<span class="str">'/api/users/1'</span>),
+  roles: <span class="kw">this</span>.http.get&lt;Role[]&gt;(<span class="str">'/api/users/1/roles'</span>),
+}).subscribe(({ user, roles }) =&gt; {
+  <span class="cm">// chạy đúng 1 lần, khi CẢ HAI lời gọi đã xong</span>
+});</code></pre>
+  <p>Nó là bản Observable (luồng — ống dẫn phát ra giá trị theo thời gian) của <code>Promise.all</code> trong JavaScript thuần: cùng ý tưởng "chờ tất cả", chỉ khác ở chỗ luồng có thể huỷ và thử lại được.</p>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> <code>forkJoin</code> không quan tâm luồng của bạn phát ra bao nhiêu giá trị hay phát lúc nào. Nó chỉ chờ đúng một tín hiệu — <b>complete</b>. Luồng nào không bao giờ complete thì <code>forkJoin</code> không bao giờ mở miệng.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Một hình nói hết ba điều</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 300" role="img" aria-label="Sơ đồ bi. Ba luồng A, B, C phát giá trị rồi complete ở ba thời điểm khác nhau. Luồng forkJoin im lặng cho tới khi luồng cuối cùng là C complete, lúc đó nó phát một gói gồm giá trị cuối của mỗi luồng rồi tự complete ngay sau đó.">
+        <defs>
+          <marker id="fjTip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <line x1="550" y1="26" x2="550" y2="270" stroke="currentColor" stroke-opacity=".35" stroke-dasharray="4 4"></line>
+        <text x="558" y="22" font-size="10.5" fill="currentColor" opacity=".75" font-family="monospace">mốc: luồng cuối cùng complete</text>
+
+        <text x="14" y="57" font-size="12" font-weight="700" fill="#0E8F86" font-family="monospace">A</text>
+        <line x1="110" y1="52" x2="690" y2="52" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#fjTip)"></line>
+        <circle cx="160" cy="52" r="13" fill="#0E8F86" fill-opacity=".18" stroke="#0E8F86" stroke-width="2"></circle>
+        <text x="160" y="57" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">1</text>
+        <line x1="290" y1="38" x2="290" y2="66" stroke="#0E8F86" stroke-width="3"></line>
+
+        <text x="14" y="109" font-size="12" font-weight="700" fill="#5B62E0" font-family="monospace">B</text>
+        <line x1="110" y1="104" x2="690" y2="104" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#fjTip)"></line>
+        <circle cx="210" cy="104" r="13" fill="#5B62E0" fill-opacity=".18" stroke="#5B62E0" stroke-width="2"></circle>
+        <text x="210" y="109" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">2</text>
+        <circle cx="380" cy="104" r="13" fill="#5B62E0" fill-opacity=".18" stroke="#5B62E0" stroke-width="2"></circle>
+        <text x="380" y="109" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">9</text>
+        <line x1="430" y1="90" x2="430" y2="118" stroke="#5B62E0" stroke-width="3"></line>
+        <text x="344" y="132" font-size="10.5" fill="#5B62E0" font-family="monospace">chỉ giá trị này được lấy</text>
+
+        <text x="14" y="161" font-size="12" font-weight="700" fill="#C07A12" font-family="monospace">C</text>
+        <line x1="110" y1="156" x2="690" y2="156" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#fjTip)"></line>
+        <circle cx="260" cy="156" r="13" fill="#C07A12" fill-opacity=".18" stroke="#C07A12" stroke-width="2"></circle>
+        <text x="260" y="161" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">3</text>
+        <line x1="550" y1="142" x2="550" y2="170" stroke="#C07A12" stroke-width="3"></line>
+
+        <line x1="0" y1="196" x2="720" y2="196" stroke="currentColor" stroke-opacity=".16"></line>
+
+        <text x="14" y="249" font-size="11.5" font-weight="700" fill="currentColor" font-family="monospace">forkJoin</text>
+        <line x1="110" y1="244" x2="690" y2="244" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#fjTip)"></line>
+        <text x="300" y="236" text-anchor="middle" font-size="11" fill="currentColor" opacity=".6" font-family="monospace">… im lặng suốt quãng này …</text>
+        <rect x="556" y="229" width="96" height="30" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-width="2"></rect>
+        <text x="604" y="249" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">[1, 9, 3]</text>
+        <line x1="676" y1="230" x2="676" y2="258" stroke="currentColor" stroke-width="3"></line>
+        <text x="556" y="282" font-size="10.5" fill="currentColor" opacity=".75" font-family="monospace">phát 1 lần rồi đóng</text>
+      </svg>
+    </div>
+    <figcaption>Ba điều đọc thẳng ra từ hình: nó <b>không phát gì</b> cho tới mốc cuối; nó lấy <b>giá trị cuối</b> của B (số 9, không phải số 2); và nó <b>chỉ phát một lần</b> rồi complete.</figcaption>
+  </figure>
+  <p class="col">Trục ngang là thời gian. Mỗi vòng tròn là một giá trị được phát ra, vạch dọc đậm là lúc luồng complete. Đây gọi là <strong>sơ đồ marble</strong> (sơ đồ bi — cách vẽ chuẩn của RxJS).</p>
+  <div class="callout col">
+    <p><strong>Luôn dùng dạng object thay vì mảng.</strong> <code>forkJoin({ user, roles })</code> đọc ra nghĩa ngay; <code>forkJoin([a$, b$, c$])</code> bắt người đọc đếm xem <code>res[2]</code> là cái gì — và khi ai đó chèn thêm một lời gọi vào giữa mảng thì mọi chỉ số phía sau lệch hết.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">So sánh</p><h2>Cùng hai luồng vào, bốn toán tử cho bốn kết quả</h2></div>
+  <p class="col">Đây là câu người phỏng vấn thật sự muốn hỏi. Cách trả lời gọn nhất là vẽ ra: cùng một đầu vào, khác nhau ở chỗ <em>bao giờ phát</em> và <em>phát cái gì</em>.</p>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 400" role="img" aria-label="Cùng hai luồng A và B: forkJoin chỉ phát một lần khi cả hai đã complete; combineLatest phát lại mỗi lần bất kỳ luồng nào có giá trị mới; zip ghép cặp theo thứ tự phát; merge dồn thẳng mọi giá trị vào một luồng mà không ghép gì.">
+        <defs>
+          <marker id="cmpTip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <text x="14" y="51" font-size="12" font-weight="700" fill="#0E8F86" font-family="monospace">A</text>
+        <line x1="130" y1="46" x2="690" y2="46" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#cmpTip)"></line>
+        <circle cx="170" cy="46" r="13" fill="#0E8F86" fill-opacity=".18" stroke="#0E8F86" stroke-width="2"></circle>
+        <text x="170" y="51" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">1</text>
+        <circle cx="330" cy="46" r="13" fill="#0E8F86" fill-opacity=".18" stroke="#0E8F86" stroke-width="2"></circle>
+        <text x="330" y="51" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">3</text>
+        <line x1="395" y1="32" x2="395" y2="60" stroke="#0E8F86" stroke-width="3"></line>
+
+        <text x="14" y="101" font-size="12" font-weight="700" fill="#5B62E0" font-family="monospace">B</text>
+        <line x1="130" y1="96" x2="690" y2="96" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#cmpTip)"></line>
+        <circle cx="250" cy="96" r="13" fill="#5B62E0" fill-opacity=".18" stroke="#5B62E0" stroke-width="2"></circle>
+        <text x="250" y="101" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">2</text>
+        <circle cx="405" cy="96" r="13" fill="#5B62E0" fill-opacity=".18" stroke="#5B62E0" stroke-width="2"></circle>
+        <text x="405" y="101" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">4</text>
+        <line x1="460" y1="82" x2="460" y2="110" stroke="#5B62E0" stroke-width="3"></line>
+
+        <line x1="0" y1="130" x2="720" y2="130" stroke="currentColor" stroke-opacity=".16"></line>
+
+        <text x="14" y="173" font-size="11.5" font-weight="700" fill="currentColor" font-family="monospace">forkJoin</text>
+        <line x1="130" y1="168" x2="690" y2="168" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#cmpTip)"></line>
+        <rect x="433" y="154" width="54" height="28" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-width="2"></rect>
+        <text x="460" y="173" text-anchor="middle" font-size="11" font-family="monospace" fill="currentColor">3,4</text>
+        <line x1="505" y1="154" x2="505" y2="182" stroke="currentColor" stroke-width="3"></line>
+        <text x="524" y="172" font-size="10.5" fill="currentColor" opacity=".75" font-family="monospace">1 lần, khi cả hai xong</text>
+
+        <text x="14" y="229" font-size="11.5" font-weight="700" fill="currentColor" font-family="monospace">combineLatest</text>
+        <line x1="130" y1="224" x2="690" y2="224" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#cmpTip)"></line>
+        <rect x="223" y="210" width="54" height="28" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-width="2"></rect>
+        <text x="250" y="229" text-anchor="middle" font-size="11" font-family="monospace" fill="currentColor">1,2</text>
+        <rect x="303" y="210" width="54" height="28" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-width="2"></rect>
+        <text x="330" y="229" text-anchor="middle" font-size="11" font-family="monospace" fill="currentColor">3,2</text>
+        <rect x="378" y="210" width="54" height="28" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-width="2"></rect>
+        <text x="405" y="229" text-anchor="middle" font-size="11" font-family="monospace" fill="currentColor">3,4</text>
+        <line x1="505" y1="210" x2="505" y2="238" stroke="currentColor" stroke-width="3"></line>
+        <text x="524" y="228" font-size="10.5" fill="currentColor" opacity=".75" font-family="monospace">mỗi lần có cái mới</text>
+
+        <text x="14" y="285" font-size="11.5" font-weight="700" fill="currentColor" font-family="monospace">zip</text>
+        <line x1="130" y1="280" x2="690" y2="280" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#cmpTip)"></line>
+        <rect x="223" y="266" width="54" height="28" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-width="2"></rect>
+        <text x="250" y="285" text-anchor="middle" font-size="11" font-family="monospace" fill="currentColor">1,2</text>
+        <rect x="378" y="266" width="54" height="28" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-width="2"></rect>
+        <text x="405" y="285" text-anchor="middle" font-size="11" font-family="monospace" fill="currentColor">3,4</text>
+        <line x1="505" y1="266" x2="505" y2="294" stroke="currentColor" stroke-width="3"></line>
+        <text x="524" y="284" font-size="10.5" fill="currentColor" opacity=".75" font-family="monospace">ghép cặp 1 với 1</text>
+
+        <text x="14" y="341" font-size="11.5" font-weight="700" fill="currentColor" font-family="monospace">merge</text>
+        <line x1="130" y1="336" x2="690" y2="336" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#cmpTip)"></line>
+        <circle cx="170" cy="336" r="13" fill="#0E8F86" fill-opacity=".18" stroke="#0E8F86" stroke-width="2"></circle>
+        <text x="170" y="341" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">1</text>
+        <circle cx="250" cy="336" r="13" fill="#5B62E0" fill-opacity=".18" stroke="#5B62E0" stroke-width="2"></circle>
+        <text x="250" y="341" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">2</text>
+        <circle cx="330" cy="336" r="13" fill="#0E8F86" fill-opacity=".18" stroke="#0E8F86" stroke-width="2"></circle>
+        <text x="330" y="341" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">3</text>
+        <circle cx="405" cy="336" r="13" fill="#5B62E0" fill-opacity=".18" stroke="#5B62E0" stroke-width="2"></circle>
+        <text x="405" y="341" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">4</text>
+        <line x1="505" y1="322" x2="505" y2="350" stroke="currentColor" stroke-width="3"></line>
+        <text x="524" y="340" font-size="10.5" fill="currentColor" opacity=".75" font-family="monospace">không ghép, chỉ trộn</text>
+
+        <text x="14" y="384" font-size="10.5" fill="currentColor" opacity=".7">Chỉ forkJoin là loại "trả lời một phát rồi thôi". Ba cái còn lại sống suốt vòng đời của nguồn.</text>
+      </svg>
+    </div>
+    <figcaption>Nếu chỉ nhớ một câu: <code>forkJoin</code> quan tâm tới <b>lúc kết thúc</b>, <code>combineLatest</code> quan tâm tới <b>trạng thái mới nhất</b>, <code>zip</code> quan tâm tới <b>thứ tự</b>, còn <code>merge</code> chẳng ghép gì cả.</figcaption>
+  </figure>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Bạn cần</th><th>Dùng</th><th>Vì sao</th></tr></thead>
+    <tbody>
+      <tr><td>Chờ vài lời gọi máy chủ cùng xong</td><td><code>forkJoin</code></td><td><span class="yes">Đúng việc</span> — phát 1 lần khi tất cả complete.</td></tr>
+      <tr><td>Ghép trạng thái đang đổi: bộ lọc + phân trang</td><td><code>combineLatest</code></td><td>Phát lại mỗi lần bất kỳ nguồn nào đổi giá trị.</td></tr>
+      <tr><td>Ghép cặp theo đúng thứ tự phát</td><td><code>zip</code></td><td>Chờ đủ cả hai bên mới ghép một cặp.</td></tr>
+      <tr><td>Ai xong trước lấy người đó</td><td><code>race</code></td><td>Giữ nguồn phát đầu tiên, bỏ các nguồn còn lại.</td></tr>
+      <tr><td>Lời gọi sau cần kết quả lời gọi trước</td><td><code>switchMap</code> / <code>concatMap</code></td><td><span class="no">Không phải forkJoin</span> — đây là chạy tuần tự, không song song.</td></tr>
+      <tr><td>Dồn nhiều nguồn vào một luồng</td><td><code>merge</code></td><td>Không ghép, chỉ trộn theo thứ tự đến.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Ba cái bẫy</p><h2>Khi hỏng, nó không kêu một tiếng nào</h2></div>
+  <p class="col">Cái khó của <code>forkJoin</code> là khi hỏng nó <em>im lặng</em>. Màn hình quay vòng loading mãi, hoặc dữ liệu biến mất — chứ không có ngoại lệ nào ném ra để bạn lần theo.</p>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 380" role="img" aria-label="Kiểu hỏng thứ nhất: luồng B không bao giờ complete nên forkJoin im lặng vĩnh viễn và màn hình quay loading mãi. Kiểu hỏng thứ hai: luồng B báo lỗi nên forkJoin lỗi ngay lập tức và giá trị mà luồng A đã lấy về thành công bị mất trắng.">
+        <defs>
+          <marker id="badTip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <text x="14" y="26" font-size="11.5" font-weight="700" fill="#C07A12" font-family="monospace">HỎNG 1 — MỘT LUỒNG KHÔNG BAO GIỜ COMPLETE</text>
+
+        <text x="14" y="69" font-size="12" font-weight="700" fill="#0E8F86" font-family="monospace">A</text>
+        <line x1="120" y1="64" x2="690" y2="64" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#badTip)"></line>
+        <circle cx="170" cy="64" r="13" fill="#0E8F86" fill-opacity=".18" stroke="#0E8F86" stroke-width="2"></circle>
+        <text x="170" y="69" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">1</text>
+        <line x1="250" y1="50" x2="250" y2="78" stroke="#0E8F86" stroke-width="3"></line>
+
+        <text x="14" y="115" font-size="12" font-weight="700" fill="#5B62E0" font-family="monospace">B</text>
+        <line x1="120" y1="110" x2="690" y2="110" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#badTip)"></line>
+        <circle cx="210" cy="110" r="13" fill="#5B62E0" fill-opacity=".18" stroke="#5B62E0" stroke-width="2"></circle>
+        <text x="210" y="115" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">2</text>
+        <circle cx="350" cy="110" r="13" fill="#5B62E0" fill-opacity=".18" stroke="#5B62E0" stroke-width="2"></circle>
+        <text x="350" y="115" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">5</text>
+        <text x="392" y="115" font-size="11.5" font-family="monospace" fill="#C07A12">…  không bao giờ có vạch complete</text>
+
+        <text x="14" y="161" font-size="11.5" font-weight="700" fill="currentColor" font-family="monospace">forkJoin</text>
+        <line x1="120" y1="156" x2="690" y2="156" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#badTip)"></line>
+        <text x="190" y="161" font-size="11.5" fill="var(--bad)" font-family="monospace">im lặng vĩnh viễn — loading quay mãi</text>
+
+        <line x1="0" y1="192" x2="720" y2="192" stroke="currentColor" stroke-opacity=".16"></line>
+
+        <text x="14" y="224" font-size="11.5" font-weight="700" fill="var(--bad)" font-family="monospace">HỎNG 2 — MỘT LUỒNG BÁO LỖI</text>
+
+        <text x="14" y="267" font-size="12" font-weight="700" fill="#0E8F86" font-family="monospace">A</text>
+        <line x1="120" y1="262" x2="690" y2="262" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#badTip)"></line>
+        <circle cx="170" cy="262" r="13" fill="#0E8F86" fill-opacity=".18" stroke="#0E8F86" stroke-width="2"></circle>
+        <text x="170" y="267" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">1</text>
+        <line x1="250" y1="248" x2="250" y2="276" stroke="#0E8F86" stroke-width="3"></line>
+        <text x="272" y="267" font-size="10.5" fill="currentColor" opacity=".75" font-family="monospace">đã xong, đã có dữ liệu</text>
+
+        <text x="14" y="313" font-size="12" font-weight="700" fill="#5B62E0" font-family="monospace">B</text>
+        <line x1="120" y1="308" x2="690" y2="308" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#badTip)"></line>
+        <circle cx="210" cy="308" r="13" fill="#5B62E0" fill-opacity=".18" stroke="#5B62E0" stroke-width="2"></circle>
+        <text x="210" y="313" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">2</text>
+        <path d="M340 298 L360 318 M360 298 L340 318" stroke="var(--bad)" stroke-width="3"></path>
+        <text x="374" y="313" font-size="11.5" font-family="monospace" fill="var(--bad)">HTTP 500</text>
+
+        <text x="14" y="359" font-size="11.5" font-weight="700" fill="currentColor" font-family="monospace">forkJoin</text>
+        <line x1="120" y1="354" x2="690" y2="354" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#badTip)"></line>
+        <line x1="350" y1="322" x2="350" y2="340" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="3 3"></line>
+        <path d="M340 344 L360 364 M360 344 L340 364" stroke="var(--bad)" stroke-width="3"></path>
+        <text x="374" y="359" font-size="11.5" font-family="monospace" fill="var(--bad)">lỗi ngay — số 1 của A mất trắng</text>
+      </svg>
+    </div>
+    <figcaption>Kiểu hỏng 1 làm màn hình treo; kiểu hỏng 2 làm bạn mất cả dữ liệu <b>đã lấy về thành công</b>. Cả hai đều sửa bằng một toán tử gắn vào <b>từng nguồn</b>, không phải vào <code>forkJoin</code>.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li><strong>Nguồn không bao giờ complete → treo mãi.</strong> Thủ phạm quen mặt: <code>interval</code>, <code>Subject</code> (luồng vừa phát vừa nghe được), và <code>form.valueChanges</code> (luồng phát mỗi khi giá trị biểu mẫu đổi — nó sống suốt vòng đời biểu mẫu). Cách chữa là ép nó kết thúc bằng <code>take(1)</code>.</li>
+    <li><strong>Một nguồn lỗi → cả cụm chết.</strong> <code>forkJoin</code> chuyển thẳng lỗi ra ngoài và vứt hết kết quả đã có. Cách chữa là bọc <code>catchError</code> (toán tử bắt lỗi và thay bằng giá trị dự phòng) vào <em>từng nguồn không quan trọng</em>.</li>
+    <li><strong>Nguồn complete mà chưa phát gì → cũng không phát gì.</strong> Ít ai nhớ cái này. Hay dính nhất là khi truyền vào một mảng rỗng: <code>forkJoin([])</code> complete ngay lập tức mà không phát giá trị nào, nên hàm <code>subscribe</code> của bạn không hề chạy.</li>
+  </ol>
+
+<pre><code><span class="cm">// ✗ treo mãi — valueChanges không bao giờ complete</span>
+forkJoin([<span class="kw">this</span>.form.valueChanges, <span class="kw">this</span>.http.get(<span class="str">'/api/x'</span>)]).subscribe(...);
+
+<span class="cm">// ✓ ép nó kết thúc</span>
+forkJoin([<span class="kw">this</span>.form.valueChanges.pipe(take(<span class="kw">1</span>)), <span class="kw">this</span>.http.get(<span class="str">'/api/x'</span>)]).subscribe(...);
+
+
+<span class="cm">// ✗ logs lỗi 500 → mất luôn user đã lấy được</span>
+forkJoin({ user: api.getUser(id), logs: api.getLogs(id) });
+
+<span class="cm">// ✓ khoanh vùng thiệt hại: phần phụ hỏng thì trả rỗng</span>
+forkJoin({ user: api.getUser(id), logs: api.getLogs(id).pipe(catchError(() =&gt; of([]))) });
+
+
+<span class="cm">// ✗ mảng rỗng → subscribe không bao giờ chạy</span>
+<span class="kw">const</span> ids: <span class="kw">number</span>[] = [];
+forkJoin(ids.map((id) =&gt; api.remove(id))).subscribe(() =&gt; <span class="kw">this</span>.reload());
+<span class="out">// (không có gì được in ra, không có lỗi nào)</span>
+
+<span class="cm">// ✓ chặn ngay ở đầu vào</span>
+<span class="kw">const</span> req$ = ids.length ? forkJoin(ids.map((id) =&gt; api.remove(id))) : of([]);</code></pre>
+
+  <div class="callout bad col">
+    <p><strong>Vì sao <code>HttpClient</code> lại hợp với <code>forkJoin</code> đến thế:</strong> mỗi lời gọi của nó phát đúng một giá trị rồi <em>tự complete</em>. Đó là lý do 99% ví dụ <code>forkJoin</code> bạn thấy đều dùng HTTP — và cũng là lý do người ta quên mất bẫy số 1 cho tới khi lần đầu truyền vào một <code>Subject</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Thực chiến</p><h2>Mở màn chi tiết: một lần chờ, ba lời gọi</h2></div>
+<pre><code>loadDetail(id: <span class="kw">number</span>) {
+  <span class="kw">this</span>.loading.set(<span class="kw">true</span>);
+
+  forkJoin({
+    detail: <span class="kw">this</span>.api.getDetail(id),
+    types:  <span class="kw">this</span>.api.getTypes(),
+    units:  <span class="kw">this</span>.api.getUnits().pipe(catchError(() =&gt; of([]))),
+  })
+    .pipe(
+      takeUntilDestroyed(<span class="kw">this</span>.destroyRef),    <span class="cm">// rời màn thì huỷ, tránh rò rỉ bộ nhớ</span>
+      finalize(() =&gt; <span class="kw">this</span>.loading.set(<span class="kw">false</span>)),  <span class="cm">// tắt loading kể cả khi lỗi</span>
+    )
+    .subscribe({
+      next: ({ detail, types, units }) =&gt; { <span class="cm">/* dựng biểu mẫu một lần */</span> },
+      error: (e) =&gt; <span class="kw">this</span>.toast.show({ severity: <span class="str">'error'</span>, summary: getApiErrorMessage(e) }),
+    });
+}</code></pre>
+  <p class="col">Ba chi tiết khiến đoạn này là mã của người có kinh nghiệm chứ không phải ví dụ trong tài liệu: <code>finalize</code> để vòng loading không kẹt khi lỗi, <code>takeUntilDestroyed</code> để huỷ khi rời màn (xem <a href="take-until-destroyed.html">bài 5</a>), và <code>catchError</code> đặt đúng chỗ — trên cái danh mục phụ, không phải trên dữ liệu chính.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Song song thật:</b> nó đăng ký mọi nguồn cùng lúc, nên các lời gọi máy chủ bắn đi đồng thời thay vì xếp hàng.</li>
+        <li><b>Một điểm đồng bộ duy nhất:</b> màn hình chỉ dựng một lần, không nhấp nháy theo từng mảnh dữ liệu về.</li>
+        <li><b>Kiểu dữ liệu giữ nguyên:</b> dạng object cho ra <code>{ user, roles }</code> đúng kiểu, không phải mảng chỉ số mơ hồ.</li>
+        <li><b>Huỷ được và thử lại được</b> — thứ <code>Promise.all</code> không làm nổi vì Promise đã bắn đi là không rút lại.</li>
+        <li><b>Lười biếng</b> (lazy — chỉ chạy khi có người subscribe): tạo ra rồi để đó cũng chưa tốn lời gọi mạng nào.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// 3 request bắn cùng lúc, tổng thời gian = request chậm nhất</span>
+forkJoin({
+  detail: api.getDetail(id),   <span class="cm">// 300ms</span>
+  types:  api.getTypes(),      <span class="cm">// 120ms</span>
+  units:  api.getUnits(),      <span class="cm">// 80ms</span>
+});                            <span class="out">// xong sau ~300ms, không phải 500ms</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Hỏng trong im lặng:</b> nguồn không complete thì không có lỗi, không có log, chỉ có màn hình treo.</li>
+        <li><b>Được ăn cả ngã về không:</b> một nguồn lỗi là mất sạch kết quả của các nguồn kia.</li>
+        <li><b>Không có kết quả từng phần:</b> người dùng phải chờ nguồn chậm nhất mới thấy được gì.</li>
+        <li><b>Bỏ qua mọi giá trị trung gian</b> — chỉ giữ giá trị cuối, nên dùng nhầm cho luồng phát nhiều lần là mất dữ liệu mà không hay.</li>
+        <li><b>Mảng rỗng là cái bẫy câm</b>: <code>forkJoin([])</code> hợp lệ, chạy được, và không làm gì cả.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// Người dùng chờ 3 giây chỉ vì một danh mục phụ chậm</span>
+forkJoin({
+  detail: api.getDetail(id),   <span class="cm">// 200ms — đã sẵn sàng từ lâu</span>
+  banner: api.getBanner(),     <span class="cm">// 3000ms — không ai cần gấp</span>
+});
+<span class="out">// Màn hình trắng suốt 3 giây.</span>
+<span class="cm">// Sửa: tách banner ra khỏi forkJoin, để nó về sau cũng được.</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> chỉ đưa vào <code>forkJoin</code> những nguồn <em>thật sự cần có đủ mới dựng được màn</em>. Mỗi nguồn phụ bọc <code>catchError</code>, mỗi nguồn không phải HTTP bọc <code>take(1)</code>, và luôn có <code>finalize</code> để tắt loading. Nếu bạn thấy mình muốn "hiện dần từng phần", đó là dấu hiệu bài toán không thuộc về <code>forkJoin</code> nữa.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> <code>forkJoin</code> đăng ký mọi luồng cùng lúc, chờ <b>tất cả complete</b>, rồi phát đúng một lần gói giá trị <b>cuối cùng</b> của từng luồng và tự đóng — bản Observable của <code>Promise.all</code>. Nó không quan tâm luồng phát bao nhiêu giá trị hay phát lúc nào, chỉ chờ đúng một tín hiệu là <code>complete</code>. Ba chỗ hỏng đều nằm ở chữ đó: nguồn không bao giờ complete thì treo mãi, một nguồn lỗi thì mất sạch kết quả các nguồn kia, nguồn complete mà chưa phát gì thì <code>subscribe</code> không hề chạy.</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3><code>forkJoin</code> khác <code>Promise.all</code> chỗ nào?</h3>
+      <p>Đừng dừng ở “giống nhau, đều chờ tất cả”. Ý ăn điểm: Promise là <em>eager</em> — tạo ra là chạy, không rút lại được. Observable là <em>lazy</em> — chỉ chạy khi có người đăng ký, nên <code>forkJoin</code> huỷ được giữa chừng và thử lại được bằng <code>retry</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Nó có chạy song song không?</h3>
+      <p>Có, nhưng nói cho chính xác mới ăn điểm: <b>song song là do nguồn, không phải do <code>forkJoin</code></b>. Nó chỉ đăng ký tất cả cùng lúc rồi đồng bộ hoá cái mốc kết thúc. Với <code>HttpClient</code> thì request bắn đi đồng thời; với nguồn tuần tự thì vẫn tuần tự.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Một luồng lỗi mà vẫn muốn giữ kết quả các luồng kia?</h3>
+      <p>Đây là chỗ nhiều người trả lời sai. <code>forkJoin</code> <b>không có tuỳ chọn nào</b> cho việc đó. Cách duy nhất là bọc <code>catchError</code> vào <em>từng nguồn</em>, trả về giá trị dự phòng — lúc đó luồng con “thành công với dữ liệu rỗng” và <code>forkJoin</code> không bao giờ thấy lỗi.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3><code>forkJoin([])</code> thì sao?</h3>
+      <p>Nó complete ngay lập tức mà <b>không phát giá trị nào</b>, nên hàm <code>subscribe</code> không hề chạy — không lỗi, không log. Rất hay dính khi map một mảng id rỗng thành mảng request. Nói được cái này là chứng tỏ đã gặp nó trong sản phẩm thật.</p>
+    </div>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> “<code>forkJoin</code> là <code>Promise.all</code> của RxJS, cứ ném luồng nào vào cũng được.” Sai ở chỗ nó chờ <code>complete</code> chứ không chờ “có giá trị”. Ném <code>valueChanges</code>, <code>interval</code> hay một <code>Subject</code> vào là màn hình quay loading vĩnh viễn — và đó là lỗi im lặng, không có ngoại lệ nào ném ra để bạn lần theo.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>RxJS</td><td>Thư viện xử lý dữ liệu đến rải rác theo thời gian: lời gọi mạng, sự kiện chuột, ô nhập liệu.</td></tr>
+      <tr><td>Observable</td><td>Luồng — ống dẫn có thể phát 0, 1 hay nhiều giá trị theo thời gian rồi kết thúc hoặc báo lỗi.</td></tr>
+      <tr><td>emit</td><td>Phát — luồng đẩy ra một giá trị.</td></tr>
+      <tr><td>complete</td><td>Hoàn tất — luồng báo "tôi hết dữ liệu rồi". Đây là tín hiệu duy nhất <code>forkJoin</code> chờ.</td></tr>
+      <tr><td>subscribe</td><td>Đăng ký nghe — hành động khiến luồng bắt đầu chạy.</td></tr>
+      <tr><td>operator</td><td>Toán tử — hàm biến đổi luồng: lọc, ghép, đổi giá trị, bắt lỗi.</td></tr>
+      <tr><td>marble diagram</td><td>Sơ đồ bi — trục ngang là thời gian, bi là giá trị, vạch dọc là complete, dấu ✕ là lỗi.</td></tr>
+      <tr><td>forkJoin</td><td>Chờ mọi luồng complete rồi phát một lần giá trị cuối của từng luồng.</td></tr>
+      <tr><td>combineLatest</td><td>Phát lại mỗi khi bất kỳ nguồn nào có giá trị mới, kèm giá trị mới nhất của các nguồn còn lại.</td></tr>
+      <tr><td>zip</td><td>Ghép giá trị thứ n của luồng này với giá trị thứ n của luồng kia.</td></tr>
+      <tr><td>merge</td><td>Dồn nhiều luồng vào một, không ghép cặp gì cả.</td></tr>
+      <tr><td>race</td><td>Chỉ giữ luồng phát ra trước nhất, bỏ các luồng còn lại.</td></tr>
+      <tr><td>switchMap / concatMap</td><td>Chạy luồng sau dựa trên kết quả luồng trước — tuần tự, không song song.</td></tr>
+      <tr><td>catchError</td><td>Bắt lỗi của một luồng và thay bằng giá trị dự phòng.</td></tr>
+      <tr><td>take(1)</td><td>Lấy giá trị đầu tiên rồi tự complete — cách ép một luồng vô hạn kết thúc.</td></tr>
+      <tr><td>of([])</td><td>Tạo luồng phát sẵn một giá trị rồi complete ngay.</td></tr>
+      <tr><td>finalize</td><td>Chạy một đoạn dọn dẹp khi luồng kết thúc, dù thành công hay lỗi.</td></tr>
+      <tr><td>takeUntilDestroyed</td><td>Toán tử của Angular tự huỷ đăng ký khi thành phần giao diện bị huỷ.</td></tr>
+      <tr><td>HttpClient</td><td>Bộ gọi máy chủ của Angular. Mỗi lời gọi phát một giá trị rồi tự complete.</td></tr>
+      <tr><td>Subject</td><td>Luồng vừa phát vừa nghe được. Không tự complete.</td></tr>
+      <tr><td>valueChanges</td><td>Luồng phát mỗi khi giá trị biểu mẫu đổi. Sống suốt vòng đời biểu mẫu.</td></tr>
+      <tr><td>Promise / Promise.all</td><td>Cơ chế bất đồng bộ sẵn có của JavaScript; <code>Promise.all</code> chờ tất cả cùng xong.</td></tr>
+      <tr><td>eager / lazy</td><td>Eager = chạy ngay khi tạo (Promise). Lazy = chỉ chạy khi có người subscribe (Observable).</td></tr>
+      <tr><td>memory leak</td><td>Rò rỉ bộ nhớ — đăng ký không được huỷ, vẫn chạy và vẫn giữ bộ nhớ sau khi màn hình đã đóng.</td></tr>
+      <tr><td>HTTP 500</td><td>Mã lỗi máy chủ — server hỏng khi xử lý yêu cầu.</td></tr>
+    </tbody>
+  </table></div>
+</section>

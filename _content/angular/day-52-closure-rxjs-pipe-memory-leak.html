@@ -1,0 +1,194 @@
+<!--meta
+title: Day 52 — Closure gặp .pipe(): vì sao quên huỷ là rò rỉ bộ nhớ
+eyebrow: Angular · Day 52
+short: Day 52
+lede: Mỗi callback bạn viết trong .pipe() và .subscribe() đều lặng lẽ mang theo một cái ba lô — biến bên ngoài và cả component. Ba lô đó chỉ được bỏ xuống khi bạn huỷ đăng ký.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Hàm con luôn mang theo một cái ba lô</h2></div>
+  <p>Bạn sắp nghỉ phép. Trước khi đi, bạn nhờ anh bảo vệ: “có thư của tôi thì mang lên phòng 305 nhé.” Anh ấy ghi <em>305</em> vào sổ. Bạn nghỉ việc luôn, phòng 305 bỏ trống — nhưng vì cuốn sổ vẫn ghi tên bạn, công ty không dám xếp ai vào phòng đó. Cái phòng bị giữ chỗ mãi mãi chỉ vì một dòng ghi chú không ai xoá.</p>
+  <p>Trong JavaScript, dòng ghi chú đó gọi là <strong>closure</strong> (bao đóng). Khi bạn viết một hàm con nằm bên trong một hàm cha, hàm con “nhớ” được mọi biến của hàm cha — kể cả khi hàm cha đã chạy xong từ lâu. Nó không chép giá trị ra để dùng riêng, nó <em>giữ luôn cái ngăn nhớ</em>.</p>
+<pre><code><span class="kw">function</span> taoNguoiDem() {
+  <span class="kw">let</span> so = 0;                <span class="cm">// biến của hàm cha</span>
+  <span class="kw">return</span> () =&gt; ++so;        <span class="cm">// hàm con — closure, ôm lấy `so`</span>
+}
+<span class="kw">const</span> dem = taoNguoiDem();   <span class="cm">// hàm cha đã chạy xong…</span>
+dem();                       <span class="out">// 1</span>
+dem();                       <span class="out">// 2  ← `so` vẫn sống, chưa được thu hồi</span></code></pre>
+  <div class="callout">
+    <p><strong>Closure không phải là thủ phạm — nó chỉ là sợi dây.</strong> Thủ phạm là <em>đầu dây bên kia còn cắm vào một luồng sống mãi</em>. Chừng nào bạn chưa rút phích (huỷ đăng ký), sợi dây còn kéo theo cả component đã chết ở lại trong bộ nhớ.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Sợi dây từ luồng sống mãi tới component đã chết</h2></div>
+  <p class="col">Đây là đoạn thật trong dự án — đóng popup (cửa sổ nổi) khi người dùng chuyển sang màn khác. <code>router.events</code> là một <strong>Observable</strong> (luồng dữ liệu — thứ phát sự kiện liên tục) sống suốt đời ứng dụng, không bao giờ tự kết thúc:</p>
+<pre><code><span class="kw">const</span> openedPath = toRoutePath(router.url);   <span class="cm">// chụp đường dẫn lúc MỞ popup</span>
+
+router.events
+  .pipe(                                       <span class="cm">// .pipe() = ghép các toán tử xử lý luồng</span>
+    filter((e) =&gt; toRoutePath(e.urlAfterRedirects) !== <b>openedPath</b>),
+  )
+  .subscribe(() =&gt; <b>dialogRef</b>.close());</code></pre>
+  <p class="col">Hai hàm mũi tên ở trên đều là closure. Hàm trong <code>filter</code> ôm lấy <code>openedPath</code>; hàm trong <code>subscribe</code> ôm lấy <code>dialogRef</code>. Nếu bạn viết <code>this.xuLy(...)</code> ở đó, nó ôm luôn cả <code>this</code> — tức là <em>toàn bộ component</em>, kèm mọi thứ component đang giữ: form, danh sách vừa tải, ảnh, phần tử DOM.</p>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 270" role="img" aria-label="Chuỗi bốn ô nối nhau: router.events là luồng toàn cục, nối tới Subscription chưa huỷ, nối tới Closure trong pipe và subscribe, nối tới Component đã bị huỷ. Mũi tên của bộ dọn rác chĩa xuống component bị gạch chéo, nghĩa là không thu hồi được.">
+        <defs>
+          <marker id="ar52" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+
+        <text x="631" y="30" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">Bộ dọn rác muốn thu hồi</text>
+        <text x="631" y="48" font-size="11" text-anchor="middle" fill="var(--muted)">Garbage Collector</text>
+        <line x1="631" y1="60" x2="631" y2="124" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ar52)"></line>
+        <line x1="619" y1="80" x2="643" y2="104" stroke="var(--bad)" stroke-width="3.5" stroke-linecap="round"></line>
+        <line x1="643" y1="80" x2="619" y2="104" stroke="var(--bad)" stroke-width="3.5" stroke-linecap="round"></line>
+
+        <rect x="16" y="130" width="150" height="96" rx="14" fill="var(--surface-2)"></rect>
+        <text x="91" y="160" font-size="12.5" font-weight="700" text-anchor="middle" fill="currentColor">router.events</text>
+        <text x="91" y="182" font-size="11" text-anchor="middle" fill="var(--muted)">luồng toàn cục</text>
+        <text x="91" y="200" font-size="11" text-anchor="middle" fill="var(--muted)">sống suốt đời app</text>
+
+        <rect x="196" y="130" width="150" height="96" rx="14" fill="var(--surface-2)"></rect>
+        <text x="271" y="160" font-size="12.5" font-weight="700" text-anchor="middle" fill="currentColor">Subscription</text>
+        <text x="271" y="182" font-size="11" text-anchor="middle" fill="var(--muted)">chưa unsubscribe</text>
+        <text x="271" y="200" font-size="11" text-anchor="middle" fill="var(--muted)">nên vẫn còn sống</text>
+
+        <rect x="376" y="130" width="150" height="96" rx="14" fill="var(--surface-2)"></rect>
+        <text x="451" y="160" font-size="12.5" font-weight="700" text-anchor="middle" fill="currentColor">Closure</text>
+        <text x="451" y="182" font-size="11" text-anchor="middle" fill="var(--muted)">callback trong .pipe()</text>
+        <text x="451" y="200" font-size="11" text-anchor="middle" fill="var(--muted)">và .subscribe()</text>
+
+        <rect x="556" y="130" width="150" height="96" rx="14" fill="none" stroke="var(--line)" stroke-width="2" stroke-dasharray="6 5"></rect>
+        <text x="631" y="160" font-size="12.5" font-weight="700" text-anchor="middle" fill="currentColor">Component đã huỷ</text>
+        <text x="631" y="182" font-size="11" text-anchor="middle" fill="var(--muted)">this, form, DOM…</text>
+        <text x="631" y="200" font-size="11" text-anchor="middle" fill="var(--muted)">vẫn nằm trong bộ nhớ</text>
+
+        <text x="181" y="168" font-size="10.5" text-anchor="middle" fill="var(--muted)">phát</text>
+        <line x1="170" y1="180" x2="190" y2="180" stroke="var(--accent)" stroke-width="2" marker-end="url(#ar52)"></line>
+        <text x="361" y="168" font-size="10.5" text-anchor="middle" fill="var(--muted)">giữ</text>
+        <line x1="350" y1="180" x2="370" y2="180" stroke="var(--accent)" stroke-width="2" marker-end="url(#ar52)"></line>
+        <text x="541" y="168" font-size="10.5" text-anchor="middle" fill="var(--muted)">bám</text>
+        <line x1="530" y1="180" x2="550" y2="180" stroke="var(--accent)" stroke-width="2" marker-end="url(#ar52)"></line>
+
+        <text x="361" y="252" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent)">Chỉ cần một mắt xích còn nối, cả dây được giữ lại</text>
+      </svg>
+    </div>
+    <figcaption>Bộ dọn rác chỉ thu hồi thứ <em>không còn ai trỏ tới</em>. Còn một đường đi liên tục từ luồng toàn cục xuống component, component đó là “rác không được phép dọn”.</figcaption>
+  </figure>
+  <p class="col">Rời vào rồi ra màn hình đó mười lần là mười bản component chết nằm lại trong bộ nhớ, mười callback ma vẫn chạy mỗi lần đổi trang. Ứng dụng không sập, chỉ chậm dần — đó là lý do lỗi này rất khó bị phát hiện trong lúc test.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Hai thứ cùng tên “pipe” — đừng nhầm</h2></div>
+  <p class="col">Trong Angular, chữ <em>pipe</em> (cái ống) chỉ hai thứ hoàn toàn khác nhau. Chỉ một trong hai có khả năng gây rò rỉ bộ nhớ.</p>
+  <div class="cards">
+    <div class="card">
+      <span class="tag warn">Có thể rò rỉ</span>
+      <h3>RxJS <code>.pipe()</code> — trong file TypeScript</h3>
+      <p>Ghép các <strong>operator</strong> (toán tử: <code>filter</code>, <code>map</code>, <code>switchMap</code>…) thành một dây chuyền xử lý luồng. Mọi callback bên trong đều là closure. Chỉ chạy khi có ai <code>.subscribe()</code>, và <em>sống cho tới khi bị huỷ</em>.</p>
+<pre><code>ws.tinNhan$
+  .pipe(filter((m) =&gt; m.phong === <b>phongId</b>))
+  .subscribe((m) =&gt; <span class="kw">this</span>.hienThi(m));
+<span class="cm">// ↑ giữ phongId và cả `this`</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag">Không rò rỉ</span>
+      <h3>Template pipe <code>|</code> — trong file HTML</h3>
+      <p>Một hàm định dạng nhỏ dùng ngay trên giao diện: <code>date</code>, <code>currency</code>, <code>async</code>… Không có đăng ký nào để quên huỷ. Cạm bẫy của nó là <strong>hiệu năng</strong>, không phải bộ nhớ.</p>
+<pre><code>&lt;p&gt;{{ ngayTao | date: <span class="str">'dd/MM/yyyy'</span> }}&lt;/p&gt;
+&lt;p&gt;{{ tien | currency: <span class="str">'VND'</span> }}&lt;/p&gt;
+&lt;p&gt;{{ ds$ | async }}&lt;/p&gt;   <span class="cm">// tự huỷ khi rời màn</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">So sánh</p><h2>Template pipe: thuần hay không thuần</h2></div>
+  <p class="col">Template pipe không rò rỉ bộ nhớ, nhưng vẫn có cạm bẫy riêng: <strong>pure</strong> hay <strong>impure</strong> (thuần hay không thuần). Angular chạy <strong>change detection</strong> (chu kỳ dò thay đổi để vẽ lại giao diện) rất nhiều lần — mỗi cú gõ phím, mỗi lần rê chuột:</p>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Loại</th><th>Angular gọi lại khi nào</th></tr></thead>
+    <tbody>
+      <tr><td>pure (mặc định)</td><td><span class="yes">Nhẹ</span> — chỉ khi tham chiếu đầu vào đổi. Sửa một phần tử bên trong mảng mà không tạo mảng mới thì pipe <em>không</em> chạy lại.</td></tr>
+      <tr><td>impure</td><td><span class="no">Nặng</span> — chạy lại ở <em>mỗi</em> chu kỳ change detection. Đặt một pipe impure lọc danh sách 1.000 dòng là tự tay làm giật giao diện.</td></tr>
+      <tr><td><code>async</code></td><td>Impure theo thiết kế, nhưng an toàn: nó tự <code>subscribe</code> khi hiện và tự <code>unsubscribe</code> khi component bị huỷ.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của closure trong .pipe()</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Giữ ngữ cảnh miễn phí.</b> Callback đọc thẳng biến bên ngoài, không phải truyền tham số lòng vòng.</li>
+        <li><b>Chụp được “ảnh” của một thời điểm,</b> như <code>openedPath</code> lúc mở popup — về sau so sánh vẫn đúng.</li>
+        <li><b>Đóng gói dữ liệu riêng tư,</b> biến trong closure không ai bên ngoài chạm được.</li>
+        <li><b>Code khai báo, đọc như câu văn:</b> lọc gì, biến đổi gì, làm gì — thẳng hàng trong <code>.pipe()</code>.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Chụp id lúc mở màn, mọi sự kiện sau đều so với nó</span>
+<span class="kw">const</span> idBanDau = <span class="kw">this</span>.route.snapshot.params[<span class="str">'id'</span>];
+
+nguon$.pipe(filter((e) =&gt; e.id === idBanDau))
+      .subscribe((e) =&gt; <span class="kw">this</span>.capNhat(e));
+<span class="cm">// Không cần biến thành viên, không cần truyền id qua 3 tầng hàm</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Giữ ngầm, không nhìn thấy.</b> Không có dòng code nào ghi “tôi đang giữ component này”.</li>
+        <li><b>Rò rỉ bộ nhớ</b> khi luồng vô hạn (<code>router.events</code>, <code>interval</code>, <code>fromEvent</code>, Subject dùng chung) không được huỷ.</li>
+        <li><b>Callback ma:</b> component đã chết vẫn chạy, ghi dữ liệu vào chỗ không còn ai xem.</li>
+        <li><b>Chụp nhầm cả cụm to.</b> Chỉ cần một chữ <code>this</code> là cả component bị kéo theo.</li>
+        <li><b>Ảnh chụp bị cũ.</b> Giá trị chụp lúc đầu không tự cập nhật — logic sau đó so với dữ liệu lỗi thời.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// ✗ Rò rỉ: luồng vô hạn, không có gì ngắt</span>
+ngOnInit() {
+  <span class="kw">this</span>.router.events
+    .subscribe(() =&gt; <span class="kw">this</span>.dongPopup());
+}
+<span class="cm">// Vào/ra màn 10 lần → 10 component chết còn trong bộ nhớ,</span>
+<span class="cm">// mỗi lần đổi trang là 10 callback ma cùng chạy.</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn.</strong> Ưu tiên <code>async</code> pipe hoặc <code>toSignal()</code> để khỏi phải <code>subscribe</code> bằng tay. Buộc phải subscribe thì luôn gắn <code>takeUntilDestroyed(destroyRef)</code> — dự án này dùng <code>DestroyRef</code>, không viết <code>ngOnDestroy</code>. Và trong callback, chụp <em>giá trị</em> (<code>const id = this.id</code>) thay vì chụp cả <code>this</code> khi có thể.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>closure</td><td>Bao đóng — hàm con nhớ và giữ luôn các biến của hàm cha, kể cả khi hàm cha đã chạy xong.</td></tr>
+      <tr><td>callback</td><td>Hàm bạn đưa cho người khác gọi hộ khi có chuyện xảy ra.</td></tr>
+      <tr><td>scope</td><td>Phạm vi — vùng code mà một biến còn nhìn thấy được.</td></tr>
+      <tr><td>RxJS</td><td>Thư viện xử lý dữ liệu đến theo thời gian, nền tảng của luồng trong Angular.</td></tr>
+      <tr><td>Observable</td><td>Luồng dữ liệu — nguồn phát sự kiện nhiều lần theo thời gian.</td></tr>
+      <tr><td>operator</td><td>Toán tử — một mắt xích xử lý trong dây chuyền (<code>filter</code>, <code>map</code>…).</td></tr>
+      <tr><td>.pipe()</td><td>Hàm ghép các toán tử RxJS thành một dây chuyền xử lý luồng.</td></tr>
+      <tr><td>template pipe</td><td>Ký hiệu <code>|</code> trong file giao diện, dùng để định dạng giá trị khi hiển thị.</td></tr>
+      <tr><td>pure / impure pipe</td><td>Pipe thuần chỉ chạy lại khi đầu vào đổi; pipe không thuần chạy lại mỗi chu kỳ dò thay đổi.</td></tr>
+      <tr><td>subscribe / unsubscribe</td><td>Đăng ký nhận dữ liệu từ luồng / huỷ đăng ký đó.</td></tr>
+      <tr><td>Subscription</td><td>Vật chứng của một lần đăng ký — cầm nó mới huỷ được.</td></tr>
+      <tr><td>Subject</td><td>Loại luồng vừa phát vừa nhận, thường sống lâu trong service dùng chung.</td></tr>
+      <tr><td>memory leak</td><td>Rò rỉ bộ nhớ — thứ đáng lẽ được thu hồi vẫn bị giữ lại.</td></tr>
+      <tr><td>Garbage Collector</td><td>Bộ dọn rác của trình duyệt, chỉ thu hồi thứ không còn ai trỏ tới.</td></tr>
+      <tr><td>change detection</td><td>Chu kỳ Angular dò xem dữ liệu có đổi không để vẽ lại giao diện.</td></tr>
+      <tr><td>DestroyRef</td><td>Đối tượng đại diện thời điểm component bị huỷ.</td></tr>
+      <tr><td>takeUntilDestroyed</td><td>Toán tử tự huỷ đăng ký khi component bị huỷ.</td></tr>
+      <tr><td>async pipe</td><td>Template pipe tự đăng ký và tự huỷ đăng ký giúp bạn.</td></tr>
+      <tr><td>toSignal()</td><td>Biến một luồng thành signal, tự huỷ đăng ký khi hết vòng đời.</td></tr>
+      <tr><td>DOM</td><td>Cây các phần tử thật của trang web trong trình duyệt.</td></tr>
+      <tr><td>popup / dialog</td><td>Cửa sổ nhỏ nổi lên trên màn hình chính.</td></tr>
+      <tr><td>route</td><td>Đường dẫn ứng với một màn hình trong ứng dụng.</td></tr>
+    </tbody>
+  </table></div>
+</section>

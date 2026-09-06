@@ -1,0 +1,250 @@
+<!--meta
+title: Toán tử biến đổi — map và bốn anh em *Map
+eyebrow: RxJS · Bài 1
+short: Toán tử biến đổi
+lede: map đổi giá trị, còn switchMap / mergeMap / concatMap / exhaustMap đổi cả luồng. Chọn sai một cái là sinh ra bug đua nhau, gọi API trùng, hoặc mất dữ liệu vừa lưu.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Hai loại biến đổi khác hẳn nhau</h2></div>
+  <p>RxJS (thư viện lập trình phản ứng — xử lý dữ liệu đến theo dòng thời gian) coi mọi thứ là một <strong>Observable</strong> (luồng dữ liệu — thứ lần lượt phát ra từng giá trị theo thời gian, thay vì trả về một lần như hàm thường). <em>Toán tử biến đổi</em> (transformation operator) là nhóm toán tử đứng trong <code>pipe</code> (ống nối — nơi xâu chuỗi các toán tử lại) để nhào nặn những giá trị đó.</p>
+  <p>Nhóm này chia làm hai loại rất khác nhau, và gần như mọi lỗi RxJS đều nằm ở chỗ nhầm hai loại:</p>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Loại 1 — dễ</span>
+      <h3>Biến đổi <em>giá trị</em></h3>
+      <p><code>map</code>, <code>scan</code>, <code>pairwise</code>: nhận một giá trị, trả ra một giá trị khác. Không có gì bất đồng bộ (asynchronous — việc chạy nền, xong lúc nào không biết trước), không có gì để mà đua.</p>
+<pre><code>gia$.pipe(map((g) =&gt; g * <span class="kw">1.1</span>))
+<span class="cm">// 100 → 110, 200 → 220. Vào một, ra một. Hết chuyện.</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag warn">Loại 2 — khó</span>
+      <h3>Biến đổi thành <em>luồng khác</em></h3>
+      <p><code>switchMap</code>, <code>mergeMap</code>, <code>concatMap</code>, <code>exhaustMap</code>: mỗi giá trị đến lại <strong>mở ra một luồng mới</strong> (thường là một request — lời gọi tới máy chủ). Bốn cái này chỉ khác nhau ở <b>một câu hỏi</b>.</p>
+<pre><code>tuKhoa$.pipe(switchMap((tk) =&gt; api.tim(tk)))
+<span class="cm">// "a" → mở request 1</span>
+<span class="cm">// "ab" đến khi request 1 CHƯA XONG → làm gì đây?</span></code></pre>
+    </div>
+  </div>
+  <div class="callout">
+    <p><strong>Cả bài gói trong một câu:</strong> bốn toán tử <code>*Map</code> không khác nhau ở chỗ "biến đổi cái gì", mà ở chỗ <strong>xử lý sao khi luồng cũ chưa xong mà giá trị mới đã tới</strong>. Huỷ cũ, chạy song song, xếp hàng, hay bỏ qua cái mới — bốn câu trả lời, bốn cái tên.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Nhìn bằng hình: cùng một đầu vào, bốn kết quả</h2></div>
+  <p class="col">Giả sử người dùng gõ hai lần liên tiếp: giá trị <b>a</b> đến trước, <b>b</b> đến khi request của <b>a</b> vẫn đang chạy. Đây là marble diagram (sơ đồ hòn bi — cách vẽ luồng RxJS theo trục thời gian chạy từ trái sang phải):</p>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 416" role="img" aria-label="Sơ đồ so sánh bốn toán tử: switchMap huỷ request của a và chỉ trả kết quả b; mergeMap chạy song song và trả cả a lẫn b theo thứ tự về đích; concatMap xếp hàng, request của b chỉ bắt đầu sau khi a xong; exhaustMap bỏ qua hẳn b vì request của a chưa xong.">
+        <defs>
+          <marker id="rxArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <!-- ROW 1: switchMap -->
+        <g>
+          <rect x="0" y="20" width="720" height="88" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="52" font-size="12.5" font-weight="700" fill="var(--accent)" font-family="monospace">switchMap</text>
+          <text x="14" y="70" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">huỷ cũ</text>
+          <line x1="120" y1="44" x2="700" y2="44" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#rxArrow)"></line>
+          <circle cx="160" cy="44" r="11" fill="var(--accent)"></circle>
+          <text x="160" y="48" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="260" cy="44" r="11" fill="var(--accent)"></circle>
+          <text x="260" y="48" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">b</text>
+          <rect x="160" y="62" width="100" height="8" rx="4" fill="var(--bad)" opacity=".55"></rect>
+          <text x="268" y="70" font-size="10" fill="var(--bad)" font-family="monospace">✕ request(a) bị huỷ</text>
+          <rect x="260" y="76" width="180" height="8" rx="4" fill="var(--accent)" opacity=".5"></rect>
+          <line x1="120" y1="98" x2="700" y2="98" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#rxArrow)"></line>
+          <circle cx="440" cy="98" r="11" fill="var(--accent)"></circle>
+          <text x="440" y="102" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">b</text>
+          <text x="460" y="102" font-size="10.5" fill="currentColor" opacity=".75" font-family="monospace">chỉ kết quả mới nhất</text>
+        </g>
+
+        <!-- ROW 2: mergeMap -->
+        <g>
+          <rect x="0" y="118" width="720" height="88" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="150" font-size="12.5" font-weight="700" fill="var(--accent)" font-family="monospace">mergeMap</text>
+          <text x="14" y="168" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">song song</text>
+          <line x1="120" y1="142" x2="700" y2="142" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#rxArrow)"></line>
+          <circle cx="160" cy="142" r="11" fill="var(--accent)"></circle>
+          <text x="160" y="146" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="260" cy="142" r="11" fill="var(--accent)"></circle>
+          <text x="260" y="146" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">b</text>
+          <rect x="260" y="160" width="120" height="8" rx="4" fill="var(--accent)" opacity=".5"></rect>
+          <rect x="160" y="174" width="330" height="8" rx="4" fill="var(--accent)" opacity=".5"></rect>
+          <text x="500" y="182" font-size="10" fill="var(--bad)" font-family="monospace">a về SAU b</text>
+          <line x1="120" y1="196" x2="700" y2="196" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#rxArrow)"></line>
+          <circle cx="380" cy="196" r="11" fill="var(--accent)"></circle>
+          <text x="380" y="200" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">b</text>
+          <circle cx="490" cy="196" r="11" fill="var(--bad)"></circle>
+          <text x="490" y="200" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <text x="510" y="200" font-size="10.5" fill="var(--bad)" font-family="monospace">kết quả cũ đè kết quả mới</text>
+        </g>
+
+        <!-- ROW 3: concatMap -->
+        <g>
+          <rect x="0" y="216" width="720" height="88" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="248" font-size="12.5" font-weight="700" fill="var(--accent)" font-family="monospace">concatMap</text>
+          <text x="14" y="266" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">xếp hàng</text>
+          <line x1="120" y1="240" x2="700" y2="240" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#rxArrow)"></line>
+          <circle cx="160" cy="240" r="11" fill="var(--accent)"></circle>
+          <text x="160" y="244" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="260" cy="240" r="11" fill="var(--accent)"></circle>
+          <text x="260" y="244" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">b</text>
+          <rect x="160" y="258" width="180" height="8" rx="4" fill="var(--accent)" opacity=".5"></rect>
+          <rect x="340" y="272" width="180" height="8" rx="4" fill="var(--accent)" opacity=".35"></rect>
+          <text x="528" y="280" font-size="10" fill="currentColor" opacity=".75" font-family="monospace">b chờ a xong mới chạy</text>
+          <line x1="120" y1="294" x2="700" y2="294" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#rxArrow)"></line>
+          <circle cx="340" cy="294" r="11" fill="var(--accent)"></circle>
+          <text x="340" y="298" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="520" cy="294" r="11" fill="var(--accent)"></circle>
+          <text x="520" y="298" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">b</text>
+          <text x="540" y="298" font-size="10.5" fill="currentColor" opacity=".75" font-family="monospace">đúng thứ tự, nhưng chậm</text>
+        </g>
+
+        <!-- ROW 4: exhaustMap -->
+        <g>
+          <rect x="0" y="314" width="720" height="88" rx="12" fill="var(--surface-2)"></rect>
+          <text x="14" y="346" font-size="12.5" font-weight="700" fill="var(--accent)" font-family="monospace">exhaustMap</text>
+          <text x="14" y="364" font-size="10.5" fill="currentColor" opacity=".7" font-family="monospace">bỏ cái mới</text>
+          <line x1="120" y1="338" x2="700" y2="338" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#rxArrow)"></line>
+          <circle cx="160" cy="338" r="11" fill="var(--accent)"></circle>
+          <text x="160" y="342" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <circle cx="260" cy="338" r="11" fill="none" stroke="var(--bad)" stroke-width="2" stroke-dasharray="3 3"></circle>
+          <text x="260" y="342" font-size="11" font-weight="700" text-anchor="middle" fill="var(--bad)">b</text>
+          <text x="278" y="342" font-size="10" fill="var(--bad)" font-family="monospace">✕ bị bỏ qua</text>
+          <rect x="160" y="360" width="220" height="8" rx="4" fill="var(--accent)" opacity=".5"></rect>
+          <line x1="120" y1="390" x2="700" y2="390" stroke="currentColor" stroke-width="1.4" opacity=".45" marker-end="url(#rxArrow)"></line>
+          <circle cx="380" cy="390" r="11" fill="var(--accent)"></circle>
+          <text x="380" y="394" font-size="11" font-weight="700" text-anchor="middle" fill="var(--surface)">a</text>
+          <text x="400" y="394" font-size="10.5" fill="currentColor" opacity=".75" font-family="monospace">chống bấm hai lần</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>Mỗi khối: dòng trên là giá trị vào, thanh ngang là request đang chạy, dòng dưới là giá trị ra. Cùng một đầu vào <b>a</b>, <b>b</b> — bốn toán tử cho bốn kết quả hoàn toàn khác nhau.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Chọn cái nào cho việc gì</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Toán tử</th><th>Khi giá trị mới đến lúc luồng cũ chưa xong</th><th>Hợp với</th></tr></thead>
+    <tbody>
+      <tr><td>map</td><td>Không liên quan — chỉ đổi giá trị, không mở luồng</td><td>Tính toán, đổi định dạng, lấy một trường của đối tượng</td></tr>
+      <tr><td>scan</td><td>Không liên quan — cộng dồn theo thời gian</td><td>Đếm, tổng chạy, gom trạng thái dần</td></tr>
+      <tr><td>pairwise</td><td>Không liên quan — ghép giá trị trước với giá trị sau</td><td>So sánh giá trị cũ – mới của một ô nhập</td></tr>
+      <tr><td>switchMap</td><td><b>Huỷ</b> luồng cũ, chạy luồng mới</td><td>Ô tìm kiếm, ô lọc, đổi route (đường dẫn màn hình), gợi ý gõ tới đâu tra tới đó</td></tr>
+      <tr><td>mergeMap</td><td><b>Chạy song song</b> tất cả, ai xong trước ra trước</td><td>Tải nhiều tệp cùng lúc, gửi log, các việc độc lập không cần thứ tự</td></tr>
+      <tr><td>concatMap</td><td><b>Xếp hàng</b>, xong cái này mới tới cái kia</td><td>Ghi dữ liệu cần đúng thứ tự, đồng bộ hàng đợi ngoại tuyến</td></tr>
+      <tr><td>exhaustMap</td><td><b>Bỏ qua</b> giá trị mới cho tới khi luồng cũ xong</td><td>Nút Lưu / Đăng nhập chống bấm hai lần, nút Tải lại</td></tr>
+    </tbody>
+  </table></div>
+  <p class="col">Mẹo nhớ theo <em>bản chất việc</em>, không phải theo tên: <b>đọc dữ liệu</b> (chỉ cần cái mới nhất) → <code>switchMap</code>; <b>ghi dữ liệu</b> (không được mất, không được đảo thứ tự) → <code>concatMap</code>; <b>một hành động do người dùng bấm</b> (không được gửi trùng) → <code>exhaustMap</code>; <b>nhiều việc độc lập</b> → <code>mergeMap</code> kèm giới hạn số luồng chạy cùng lúc.</p>
+  <div class="callout bad">
+    <p><strong>Bug kinh điển nhất:</strong> dùng <code>mergeMap</code> cho ô tìm kiếm. Request cho "ab" có thể về sau request cho "abc", kết quả cũ ghi đè kết quả mới, người dùng thấy danh sách không khớp từ khoá đang gõ. Đây là race condition (tình trạng đua — kết quả phụ thuộc cái nào về đích trước), và nó chỉ hiện ra khi mạng chậm nên máy của người lập trình gần như không bao giờ tái hiện được.</p>
+  </div>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Trong Angular</p><h2>Ba đoạn dùng đi dùng lại</h2></div>
+<pre><code><span class="cm">// 1. Ô tìm kiếm — gõ tới đâu tra tới đó, huỷ request thừa</span>
+<span class="kw">this</span>.form.controls.tuKhoa.valueChanges.pipe(
+  debounceTime(<span class="kw">300</span>),            <span class="cm">// chờ 300ms ngừng gõ mới gọi</span>
+  distinctUntilChanged(),        <span class="cm">// gõ ra rồi xoá về như cũ thì không gọi lại</span>
+  switchMap((tk) =&gt; <span class="kw">this</span>.api.tim(tk)),
+  takeUntilDestroyed(<span class="kw">this</span>.destroyRef),  <span class="cm">// huỷ đăng ký khi rời màn</span>
+).subscribe((kq) =&gt; <span class="kw">this</span>.ketQua.set(kq));
+
+<span class="cm">// 2. Nút Lưu — bấm mấy lần cũng chỉ gửi một lần</span>
+<span class="kw">this</span>.nutLuu$.pipe(
+  exhaustMap(() =&gt; <span class="kw">this</span>.api.luu(<span class="kw">this</span>.form.value)),
+).subscribe(() =&gt; <span class="kw">this</span>.toast.show(<span class="str">'Đã lưu'</span>));
+
+<span class="cm">// 3. Lấy chi tiết theo id trên đường dẫn — đổi id thì huỷ request của id cũ</span>
+<span class="kw">this</span>.route.paramMap.pipe(
+  map((p) =&gt; p.get(<span class="str">'id'</span>)!),   <span class="cm">// biến đổi giá trị: lấy đúng một trường</span>
+  switchMap((id) =&gt; <span class="kw">this</span>.api.chiTiet(id)),  <span class="cm">// biến đổi thành luồng</span>
+).subscribe((ct) =&gt; <span class="kw">this</span>.chiTiet.set(ct));</code></pre>
+  <p>Đoạn 3 cho thấy rõ hai loại nằm cạnh nhau: <code>map</code> chỉ moi ra một chuỗi ký tự, còn <code>switchMap</code> mở ra một request thật. Nếu ở đoạn 3 dùng <code>map</code> cho lời gọi API, kết quả nhận được sẽ là <em>một Observable chưa chạy</em> chứ không phải dữ liệu — dấu hiệu điển hình là log ra thấy <code>Observable {}</code> thay vì đối tượng mong đợi.</p>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Diễn đạt được chính sách đồng thời</b> (concurrency — nhiều việc cùng chạy) chỉ bằng cách chọn đúng tên toán tử, không cần viết cờ hay bộ đếm.</li>
+        <li><b>Tự huỷ request thừa</b> với <code>switchMap</code> — nhẹ tải máy chủ, hết bug kết quả cũ đè kết quả mới.</li>
+        <li><b>Không cần cờ <code>dangGui</code> thủ công</b>: <code>exhaustMap</code> làm luôn việc chống bấm trùng.</li>
+        <li><b>Ghép chuỗi phụ thuộc gọn</b> — lấy id rồi lấy chi tiết, phẳng một mạch thay vì lồng callback (hàm gọi lại) nhiều tầng.</li>
+        <li><b>Dọn dẹp tự động</b>: khi luồng ngoài bị huỷ đăng ký, mọi luồng trong đang chạy cũng bị huỷ theo.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code>tuKhoa$.pipe(switchMap((tk) =&gt; api.tim(tk)))
+<span class="cm">// Gõ "a" → "ab" → "abc": hai request đầu bị huỷ ngay,</span>
+<span class="cm">// chỉ kết quả của "abc" hiển thị. Không cờ, không đếm, không so sánh.</span>
+
+nutLuu$.pipe(exhaustMap(() =&gt; api.luu(dl)))
+<span class="cm">// Bấm Lưu 5 lần liên tiếp → đúng 1 request được gửi.</span>
+
+taiTep$.pipe(mergeMap((t) =&gt; api.tai(t), <span class="kw">3</span>))
+<span class="cm">// Tham số thứ hai = trần đồng thời: tối đa 3 tệp tải cùng lúc,</span>
+<span class="out">// phần còn lại tự xếp hàng chờ.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Bốn cái tên rất dễ chọn nhầm,</b> và chọn nhầm thì bug chỉ hiện khi mạng chậm — khó tái hiện, khó tin là có.</li>
+        <li><b><code>switchMap</code> huỷ cả thao tác ghi.</b> Dùng cho lệnh lưu / xoá là mất dữ liệu người dùng vừa nhập.</li>
+        <li><b><code>mergeMap</code> không giới hạn</b> có thể bắn hàng trăm request cùng lúc và làm sập chính máy chủ của mình.</li>
+        <li><b><code>concatMap</code> làm hàng đợi phình vô hạn</b> nếu giá trị vào đến nhanh hơn tốc độ xử lý — độ trễ tăng dần mà không ai thấy lỗi.</li>
+        <li><b>Lồng nhiều tầng <code>*Map</code></b> khiến luồng khó đọc, khó gỡ lỗi, và stack trace (dấu vết lỗi) gần như vô dụng.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code>tuKhoa$.pipe(mergeMap((tk) =&gt; api.tim(tk)))
+<span class="cm">// ✗ request "ab" về SAU request "abc" → kết quả cũ đè kết quả mới.</span>
+<span class="cm">// Chỉ xảy ra khi mạng chậm — máy dev không bao giờ tái hiện được.</span>
+
+nutLuu$.pipe(switchMap(() =&gt; api.luu(dl)))
+<span class="cm">// ✗ bấm Lưu lần hai huỷ lệnh lưu lần một đang chạy → mất dữ liệu.</span>
+
+danhSach$.pipe(mergeMap((r) =&gt; api.chiTiet(r.id)))
+<span class="cm">// ✗ danh sách 500 dòng → 500 request bắn cùng một nhịp.</span>
+<span class="cm">// Thiếu trần đồng thời: mergeMap(..., 5) mới là bản dùng được.</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> mặc định lấy <code>switchMap</code> cho mọi thao tác <em>đọc</em>, <code>concatMap</code> cho mọi thao tác <em>ghi</em>, <code>exhaustMap</code> cho mọi <em>nút bấm</em>. Chỉ dùng <code>mergeMap</code> khi đã có lý do rõ ràng, và khi dùng thì <strong>luôn</strong> truyền trần đồng thời ở tham số thứ hai. Khi review mã, thấy <code>switchMap</code> bọc quanh một lời gọi <code>POST</code>/<code>PUT</code>/<code>DELETE</code> thì gần như chắc chắn là lỗi.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>RxJS</td><td>Thư viện lập trình phản ứng cho JavaScript — xử lý dữ liệu đến theo dòng thời gian.</td></tr>
+      <tr><td>Observable</td><td>Luồng dữ liệu — thứ lần lượt phát ra từng giá trị theo thời gian.</td></tr>
+      <tr><td>operator</td><td>Toán tử — hàm đặt trong <code>pipe</code> để nhào nặn luồng.</td></tr>
+      <tr><td>pipe</td><td>Ống nối — nơi xâu chuỗi các toán tử của một luồng.</td></tr>
+      <tr><td>transformation operator</td><td>Toán tử biến đổi — nhóm toán tử đổi giá trị hoặc đổi luồng.</td></tr>
+      <tr><td>higher-order observable</td><td>Luồng bậc cao — luồng mà mỗi giá trị của nó lại là một luồng khác.</td></tr>
+      <tr><td>subscribe</td><td>Đăng ký nghe — hành động khiến luồng bắt đầu chạy.</td></tr>
+      <tr><td>emit</td><td>Phát ra — luồng đẩy một giá trị tới người đang nghe.</td></tr>
+      <tr><td>request</td><td>Lời gọi tới máy chủ để lấy hoặc ghi dữ liệu.</td></tr>
+      <tr><td>API</td><td>Giao diện lập trình — tập các đường gọi mà máy chủ mở ra cho ứng dụng.</td></tr>
+      <tr><td>asynchronous</td><td>Bất đồng bộ — việc chạy nền, không biết trước lúc nào xong.</td></tr>
+      <tr><td>concurrency</td><td>Tính đồng thời — nhiều việc cùng chạy một lúc.</td></tr>
+      <tr><td>race condition</td><td>Tình trạng đua — kết quả phụ thuộc việc nào về đích trước.</td></tr>
+      <tr><td>marble diagram</td><td>Sơ đồ hòn bi — cách vẽ luồng RxJS theo trục thời gian trái sang phải.</td></tr>
+      <tr><td>callback</td><td>Hàm gọi lại — hàm được truyền vào để chạy sau khi việc kia xong.</td></tr>
+      <tr><td>route</td><td>Đường dẫn màn hình trong ứng dụng một trang.</td></tr>
+      <tr><td>debounceTime</td><td>Chờ im lặng đủ lâu rồi mới cho giá trị đi tiếp.</td></tr>
+      <tr><td>distinctUntilChanged</td><td>Bỏ qua giá trị trùng với giá trị liền ngay trước.</td></tr>
+      <tr><td>stack trace</td><td>Dấu vết lỗi — danh sách các hàm đã gọi tới chỗ phát sinh lỗi.</td></tr>
+    </tbody>
+  </table></div>
+</section>
