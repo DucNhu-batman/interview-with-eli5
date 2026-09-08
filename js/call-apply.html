@@ -265,7 +265,7 @@ pre .gl::after,pre .gl::before{display:none}
 </header>
 <section class="col">
   <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Gọi hàm và chỉ định luôn chủ nhân</h2></div>
-  <p>Bình thường <code>this</code> do <em>cách gọi</em> quyết định. <code>call</code> và <code>apply</code> cho phép bạn giành lấy quyền đó: gọi hàm ngay lập tức, đồng thời nói thẳng “lần này <code>this</code> là đối tượng kia”.</p>
+  <p>Bình thường <code>this</code> do <em>cách gọi</em> quyết định. <code>call</code> và <code>apply</code> — hai <span class="gl" data-gl="method" tabindex="0">method (phương thức)</span> có sẵn trên mọi hàm — cho phép bạn giành lấy quyền đó: gọi hàm ngay lập tức, đồng thời nói thẳng “lần này <code>this</code> là đối tượng kia”.</p>
   <p>Hai hàm này giống hệt nhau, chỉ khác cách nhận đối số (argument — giá trị truyền vào hàm):</p>
 <pre><code>ham.call(chuNhan, a, b, c);    <span class="cm">// đối số rời — Comma</span>
 ham.apply(chuNhan, [a, b, c]); <span class="cm">// đối số gói trong MẢNG — Array</span></code></pre>
@@ -296,8 +296,8 @@ gioiThieu.apply(binh, [<span class="str">'Xin chào'</span>, <span class="str">'
   <div class="cards">
     <div class="card">
       <span class="tag warn">Vẫn dùng</span>
-      <h3>Kiểm tra kiểu chuẩn xác</h3>
-      <p><code>typeof</code> nói mảng là <code>'object'</code>, còn <code>null</code> cũng là <code>'object'</code>. Mượn <code>toString</code> gốc thì phân biệt được tất cả.</p>
+      <h3>Kiểm tra <span class="gl" data-gl="data type" tabindex="0">kiểu dữ liệu</span> chuẩn xác</h3>
+      <p><code>typeof</code> nói mảng là <code>'object'</code>, còn <code>null</code> cũng là <code>'object'</code>. Mượn <code>toString</code> trên <code>prototype</code> (nguyên mẫu — nơi các đối tượng cùng loại dùng chung method) gốc thì phân biệt được tất cả.</p>
 <pre><code>Object.prototype.toString
   .call([]);      <span class="out">// '[object Array]'</span>
   .call(<span class="kw">null</span>);  <span class="out">// '[object Null]'</span></code></pre>
@@ -318,7 +318,7 @@ gioiThieu.apply(binh, [<span class="str">'Xin chào'</span>, <span class="str">'
     </div>
     <div class="card">
       <span class="tag warn">Code kế thừa</span>
-      <h3>Gọi constructor cha</h3>
+      <h3>Gọi <span class="gl" data-gl="parent constructor" tabindex="0">hàm khởi tạo của lớp cha</span></h3>
       <p>Trước khi có <code>class</code> và <code>super()</code>, kế thừa được viết bằng cách gọi hàm cha với <code>this</code> của con.</p>
 <pre><code><span class="kw">function</span> NhanVien(ten, luong) {
   Nguoi.call(<span class="kw">this</span>, ten);
@@ -336,7 +336,7 @@ gioiThieu.apply(binh, [<span class="str">'Xin chào'</span>, <span class="str">'
       <ul>
         <li><b>Tái sử dụng tối đa.</b> Một hàm phục vụ được mọi đối tượng có cùng "hình dạng", không cần kế thừa.</li>
         <li><b>Không tạo hàm mới.</b> Khác <code>bind</code>, <code>call/apply</code> không sinh thêm object hàm — nhẹ hơn khi gọi trong vòng lặp.</li>
-        <li><b>Kiểm soát <code>this</code> tuyệt đối.</b> Rất tiện khi viết hàm tiện ích, thư viện, hoặc khi phải làm việc với API cũ.</li>
+        <li><b>Kiểm soát <code>this</code> tuyệt đối.</b> Rất tiện khi viết <span class="gl" data-gl="utility function" tabindex="0">hàm tiện ích</span>, thư viện, hoặc khi phải làm việc với API (giao diện lập trình — bộ hàm một thư viện phơi ra cho bên ngoài dùng) cũ.</li>
         <li><b><code>apply</code> nhận sẵn mảng.</b> Hợp khi số lượng đối số chỉ biết lúc chạy.</li>
       </ul>
       <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
@@ -353,7 +353,7 @@ kieu(<span class="kw">new</span> Date()); <span class="out">// 'Date'</span></co
         <li><b>Mượn method dễ vỡ.</b> Đối tượng đi mượn phải có đúng những thuộc tính mà method gốc trông đợi, nếu không sẽ lỗi ở tận bên trong.</li>
         <li><b><code>apply</code> giới hạn số đối số.</b> Trải một mảng hàng trăm nghìn phần tử có thể ném <code>RangeError: Maximum call stack size exceeded</code>.</li>
         <li><b>Không tác dụng với arrow function.</b> Arrow không có <code>this</code> riêng, nên chỉ định <code>this</code> cho nó là vô ích — một cái bẫy im lặng.</li>
-        <li><b>Khác nhau giữa hai chế độ.</b> Truyền <code>null</code> làm <code>this</code>: strict mode giữ nguyên <code>null</code>, sloppy mode tự đổi thành <code>window</code>.</li>
+        <li><b>Khác nhau giữa hai chế độ.</b> Truyền <code>null</code> làm <code>this</code>: strict mode (chế độ nghiêm ngặt) giữ nguyên <code>null</code>, sloppy mode (chế độ dễ dãi — mặc định của script kiểu cũ) tự đổi thành <code>window</code>.</li>
       </ul>
       <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
 <pre><code><span class="kw">const</span> ds = <span class="kw">new</span> Array(200000).fill(1);
@@ -366,7 +366,42 @@ chao.call({ ten: <span class="str">'An'</span> });      <span class="out">// und
     </div>
   </div>
   <div class="callout good col">
-    <p><strong>Ngày nay nên thế nào:</strong> phần lớn công dụng cũ của <code>apply</code> đã có cú pháp thay thế rõ ràng hơn (<code>...</code>, <code>Array.from</code>, <code>class</code>/<code>super</code>). Hãy giữ <code>call/apply</code> cho đúng việc chúng vẫn giỏi nhất: <em>mượn method</em> và <em>chỉ định this khi làm việc với code cũ</em>.</p>
+    <p><strong>Ngày nay nên thế nào:</strong> phần lớn công dụng cũ của <code>apply</code> đã có cú pháp thay thế rõ ràng hơn (<code>...</code>, <code>Array.from</code>, <code>class</code>/<code>super</code>). Hãy giữ <code>call/apply</code> cho đúng việc chúng vẫn giỏi nhất: <em><span class="gl" data-gl="method borrowing" tabindex="0">mượn method</span></em> và <em>chỉ định this khi làm việc với code cũ</em>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> Cả hai gọi hàm <b>ngay lập tức</b> và cho bạn tự chỉ định <code>this</code>; khác nhau đúng một chỗ là cách nhận đối số — <code>call</code> rời, <code>apply</code> một mảng. Đối lập với chúng là <code>bind</code>: không gọi, chỉ trả về hàm mới. Từ khi có spread thì <code>apply</code> gần như hết việc, nên ngày nay lý do thật để còn dùng <code>call</code> chỉ còn hai: <b>mượn method</b> của <code>prototype</code> gốc, và <b>chỉ định <code>this</code> khi đụng code cũ</b>.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3><code>call</code>, <code>apply</code>, <code>bind</code> khác nhau thế nào?</h3>
+      <p>Chia hai trục cho gọn: <em>chạy hay không chạy</em> — <code>call</code>/<code>apply</code> chạy ngay, <code>bind</code> trả hàm mới; và <em>đối số rời hay mảng</em> — chỉ <code>apply</code> nhận mảng. Nói thêm được rằng <code>bind</code> cũng khoá sẵn đối số từ trái sang, còn <code>call</code>/<code>apply</code> không sinh hàm mới nên nhẹ hơn trong vòng lặp, là đủ sâu.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>call</code> có đổi được <code>this</code> của arrow function không?</h3>
+      <p><b>Không</b> — và điều tệ là nó <em>không báo lỗi</em>. Arrow không có <code>this</code> riêng nên tham số thứ nhất bị bỏ qua hoàn toàn, code vẫn chạy, chỉ ra kết quả sai. Cùng nhóm bẫy im lặng này: hàm đã <code>bind</code> rồi thì <code>call</code> cũng vô hiệu.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>Math.max.apply(null, ds)</code> với mảng 200 nghìn phần tử?</h3>
+      <p><code>RangeError: Maximum call stack size exceeded</code>. Vì <code>apply</code> <b>trải mảng thành từng đối số rời</b>, mà số đối số của một lời gọi bị giới hạn bởi ngăn xếp — không phải bởi bộ nhớ. Đây cũng là lý do <code>Math.max(...ds)</code> vẫn vỡ y hệt: cách chữa là <code>ds.reduce((a, b) =&gt; Math.max(a, b))</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Sao <code>Object.prototype.toString.call(x)</code> phân biệt được kiểu mà <code>typeof</code> không?</h3>
+      <p><code>typeof</code> chỉ tách được primitive và hàm — mảng, <code>null</code>, <code>Date</code> đều ra <code>'object'</code>. Còn <code>toString</code> gốc đọc dấu hiệu nội bộ của đối tượng nên trả về <code>'[object Array]'</code>, <code>'[object Null]'</code>. Chỗ tách người hiểu: <b>bắt buộc phải qua <code>.call</code></b>, vì <code>[].toString()</code> đã bị mảng ghi đè thành <code>'1,2'</code> — bạn đang cố tình lấy bản gốc trên <code>prototype</code> thay vì bản đã bị đè.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "<code>call</code>, <code>apply</code>, <code>bind</code> đổi được <code>this</code> của mọi hàm." Sai ở hai ca, và cả hai đều <em>im lặng</em>: arrow function không có <code>this</code> riêng nên chỉ định gì cũng vô nghĩa; hàm đã <code>bind</code> thì khoá vĩnh viễn, <code>call</code> sau đó không lay chuyển được. Không lỗi, không cảnh báo — chỉ có kết quả sai, nên đây là loại bug tốn nhiều thời gian nhất để lần ra.</p>
   </div>
 </section>
 
@@ -378,17 +413,21 @@ chao.call({ ten: <span class="str">'An'</span> });      <span class="out">// und
       <tr><td>call</td><td>Gọi hàm ngay, đối số rời, tự chỉ định <code>this</code>.</td></tr>
       <tr><td>apply</td><td>Như <code>call</code> nhưng đối số gói trong một mảng.</td></tr>
       <tr><td>thisArg</td><td>Đối số đầu tiên của <code>call/apply/bind</code> — đối tượng sẽ đóng vai <code>this</code>.</td></tr>
+      <tr><td>method borrowing</td><td>Mượn method — dùng method của đối tượng này cho đối tượng khác qua <code>call/apply</code>.</td></tr>
+      <tr><td>prototype</td><td>Nguyên mẫu — nơi các đối tượng cùng loại dùng chung method.</td></tr>
       <tr><td>array-like</td><td>Đối tượng "giống mảng": có <code>length</code> và chỉ số, nhưng không có method của mảng.</td></tr>
       <tr><td>arguments</td><td>Đối tượng chứa toàn bộ đối số của một hàm thường (không có ở arrow).</td></tr>
       <tr><td>NodeList</td><td>Danh sách phần tử DOM mà <code>querySelectorAll</code> trả về.</td></tr>
       <tr><td>spread (...)</td><td>Cú pháp trải — rải các phần tử của mảng thành đối số rời.</td></tr>
       <tr><td>RangeError</td><td>Lỗi vượt giới hạn — ví dụ quá nhiều đối số, hoặc đệ quy quá sâu.</td></tr>
+      <tr><td>strict / sloppy mode</td><td>Chế độ nghiêm ngặt / dễ dãi — quyết định <code>this</code> trần là <code>undefined</code> hay <code>window</code>.</td></tr>
+      <tr><td>API</td><td>Giao diện lập trình — bộ hàm mà một thư viện phơi ra cho bên ngoài dùng.</td></tr>
       <tr><td>call stack</td><td>Ngăn xếp lời gọi — chuỗi hàm đang chờ nhau chạy xong.</td></tr>
     </tbody>
   </table></div>
 </section>
 <nav class="pager"><a class="prev" href="this-keyword.html"><span class="dir">← Bài trước</span><span class="nm">Từ khoá this</span></a><a class="next" href="bind-part-1.html"><span class="dir">Bài tiếp →</span><span class="nm">Fn.bind() — phần 1: cơ bản</span></a></nav>
-<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 9/13</p></footer>
+<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 9/18</p></footer>
 </div>
 </body>
 </html>

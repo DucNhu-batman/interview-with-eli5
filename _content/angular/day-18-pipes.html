@@ -1,26 +1,106 @@
 <!--meta
-title: Day 18 — Pipes
+title: Day 18 — Pipes: thuần, không thuần, và cái giá của mỗi chu kỳ
 eyebrow: Angular · Day 18
-short: Day 18
-lede: Biến dữ liệu thô thành thứ người đọc hiểu ngay trong template — và ranh giới sống còn giữa pipe thuần và pipe không thuần.
+short: Day 18 · Pipes
+lede: Pipe là ống lọc đặt giữa dữ liệu thô và mắt người đọc. Ai cũng gõ được dấu gạch đứng, nhưng ranh giới giữa pipe thuần và pipe không thuần mới là chỗ quyết định màn hình danh sách của bạn mượt hay giật — và là chỗ người phỏng vấn hay dừng lại hỏi.
 -->
 
 <section class="col">
   <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Cái bộ lọc đặt giữa dữ liệu và mắt người dùng</h2></div>
-  <p>Pipe (ống lọc) nhận một giá trị, trả về giá trị đã định dạng, dùng ngay trong template bằng dấu <code>|</code>. Angular có sẵn <code>date</code>, <code>currency</code>, <code>number</code>, <code>percent</code>, <code>json</code>, <code>slice</code>, <code>async</code>…</p>
+  <p>Trong kho có con số <code>1500000</code> và cái mốc thời gian <code>2026-09-06T08:30:00Z</code>. Người dùng thì muốn đọc <em>“1.500.000 ₫”</em> và <em>“06/09/2026 15:30”</em>. <strong>Pipe</strong> (ống lọc — bộ biến đổi giá trị chỉ để hiển thị) chính là cái khâu đứng giữa hai thứ đó.</p>
+  <p>Nó nhận một giá trị, trả về giá trị đã định dạng, và được gọi ngay trong <strong>template</strong> (khuôn giao diện — file HTML của một thành phần) bằng dấu gạch đứng <code>|</code>. Angular đã dựng sẵn <code>date</code>, <code>currency</code>, <code>number</code>, <code>percent</code>, <code>json</code>, <code>slice</code>, <code>async</code>… và bạn tự viết thêm được bao nhiêu tuỳ thích.</p>
 <pre><code>{{ ngayTao() | date: <span class="str">'dd/MM/yyyy HH:mm'</span> }}
 {{ tongTien() | currency: <span class="str">'VND'</span> : <span class="str">'symbol'</span> : <span class="str">'1.0-0'</span> }}
-{{ danhSach$ | async }}                <span class="cm">// tự subscribe và tự huỷ</span>
+{{ danhSach$ | async }}                <span class="cm">// tự đăng ký nghe và tự huỷ</span>
 
-<span class="cm">// Pipe tự viết</span>
-&#64;Pipe({ name: <span class="str">'rutGon'</span> })
+<span class="cm">// Pipe tự viết — chỉ cần một lớp và một hàm</span>
+&#64;Pipe({ name: <span class="str">'rutGon'</span> })          <span class="cm">// decorator: gắn thông tin mô tả lên lớp</span>
 export class RutGonPipe <span class="kw">implements</span> PipeTransform {
-  transform(v: string, max = 50): string {
-    <span class="kw">return</span> v.length &gt; max ? v.slice(0, max) + <span class="str">'…'</span> : v;
+  transform(v: string, max = <span class="kw">50</span>): string {
+    <span class="kw">return</span> v.length &gt; max ? v.slice(<span class="kw">0</span>, max) + <span class="str">'…'</span> : v;
   }
 }</code></pre>
+  <p>Ba mảnh ghép, không hơn: <code>&#64;Pipe</code> là <strong>decorator</strong> (bộ trang trí — cú pháp dán thông tin mô tả lên một lớp để Angular đọc được), <code>name</code> là cái tên bạn gõ sau dấu <code>|</code>, còn <code>PipeTransform</code> là <strong>interface</strong> (bản cam kết hình dạng — ở đây bắt buộc phải có đúng một hàm <code>transform</code>). Tham số truyền thêm thì nối bằng dấu hai chấm, và xếp đúng thứ tự tham số của <code>transform</code>.</p>
   <div class="callout">
-    <p><strong>Thuần hay không thuần?</strong> Mặc định pipe là <em>pure</em> (thuần): chỉ tính lại khi đầu vào đổi tham chiếu — rất rẻ. Khai <code>pure: false</code> thì nó chạy lại <strong>mỗi chu kỳ phát hiện thay đổi</strong>, tức là hàng trăm lần mỗi giây khi người dùng đang thao tác. Chỉ dùng khi thật sự không còn cách nào khác.</p>
+    <p><strong>Câu chốt cả bài:</strong> mặc định pipe là <b><span class="gl" data-gl="pure" tabindex="0">thuần</span></b> — Angular chỉ gọi lại <code>transform</code> khi <em><span class="gl" data-gl="reference" tabindex="0">tham chiếu</span></em> đầu vào đổi, nên rẻ như không. Khai <code>pure: false</code> là bạn tự tay đổi hợp đồng đó: hàm sẽ chạy lại <b>mỗi chu kỳ <span class="gl" data-gl="change detection" tabindex="0">phát hiện thay đổi</span></b>, nhân với từng dòng đang hiển thị. Cả bài này thực chất chỉ nói về một dấu bằng đó.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Angular hỏi gì mỗi khi vẽ lại màn hình</h2></div>
+  <div class="col">
+    <p><strong>Change detection</strong> (phát hiện thay đổi — vòng quét Angular chạy sau mỗi sự kiện để xem có gì trên màn hình cần vẽ lại không) chạy rất nhiều lần: mỗi cú gõ phím, mỗi lần chuột di, mỗi lần dữ liệu về từ máy chủ. Mỗi vòng như vậy, tới chỗ có dấu <code>|</code>, Angular làm đúng ba việc:</p>
+    <ol class="steps">
+      <li>Lấy giá trị đầu vào và các tham số của pipe ở thời điểm hiện tại.</li>
+      <li>So với lần trước bằng phép so sánh <em><span class="gl" data-gl="strict equality" tabindex="0">đồng nhất</span></em> <code>===</code> — tức là so <strong>tham chiếu</strong> (địa chỉ ô nhớ của đối tượng, không phải nội dung bên trong nó).</li>
+      <li>Giống hệt thì trả lại kết quả đã nhớ sẵn trong <strong>cache</strong> (bộ nhớ đệm — chỗ cất tạm kết quả cũ để khỏi tính lại). Khác thì mới gọi <code>transform</code>.</li>
+    </ol>
+    <p>Với <code>pure: false</code>, bước 2 và 3 bị bỏ qua hoàn toàn: cứ mỗi <span class="gl" data-gl="change detection cycle" tabindex="0">vòng quét</span> là gọi <code>transform</code> một lần, không hỏi han gì.</p>
+  </div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 300" role="img" aria-label="Sơ đồ ba chu kỳ phát hiện thay đổi. Đầu vào chỉ đổi tham chiếu ở chu kỳ một, hai chu kỳ sau giữ nguyên. Pipe thuần chỉ tính lại ở chu kỳ một rồi dùng lại kết quả cũ ở hai chu kỳ sau. Pipe không thuần tính lại ở cả ba chu kỳ.">
+        <text x="278" y="20" text-anchor="middle" font-size="11" font-weight="700" font-family="monospace" fill="var(--muted)">CHU KỲ 1</text>
+        <text x="450" y="20" text-anchor="middle" font-size="11" font-weight="700" font-family="monospace" fill="var(--muted)">CHU KỲ 2</text>
+        <text x="622" y="20" text-anchor="middle" font-size="11" font-weight="700" font-family="monospace" fill="var(--muted)">CHU KỲ 3</text>
+
+        <text x="14" y="56" font-size="11.5" font-weight="700" font-family="monospace" fill="currentColor">ĐẦU VÀO</text>
+        <rect x="200" y="32" width="156" height="38" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <text x="278" y="56" text-anchor="middle" font-size="11.5" font-family="monospace" fill="currentColor">ds = [A,B] ← MỚI</text>
+        <rect x="372" y="32" width="156" height="38" rx="8" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.4"></rect>
+        <text x="450" y="56" text-anchor="middle" font-size="11.5" font-family="monospace" fill="var(--muted)">ds — y nguyên</text>
+        <rect x="544" y="32" width="156" height="38" rx="8" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.4"></rect>
+        <text x="622" y="56" text-anchor="middle" font-size="11.5" font-family="monospace" fill="var(--muted)">ds — y nguyên</text>
+
+        <line x1="14" y1="88" x2="706" y2="88" stroke="currentColor" stroke-opacity=".14"></line>
+
+        <text x="14" y="122" font-size="11.5" font-weight="700" font-family="monospace" fill="var(--good)">PIPE THUẦN</text>
+        <text x="14" y="140" font-size="10.5" font-family="monospace" fill="var(--muted)">mặc định</text>
+        <rect x="200" y="102" width="156" height="46" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.8"></rect>
+        <text x="278" y="130" text-anchor="middle" font-size="12" font-weight="700" font-family="monospace" fill="currentColor">TÍNH LẠI</text>
+        <rect x="372" y="102" width="156" height="46" rx="8" fill="none" stroke="var(--good)" stroke-width="1.6" stroke-dasharray="5 4"></rect>
+        <text x="450" y="130" text-anchor="middle" font-size="11" font-family="monospace" fill="var(--good)">dùng lại cache</text>
+        <rect x="544" y="102" width="156" height="46" rx="8" fill="none" stroke="var(--good)" stroke-width="1.6" stroke-dasharray="5 4"></rect>
+        <text x="622" y="130" text-anchor="middle" font-size="11" font-family="monospace" fill="var(--good)">dùng lại cache</text>
+
+        <text x="14" y="196" font-size="11.5" font-weight="700" font-family="monospace" fill="var(--bad)">KHÔNG THUẦN</text>
+        <text x="14" y="214" font-size="10.5" font-family="monospace" fill="var(--muted)">pure: false</text>
+        <rect x="200" y="176" width="156" height="46" rx="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.8"></rect>
+        <text x="278" y="204" text-anchor="middle" font-size="12" font-weight="700" font-family="monospace" fill="currentColor">TÍNH LẠI</text>
+        <rect x="372" y="176" width="156" height="46" rx="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.8"></rect>
+        <text x="450" y="204" text-anchor="middle" font-size="12" font-weight="700" font-family="monospace" fill="currentColor">TÍNH LẠI</text>
+        <rect x="544" y="176" width="156" height="46" rx="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.8"></rect>
+        <text x="622" y="204" text-anchor="middle" font-size="12" font-weight="700" font-family="monospace" fill="currentColor">TÍNH LẠI</text>
+
+        <line x1="14" y1="242" x2="706" y2="242" stroke="currentColor" stroke-opacity=".14"></line>
+        <text x="14" y="268" font-size="11.5" font-family="monospace" fill="var(--good)">Thuần: 1 lần tính / 3 chu kỳ</text>
+        <text x="14" y="288" font-size="11.5" font-family="monospace" fill="var(--bad)">Không thuần: 3 lần tính / 3 chu kỳ — rồi nhân với số dòng đang hiển thị</text>
+      </svg>
+    </div>
+    <figcaption>Cùng một dữ liệu, cùng ba vòng quét. Khác nhau đúng một dòng cấu hình <code>pure</code>.</figcaption>
+  </figure>
+  <div class="col">
+    <p>Chi tiết ít người để ý: mỗi <em>chỗ dùng</em> pipe trong template được Angular tạo <strong>một thực thể</strong> (instance — một bản sao riêng của lớp pipe) riêng, và mỗi thực thể chỉ nhớ đúng <b>một cặp</b> “đầu vào gần nhất → kết quả gần nhất”. Nên trong một vòng lặp <code>&#64;for</code> 500 dòng, bạn có 500 thực thể pipe, mỗi cái tự nhớ phần của mình — chứ không phải một cache dùng chung.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Pipe có sẵn — cái nào thuần, cái nào không</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Pipe</th><th>Làm gì</th><th>Thuần?</th></tr></thead>
+    <tbody>
+      <tr><td>date</td><td>Định dạng ngày giờ theo <strong>locale</strong> (vùng miền — quy ước hiển thị ngày, giờ, tiền của từng nơi).</td><td><span class="yes">Thuần</span></td></tr>
+      <tr><td>currency</td><td>Định dạng tiền tệ kèm ký hiệu và số chữ số thập phân.</td><td><span class="yes">Thuần</span></td></tr>
+      <tr><td>number / percent</td><td>Định dạng số và phần trăm theo mẫu <code>'1.0-2'</code>.</td><td><span class="yes">Thuần</span></td></tr>
+      <tr><td>uppercase / lowercase / titlecase</td><td>Đổi kiểu chữ hoa thường.</td><td><span class="yes">Thuần</span></td></tr>
+      <tr><td>async</td><td>Tự <strong>subscribe</strong> (đăng ký nghe — hành động khiến luồng dữ liệu bắt đầu chảy về) một <strong>Observable</strong> (luồng dữ liệu — dãy giá trị xuất hiện dần theo thời gian) rồi tự huỷ đăng ký.</td><td><span class="no">Không</span></td></tr>
+      <tr><td>json</td><td>In cả đối tượng ra chuỗi để soi lúc <span class="gl" data-gl="debug" tabindex="0">gỡ lỗi</span>. Chỉ dùng khi phát triển.</td><td><span class="no">Không</span></td></tr>
+      <tr><td>slice</td><td>Cắt một khúc của mảng hoặc chuỗi.</td><td><span class="no">Không</span></td></tr>
+      <tr><td>keyvalue</td><td>Biến đối tượng thành danh sách cặp <span class="gl" data-gl="key–value" tabindex="0">khoá–giá trị</span> để duyệt được.</td><td><span class="no">Không</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout col">
+    <p><strong>Đừng học thuộc, hãy nhớ quy luật:</strong> pipe nào có kết quả thay đổi <em>mà đầu vào giữ nguyên <span class="gl" data-gl="reference" tabindex="0">tham chiếu</span></em> thì buộc phải không thuần. <code>async</code> nhận mãi một Observable nhưng giá trị bên trong thì đổi liên tục; <code>slice</code> và <code>keyvalue</code> đọc <em>nội dung</em> của mảng và đối tượng chứ không phải cái vỏ. Bốn cái ở cuối bảng không phải ngoại lệ tuỳ hứng — chúng là hệ quả bắt buộc.</p>
   </div>
 </section>
 
@@ -31,37 +111,79 @@ export class RutGonPipe <span class="kw">implements</span> PipeTransform {
       <h3><span class="dot">+</span>Mặt lợi</h3>
       <ul>
         <li><b>Template sạch.</b> Logic định dạng nằm ngoài, không nhét vào giữa HTML.</li>
-        <li><b>Dùng lại khắp nơi</b> và kiểm thử được như một hàm thuần.</li>
-        <li><b>Pipe thuần có cache.</b> Đầu vào không đổi thì không tính lại — rẻ hơn gọi hàm trong template.</li>
-        <li><b><code>async</code> pipe tự huỷ đăng ký</b>, xoá sạch một lớp lỗi rò rỉ bộ nhớ.</li>
-        <li><b>Hỗ trợ đa vùng miền</b> sẵn cho ngày tháng và tiền tệ.</li>
+        <li><b>Dùng lại khắp nơi</b> và <strong>kiểm thử</strong> (unit test — chạy thử từng mẩu mã tách rời) được như một hàm bình thường: gọi thẳng <code>transform</code>, không cần dựng cả giao diện.</li>
+        <li><b>Pipe thuần có cache.</b> Đầu vào không đổi thì không tính lại — rẻ hơn hẳn việc gọi một hàm trong template, vì hàm thì chu kỳ nào cũng chạy.</li>
+        <li><b><code>async</code> tự <span class="gl" data-gl="unsubscribe" tabindex="0">huỷ đăng ký</span></b>, xoá sạch một lớp lỗi <strong>rò rỉ bộ nhớ</strong> (memory leak — vùng nhớ đáng lẽ được thu hồi nhưng vẫn bị giữ lại).</li>
+        <li><b>Hỗ trợ <span class="gl" data-gl="internationalization / i18n" tabindex="0">đa vùng miền</span> sẵn</b> cho ngày tháng và tiền tệ, không phải tự viết lại.</li>
       </ul>
       <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
 <pre><code>&lt;td&gt;{{ row.ngayTao | date: <span class="str">'dd/MM/yyyy'</span> }}&lt;/td&gt;
 &lt;td&gt;{{ row.tien | currency: <span class="str">'VND'</span> }}&lt;/td&gt;
-<span class="cm">// Pipe thuần: 500 dòng nhưng chỉ tính lại đúng dòng có dữ liệu đổi.</span>
+<span class="cm">// Pipe thuần: 500 dòng, chỉ tính lại đúng dòng có dữ liệu đổi.</span>
 
 &lt;p&gt;{{ (nguoiDung$ | async)?.ten }}&lt;/p&gt;
-<span class="cm">// async pipe tự huỷ đăng ký khi component chết — không thể quên.</span></code></pre></div>
+<span class="cm">// Tự huỷ đăng ký khi thành phần bị huỷ — không thể quên.</span>
+
+<span class="cm">// Kiểm thử: không cần dựng giao diện</span>
+expect(<span class="kw">new</span> RutGonPipe().transform(<span class="str">'abcdef'</span>, <span class="kw">3</span>))
+  .toBe(<span class="str">'abc…'</span>);</code></pre></div>
     </div>
     <div class="panel con">
       <h3><span class="dot">−</span>Mặt hại</h3>
       <ul>
         <li><b>Pipe không thuần rất tốn.</b> Là nguyên nhân số một của giao diện giật ở màn hình danh sách.</li>
-        <li><b>Không nhận ra thay đổi bên trong object/mảng</b> nếu tham chiếu giữ nguyên — người viết dễ tưởng pipe hỏng.</li>
-        <li><b>Khó gỡ lỗi.</b> Lỗi ném ra từ trong pipe hiển thị rất mơ hồ.</li>
-        <li><b>Xâu chuỗi nhiều pipe</b> làm biểu thức khó đọc và khó đoán thứ tự.</li>
-        <li><b>Không thay được cho tầng nghiệp vụ.</b> Tính toán quan trọng nên nằm ở facade/service, không nên giấu trong pipe.</li>
+        <li><b>Không nhận ra thay đổi bên trong</b> đối tượng hay mảng nếu <span class="gl" data-gl="reference" tabindex="0">tham chiếu</span> giữ nguyên — người viết dễ tưởng pipe hỏng, rồi “chữa” bằng <code>pure: false</code>.</li>
+        <li><b>Tạo giá trị mới ngay trong template</b> là bẫy ngược lại: tham chiếu mới mỗi chu kỳ nên cache không bao giờ trúng.</li>
+        <li><b>Khó gỡ lỗi.</b> Lỗi ném ra từ trong pipe hiện lên rất mơ hồ, không chỉ được dòng nào của template.</li>
+        <li><b>Không thay được cho <span class="gl" data-gl="business layer" tabindex="0">tầng nghiệp vụ</span>.</b> Tính toán quan trọng nên nằm ở <strong>service</strong> (lớp chứa nghiệp vụ dùng chung, không dính giao diện), không giấu trong pipe.</li>
       </ul>
       <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
 <pre><code>&#64;Pipe({ name: <span class="str">'loc'</span>, pure: <span class="kw">false</span> })
-<span class="cm">// ✗ chạy lại MỌI chu kỳ kiểm tra, với mỗi dòng:</span>
+<span class="cm">// ✗ chạy lại MỌI chu kỳ, với mỗi dòng:</span>
 &#64;for (r of ds() | loc: tuKhoa()) { … }
-<span class="cm">// 500 dòng × 60 lần/giây = 30.000 lần lọc mỗi giây → giao diện giật</span>
+<span class="cm">// 500 dòng × 60 vòng/giây = 30.000 lần lọc mỗi giây</span>
 
 <span class="kw">this</span>.ds().push(moi);
-<span class="cm">// ✗ pipe thuần không nhận ra: tham chiếu mảng không đổi → màn hình đứng im</span></code></pre></div>
+<span class="cm">// ✗ tham chiếu mảng không đổi → pipe thuần bỏ qua → màn hình đứng im</span>
+
+{{ <span class="kw">new</span> Date(row.ts) | date }}
+<span class="cm">// ✗ mỗi chu kỳ một đối tượng mới → cache trượt 100%</span></code></pre></div>
     </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> giữ dữ liệu <strong>bất biến</strong> (immutable — mỗi lần đổi thì tạo bản mới chứ không sửa tại chỗ), để pipe thuần thấy được tham chiếu mới: <code>ds.set([...ds(), moi])</code> thay cho <code>push</code>. Lọc và sắp xếp thì đẩy về <strong>signal</strong> (tín hiệu — ô giá trị Angular theo dõi được) tính sẵn bằng <code>computed()</code>, hoặc về service — chứ đừng làm trong template. Và chỉ đụng tới <code>pure: false</code> khi bạn đã đo được rằng nó rẻ, không phải khi bạn đang bí.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> Pipe là hàm định dạng gọi được từ template bằng dấu <code>|</code>. Mặc định nó <b><span class="gl" data-gl="pure" tabindex="0">thuần</span></b>: mỗi chu kỳ <span class="gl" data-gl="change detection" tabindex="0">phát hiện thay đổi</span> Angular so đầu vào bằng <code>===</code>, giống thì trả lại kết quả đã nhớ, khác mới gọi <code>transform</code> — nên nó rẻ hơn gọi hàm trong template. Khai <code>pure: false</code> là bỏ hẳn phép so đó, hàm chạy mọi chu kỳ, nhân với số chỗ dùng. Hệ quả thực tế: sửa mảng tại chỗ bằng <code>push</code> thì pipe thuần không thấy gì, và cách chữa đúng là <b>tạo mảng mới</b>, không phải bật <code>pure: false</code>.</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Pipe thuần khác pipe không thuần chỗ nào?</h3>
+      <p>Nói được cơ chế mới ăn điểm, đừng dừng ở “một cái chạy ít, một cái chạy nhiều”. Ý phải có: so sánh bằng <code>===</code> trên <em><span class="gl" data-gl="reference" tabindex="0">tham chiếu</span></em>, cache đúng một cặp vào–ra gần nhất, và cache đó thuộc về <em>từng chỗ dùng</em> trong template chứ không dùng chung.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>async</code> là pipe thuần hay không thuần?</h3>
+      <p><b>Không thuần</b> — và biết <em>vì sao</em> mới là điểm. Đầu vào của nó là một Observable giữ nguyên tham chiếu suốt đời, nhưng giá trị bên trong thì đổi; nếu thuần thì nó sẽ mãi trả về giá trị đầu tiên. Nói thêm được: <code>json</code>, <code>slice</code>, <code>keyvalue</code> cũng không thuần vì cùng một lý do.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Danh sách không cập nhật sau khi <code>push</code>. Sửa sao?</h3>
+      <p>Đáp án nghe hợp lý nhất — bật <code>pure: false</code> — chính là bẫy. Nguyên nhân thật là tham chiếu mảng không đổi nên phép so <code>===</code> báo “y nguyên”. Sửa ở nguồn dữ liệu: tạo mảng mới. Bật <code>pure: false</code> là đánh đổi một lỗi hiển thị lấy một vấn đề hiệu năng khó gỡ hơn nhiều.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Một pipe thuần dùng trong <code>&#64;for</code> 500 dòng: bao nhiêu thực thể, bao nhiêu lần <code>transform</code>?</h3>
+      <p><b>500 <span class="gl" data-gl="instance" tabindex="0">thực thể</span></b>, mỗi cái một cache riêng; <code>transform</code> chỉ chạy cho những dòng có đầu vào đổi. Nói thêm được vế cuối thì rõ là người đã đọc bên trong: phép so sánh <em>vẫn</em> chạy đủ 500 lần mỗi chu kỳ — “thuần” nghĩa là bỏ qua <code>transform</code>, không phải bỏ qua cả <span class="gl" data-gl="change detection cycle" tabindex="0">vòng quét</span>.</p>
+    </div>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> “Pipe thuần chỉ chạy một lần, nên nó không tốn gì.” Sai ở hai chỗ. Một, nó chạy lại bất cứ khi nào tham chiếu đầu vào đổi — viết <code>{{ x | p }}</code> với <code>x</code> là một đối tượng mới tạo mỗi chu kỳ thì “thuần” chẳng cứu được ai. Hai, Angular vẫn phải <em>hỏi</em> mỗi chu kỳ để biết có đổi hay không; cái được tiết kiệm là thân hàm <code>transform</code>, không phải toàn bộ chi phí.</p>
   </div>
 </section>
 
@@ -70,12 +192,33 @@ export class RutGonPipe <span class="kw">implements</span> PipeTransform {
   <div class="tbl-scroll"><table>
     <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
     <tbody>
-      <tr><td>pipe</td><td>Ống lọc — biến đổi giá trị để hiển thị.</td></tr>
-      <tr><td>pure pipe</td><td>Pipe thuần — chỉ tính lại khi đầu vào đổi tham chiếu.</td></tr>
-      <tr><td>impure pipe</td><td>Pipe không thuần — chạy lại mỗi chu kỳ kiểm tra.</td></tr>
-      <tr><td>async pipe</td><td>Pipe tự đăng ký và huỷ đăng ký một luồng dữ liệu.</td></tr>
-      <tr><td>PipeTransform</td><td>Giao diện bắt buộc, chỉ có một hàm <code>transform</code>.</td></tr>
-      <tr><td>i18n / locale</td><td>Đa ngôn ngữ / vùng miền, ảnh hưởng cách hiện ngày và tiền.</td></tr>
+      <tr><td>pipe</td><td>Ống lọc — bộ biến đổi giá trị chỉ để hiển thị, gọi trong template bằng dấu <code>|</code>.</td></tr>
+      <tr><td>template</td><td>Khuôn giao diện — phần HTML của một thành phần, nơi Angular gắn dữ liệu vào.</td></tr>
+      <tr><td>component</td><td>Thành phần giao diện — một mảnh màn hình gồm lớp xử lý và khuôn giao diện của nó.</td></tr>
+      <tr><td>decorator</td><td>Bộ trang trí — cú pháp <code>&#64;…</code> dán thông tin mô tả lên một lớp để Angular đọc được.</td></tr>
+      <tr><td>interface</td><td>Bản cam kết hình dạng — mô tả một lớp phải có những gì, ở đây là hàm <code>transform</code>.</td></tr>
+      <tr><td>PipeTransform</td><td>Bản cam kết bắt buộc của mọi pipe, chỉ có đúng một hàm <code>transform</code>.</td></tr>
+      <tr><td>transform</td><td>Hàm biến đổi — nơi chứa toàn bộ việc thật của một pipe.</td></tr>
+      <tr><td>pure pipe</td><td>Pipe thuần — chỉ gọi lại <code>transform</code> khi tham chiếu đầu vào đổi. Mặc định.</td></tr>
+      <tr><td>impure pipe</td><td>Pipe không thuần (<code>pure: false</code>) — gọi lại mỗi chu kỳ phát hiện thay đổi.</td></tr>
+      <tr><td>change detection</td><td>Phát hiện thay đổi — vòng quét Angular chạy sau mỗi sự kiện để xem có gì cần vẽ lại.</td></tr>
+      <tr><td>strict equality</td><td>Phép so sánh đồng nhất <code>===</code> — so cả giá trị lẫn kiểu, không tự ép kiểu.</td></tr>
+      <tr><td>reference</td><td>Tham chiếu — địa chỉ ô nhớ của một đối tượng, không phải nội dung bên trong nó.</td></tr>
+      <tr><td>cache</td><td>Bộ nhớ đệm — chỗ cất tạm kết quả cũ để lần sau khỏi tính lại.</td></tr>
+      <tr><td>instance</td><td>Thực thể — một bản sao riêng của lớp, ở đây là một pipe cho mỗi chỗ dùng trong template.</td></tr>
+      <tr><td>async pipe</td><td>Pipe tự đăng ký nghe một luồng dữ liệu và tự huỷ đăng ký khi thành phần bị huỷ.</td></tr>
+      <tr><td>Observable</td><td>Luồng dữ liệu — dãy giá trị xuất hiện dần theo thời gian.</td></tr>
+      <tr><td>subscribe</td><td>Đăng ký nghe — hành động khiến luồng dữ liệu bắt đầu chảy về.</td></tr>
+      <tr><td>unsubscribe</td><td>Huỷ đăng ký — ngắt kết nối với luồng dữ liệu để nó thôi giữ tài nguyên.</td></tr>
+      <tr><td>memory leak</td><td>Rò rỉ bộ nhớ — vùng nhớ đáng lẽ được thu hồi nhưng vẫn bị giữ lại.</td></tr>
+      <tr><td>debug</td><td>Gỡ lỗi — dò tìm nguyên nhân của một hành vi sai.</td></tr>
+      <tr><td>immutable</td><td>Bất biến — mỗi lần đổi thì tạo bản mới chứ không sửa tại chỗ.</td></tr>
+      <tr><td>signal</td><td>Tín hiệu — ô giá trị mà Angular theo dõi được, đọc bằng cách gọi như hàm: <code>ds()</code>.</td></tr>
+      <tr><td>computed</td><td>Tín hiệu tính sẵn — giá trị suy ra từ tín hiệu khác, tự tính lại khi nguồn đổi.</td></tr>
+      <tr><td>service</td><td>Lớp chứa nghiệp vụ dùng chung, không dính tới giao diện.</td></tr>
+      <tr><td>unit test</td><td>Kiểm thử đơn vị — chạy thử từng mẩu mã tách rời khỏi phần còn lại.</td></tr>
+      <tr><td>locale</td><td>Vùng miền — quy ước hiển thị ngày, giờ, tiền của từng nơi.</td></tr>
+      <tr><td>i18n</td><td>Đa ngôn ngữ — viết tắt của <em>internationalization</em> (18 chữ cái ở giữa).</td></tr>
     </tbody>
   </table></div>
 </section>

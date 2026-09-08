@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="vi" data-track="js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>|| và ?? và &amp;&amp; — ba cái cổng hỏi ba câu khác nhau</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><a href="index.html">JavaScript</a><span>/</span><span class="now">|| ?? &amp;&amp; ?.</span></nav>
+<header class="hero col">
+<p class="eyebrow">JavaScript · Bài 16</p>
+<h1>|| và ?? và &amp;&amp; — ba cái cổng hỏi ba câu khác nhau</h1>
+<p class="lede">Ba toán tử trông na ná nhau và ai cũng dùng hằng ngày, nhưng chúng hỏi ba câu hoàn toàn khác: "thật hay giả", "có hay không có", "có nên đi tiếp không". Nhầm một cái là nuốt mất số 0 và chuỗi rỗng hợp lệ của người dùng — loại bug chạy đúng 99% thời gian.</p>
+</header>
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Ba cái cổng, ba câu hỏi</h2></div>
+  <p>Cả ba đều là <strong>toán tử</strong> (operator — ký hiệu đứng giữa hai giá trị để tạo ra một giá trị mới), và cả ba đều làm cùng một dáng việc: nhìn vế trái, quyết định xem có cần dùng tới vế phải không. Khác nhau ở <em>câu hỏi</em> mà chúng đặt ra:</p>
+  <ul>
+    <li><code>a || b</code> hỏi: <b>"a có <span class="gl" data-gl="truthy" tabindex="0">đáng tin</span> không?"</b> Không đáng tin thì lấy <code>b</code>. Mà "không đáng tin" ở đây rộng tới mức nguy hiểm — có tận <b>tám</b> giá trị bị xếp vào loại đó.</li>
+    <li><code>a ?? b</code> hỏi: <b>"a có tồn tại không?"</b> Chỉ <code>null</code> và <code>undefined</code> mới bị coi là không tồn tại. Đúng hai giá trị, không hơn.</li>
+    <li><code>a &amp;&amp; b</code> hỏi ngược lại: <b>"a có đáng tin không? Có thì mới đi tiếp tới b."</b> Đây là cái cổng chặn, dùng để canh cửa.</li>
+  </ul>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> <code>||</code> hỏi <em>thật hay giả</em>, <code>??</code> hỏi <em>có hay không có</em>. Chúng chỉ khác nhau ở sáu giá trị — <code>0</code>, <code>-0</code>, <code>0n</code>, <code>''</code>, <code>false</code>, <code>NaN</code> — nhưng sáu giá trị đó lại đúng là những thứ người dùng <b>cố tình</b> nhập vào. Số lượng bằng 0, ghi chú để trống, ô chọn bỏ tick: đều hợp lệ, và đều bị <code>||</code> ném đi.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 1</p><h2>Cái cổng nào lọc rát hơn</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 300" role="img" aria-label="So sánh hai cổng lọc. Cổng dấu hai gạch đứng coi tám giá trị là rỗng gồm false, số không, âm không, không n, chuỗi rỗng, null, undefined và NaN. Cổng hai dấu hỏi chỉ coi hai giá trị là rỗng gồm null và undefined. Bên dưới là ví dụ biến giới hạn bằng không: dùng hai gạch đứng cho ra mười, còn dùng hai dấu hỏi cho ra không.">
+        <text x="20" y="22" font-size="12.5" font-weight="700" font-family="monospace" fill="currentColor">a || b</text>
+        <text x="90" y="22" font-size="11" font-family="monospace" fill="var(--muted)">— dùng b khi a "GIẢ"</text>
+        <rect x="20" y="34" width="328" height="122" rx="12" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.6"></rect>
+        <text x="34" y="55" font-size="10.5" font-weight="700" font-family="monospace" fill="var(--bad)">TÁM giá trị bị coi là rỗng:</text>
+        <rect x="34" y="64" width="72" height="28" rx="7" fill="var(--surface)" stroke="var(--bad)" stroke-width="1.1"></rect>
+        <text x="70" y="83" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">false</text>
+        <rect x="114" y="64" width="72" height="28" rx="7" fill="var(--surface)" stroke="var(--bad)" stroke-width="1.1"></rect>
+        <text x="150" y="83" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">0</text>
+        <rect x="194" y="64" width="72" height="28" rx="7" fill="var(--surface)" stroke="var(--bad)" stroke-width="1.1"></rect>
+        <text x="230" y="83" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">-0</text>
+        <rect x="274" y="64" width="60" height="28" rx="7" fill="var(--surface)" stroke="var(--bad)" stroke-width="1.1"></rect>
+        <text x="304" y="83" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">0n</text>
+        <rect x="34" y="100" width="72" height="28" rx="7" fill="var(--surface)" stroke="var(--bad)" stroke-width="1.1"></rect>
+        <text x="70" y="119" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">''</text>
+        <rect x="114" y="100" width="72" height="28" rx="7" fill="var(--surface)" stroke="var(--bad)" stroke-width="1.1"></rect>
+        <text x="150" y="119" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">null</text>
+        <rect x="194" y="100" width="86" height="28" rx="7" fill="var(--surface)" stroke="var(--bad)" stroke-width="1.1"></rect>
+        <text x="237" y="119" font-size="10.5" text-anchor="middle" font-family="monospace" fill="currentColor">undefined</text>
+        <rect x="288" y="100" width="46" height="28" rx="7" fill="var(--surface)" stroke="var(--bad)" stroke-width="1.1"></rect>
+        <text x="311" y="119" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">NaN</text>
+        <text x="34" y="146" font-size="10.5" font-family="monospace" fill="var(--muted)">cả tám đều nhảy sang b</text>
+
+        <text x="372" y="22" font-size="12.5" font-weight="700" font-family="monospace" fill="currentColor">a ?? b</text>
+        <text x="442" y="22" font-size="11" font-family="monospace" fill="var(--muted)">— dùng b khi a "KHÔNG CÓ"</text>
+        <rect x="372" y="34" width="328" height="122" rx="12" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.6"></rect>
+        <text x="386" y="55" font-size="10.5" font-weight="700" font-family="monospace" fill="var(--good)">chỉ HAI giá trị:</text>
+        <rect x="386" y="64" width="120" height="28" rx="7" fill="var(--surface)" stroke="var(--good)" stroke-width="1.1"></rect>
+        <text x="446" y="83" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">null</text>
+        <rect x="516" y="64" width="140" height="28" rx="7" fill="var(--surface)" stroke="var(--good)" stroke-width="1.1"></rect>
+        <text x="586" y="83" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">undefined</text>
+        <text x="386" y="112" font-size="10.5" font-family="monospace" fill="currentColor">0 · -0 · 0n · '' · false · NaN</text>
+        <text x="386" y="128" font-size="10.5" font-weight="700" font-family="monospace" fill="var(--good)">→ đi thẳng qua, giữ nguyên</text>
+        <text x="386" y="146" font-size="10.5" font-family="monospace" fill="var(--muted)">chỉ hai cái trên mới nhảy sang b</text>
+
+        <line x1="20" y1="176" x2="700" y2="176" stroke="currentColor" stroke-opacity=".16"></line>
+
+        <text x="20" y="204" font-size="12" font-family="monospace" fill="currentColor">const gioiHan = 0;</text>
+        <text x="210" y="204" font-size="11" font-family="monospace" fill="var(--muted)">// người dùng CỐ TÌNH chọn 0</text>
+        <text x="20" y="240" font-size="12.5" font-family="monospace" fill="currentColor">gioiHan || 10</text>
+        <text x="200" y="240" font-size="13" font-weight="700" font-family="monospace" fill="var(--bad)">→ 10</text>
+        <text x="270" y="240" font-size="11" font-family="monospace" fill="var(--bad)">✗ nuốt mất số 0 hợp lệ</text>
+        <text x="20" y="272" font-size="12.5" font-family="monospace" fill="currentColor">gioiHan ?? 10</text>
+        <text x="200" y="272" font-size="13" font-weight="700" font-family="monospace" fill="var(--good)">→ 0</text>
+        <text x="270" y="272" font-size="11" font-family="monospace" fill="var(--good)">✓ giữ đúng lựa chọn</text>
+      </svg>
+    </div>
+    <figcaption>Sáu ô ở giữa chính là toàn bộ khác biệt giữa hai toán tử — và cũng là toàn bộ nguồn bug. Chúng đều là giá trị <em>hợp lệ</em> mà người dùng chủ động tạo ra.</figcaption>
+  </figure>
+  <div class="col">
+    <p>Còn một điều nữa hay bị hiểu sai: <code>||</code> và <code>&amp;&amp;</code> <b>không trả về <code>true</code>/<code>false</code></b>. Chúng trả về <em>chính một trong hai</em> <strong>toán hạng</strong> (operand — giá trị đứng hai bên toán tử) bạn đưa vào.</p>
+<pre><code><span class="str">'a'</span> || <span class="str">'b'</span>      <span class="out">// 'a'  — không phải true</span>
+<span class="str">''</span> || <span class="str">'b'</span>       <span class="out">// 'b'</span>
+<span class="str">'a'</span> &amp;&amp; <span class="str">'b'</span>      <span class="out">// 'b'  — trả về vế CUỐI nếu mọi vế đều đáng tin</span>
+<span class="kw">0</span> &amp;&amp; <span class="str">'b'</span>        <span class="out">// 0    — dừng ngay ở vế đầu, không đọc 'b'</span></code></pre>
+    <p>Việc "dừng ngay khi đã biết kết quả" gọi là <span class="gl" data-gl="short-circuit" tabindex="0">đoản mạch</span>. Nó không chỉ là tối ưu tốc độ — nó là <em>hợp đồng</em>: vế phải có thể <b>không bao giờ chạy</b>, nên đừng đặt việc quan trọng ở đó.</p>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Không trộn <code>??</code> với <code>||</code> hay <code>&amp;&amp;</code> mà thiếu ngoặc.</strong> <code>a ?? b || c</code> không phải là code chạy sai — nó <b>không dịch được</b>, JavaScript ném thẳng <code>SyntaxError</code>. Đây là lần hiếm hoi ngôn ngữ này chủ động chặn bạn lại, vì thứ tự ưu tiên giữa chúng quá dễ đoán nhầm. Muốn dùng chung thì phải nói rõ ý: <code>(a ?? b) || c</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 2</p><h2><code>?.</code> — cắt cả sợi dây, không chỉ một mắt</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 240" role="img" aria-label="Hai hàng so sánh. Hàng trên không dùng dấu chấm hỏi chấm: khi a là null, việc đọc thuộc tính b ném lỗi TypeError ngay lập tức. Hàng dưới dùng a chấm hỏi chấm b chấm c chấm d: khi a là null thì cả ba mắt xích b, c, d đều không được đọc và toàn biểu thức trả về undefined.">
+        <defs>
+          <marker id="op-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"></polygon>
+          </marker>
+          <marker id="op-ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="var(--good)"></polygon>
+          </marker>
+        </defs>
+
+        <text x="20" y="22" font-size="11.5" font-weight="700" font-family="monospace" fill="var(--bad)">a.b.c.d — khi a = null</text>
+        <rect x="20" y="32" width="92" height="38" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="66" y="56" font-size="11.5" text-anchor="middle" font-family="monospace" fill="currentColor">a = null</text>
+        <line x1="114" y1="51" x2="134" y2="51" stroke="currentColor" stroke-width="1.6" marker-end="url(#op-ar)"></line>
+        <rect x="138" y="32" width="70" height="38" rx="9" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.6"></rect>
+        <text x="173" y="56" font-size="11.5" text-anchor="middle" font-family="monospace" fill="currentColor">.b</text>
+        <g stroke="var(--bad)" stroke-width="2" fill="none">
+          <circle cx="230" cy="51" r="11"></circle><path d="M224 45 L236 57 M236 45 L224 57"></path>
+        </g>
+        <text x="252" y="47" font-size="11" font-family="monospace" fill="var(--bad)">TypeError: Cannot read properties of null</text>
+        <text x="252" y="64" font-size="10.5" font-family="monospace" fill="var(--muted)">(.c và .d không bao giờ tới lượt)</text>
+
+        <line x1="20" y1="92" x2="700" y2="92" stroke="currentColor" stroke-opacity=".16"></line>
+
+        <text x="20" y="122" font-size="11.5" font-weight="700" font-family="monospace" fill="var(--good)">a?.b.c.d — khi a = null</text>
+        <rect x="20" y="132" width="92" height="38" rx="9" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="66" y="156" font-size="11.5" text-anchor="middle" font-family="monospace" fill="currentColor">a = null</text>
+        <rect x="138" y="132" width="70" height="38" rx="9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"></rect>
+        <text x="173" y="156" font-size="11.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">.b</text>
+        <rect x="220" y="132" width="70" height="38" rx="9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"></rect>
+        <text x="255" y="156" font-size="11.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">.c</text>
+        <rect x="302" y="132" width="70" height="38" rx="9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"></rect>
+        <text x="337" y="156" font-size="11.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">.d</text>
+        <text x="255" y="188" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">ba mắt xích này KHÔNG hề được đọc</text>
+        <path d="M 374 151 L 452 151" fill="none" stroke="var(--good)" stroke-width="2" marker-end="url(#op-ag)"></path>
+        <rect x="458" y="132" width="150" height="38" rx="9" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.6"></rect>
+        <text x="533" y="156" font-size="12" text-anchor="middle" font-weight="700" font-family="monospace" fill="currentColor">undefined</text>
+
+        <text x="20" y="222" font-size="11" font-family="monospace" fill="currentColor">Không ném lỗi, nhưng cũng KHÔNG cho ra null — luôn là undefined.</text>
+      </svg>
+    </div>
+    <figcaption>Một dấu <code>?.</code> bật lên thì toàn bộ phần còn lại của chuỗi bị bỏ qua, không phải chỉ mắt xích ngay sau nó.</figcaption>
+  </figure>
+  <div class="col">
+    <p>Nhưng nó chỉ bảo vệ khỏi <em>cái đứng ngay trước nó</em> bị <span class="gl" data-gl="nullish" tabindex="0">rỗng</span>. Đây là chỗ rất nhiều người hiểu nhầm:</p>
+<pre><code><span class="kw">const</span> a = { b: <span class="kw">null</span> };
+
+a?.b.c        <span class="out">// ✗ TypeError — a có thật, ?. không bật, rồi .c gặp null</span>
+a?.b?.c       <span class="out">// ✓ undefined — mỗi mắt xích có thể rỗng đều phải có ?.</span></code></pre>
+    <p>Hai dạng ít gặp hơn nhưng cùng một luật — <code>?.()</code> gọi hàm nếu hàm tồn tại, <code>?.[ ]</code> đọc theo chỉ số nếu object tồn tại:</p>
+<pre><code>callback?.();          <span class="cm">// không có callback thì thôi, không nổ</span>
+ds?.[i]?.ten;          <span class="cm">// ds có thể chưa về, phần tử i có thể trống</span>
+<span class="kw">delete</span> o?.tam;         <span class="cm">// hợp lệ: o rỗng thì không làm gì cả</span>
+
+o?.ten = <span class="str">'An'</span>;        <span class="cm">// ✗ SyntaxError — không đặt ?. ở vế TRÁI phép gán được</span></code></pre>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Cùng một giá trị, hai kết quả</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>a là</th><th>a || 'mặc định'</th><th>a ?? 'mặc định'</th><th>Khi nào chuyện này có thật</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td><span class="no">'mặc định'</span></td><td><span class="yes">0</span></td><td>Số lượng bằng 0, giảm giá 0%, vị trí đầu tiên trong mảng.</td></tr>
+      <tr><td>''</td><td><span class="no">'mặc định'</span></td><td><span class="yes">''</span></td><td>Người dùng cố ý xoá trắng ô ghi chú.</td></tr>
+      <tr><td>false</td><td><span class="no">'mặc định'</span></td><td><span class="yes">false</span></td><td>Ô chọn bị bỏ tick, cờ bật/tắt đang tắt.</td></tr>
+      <tr><td>NaN</td><td><span class="no">'mặc định'</span></td><td><span class="yes">NaN</span></td><td>Kết quả một phép tính hỏng — và bạn <em>muốn</em> biết nó hỏng.</td></tr>
+      <tr><td>null</td><td>'mặc định'</td><td>'mặc định'</td><td>Máy chủ trả về "trường này không có giá trị".</td></tr>
+      <tr><td>undefined</td><td>'mặc định'</td><td>'mặc định'</td><td>Trường không tồn tại, hoặc tham số không được truyền.</td></tr>
+      <tr><td>[] / {}</td><td>[] / {}</td><td>[] / {}</td><td>Mảng rỗng và object rỗng đều <b>đáng tin</b> — đây là bẫy theo chiều ngược lại.</td></tr>
+      <tr><td>'0' / 'false'</td><td>'0' / 'false'</td><td>'0' / 'false'</td><td>Chuỗi có nội dung thì luôn đáng tin, kể cả khi nội dung là chữ "false".</td></tr>
+    </tbody>
+  </table></div>
+  <div class="col">
+    <p>Ba toán tử trên còn có phiên bản <b><span class="gl" data-gl="logical assignment" tabindex="0">gán rút gọn</span></b>, ra đời cùng nhau và giữ nguyên tính nết của bản gốc:</p>
+  </div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Viết</th><th>Tương đương</th><th>Gán khi a là</th><th>Dùng cho</th></tr></thead>
+    <tbody>
+      <tr><td>a ??= b</td><td>a ?? (a = b)</td><td><code>null</code> hoặc <code>undefined</code></td><td>Điền giá trị mặc định — <b>đây là cái bạn cần 90% trường hợp</b>.</td></tr>
+      <tr><td>a ||= b</td><td>a || (a = b)</td><td>Bất kỳ giá trị "giả" nào</td><td>Chỉ dùng khi bạn thật sự muốn <code>0</code> và <code>''</code> cũng bị thay.</td></tr>
+      <tr><td>a &amp;&amp;= b</td><td>a &amp;&amp; (a = b)</td><td>Giá trị "đáng tin"</td><td>Biến đổi giá trị nếu nó có tồn tại, ví dụ cắt khoảng trắng thừa.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout col">
+    <p><strong>Chi tiết gần như không ai để ý:</strong> khi đoản mạch xảy ra, <b>phép gán không hề diễn ra</b> — chứ không phải "gán lại chính giá trị cũ". Nghĩa là <code>setter</code> (hàm chạy khi ai đó ghi vào một thuộc tính) không bị gọi, <code>Proxy</code> không thấy gì, và các khung theo dõi thay đổi không báo động nhầm. Với <code>a.v = a.v ?? b</code> thì ngược lại: luôn có một lượt ghi, kể cả khi giá trị không đổi.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của lối viết rút gọn</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Xoá sạch tháp <code>if</code> <span class="gl" data-gl="nested" tabindex="0">lồng nhau</span>.</b> Bốn tầng kiểm tra "có tồn tại không" thu lại còn một dòng đọc được.</li>
+        <li><b><code>??</code> nói đúng ý định.</b> "Không có thì lấy mặc định" — không dính dáng gì tới chuyện giá trị đó lớn hay nhỏ, rỗng hay đầy.</li>
+        <li><b>Đoản mạch giúp canh cửa rẻ.</b> Vế phải chỉ chạy khi thật sự cần, nên đặt hàm nặng ở đó vẫn an toàn.</li>
+        <li><b>Gán rút gọn không ghi thừa.</b> Không kích hoạt <code>setter</code>, không làm khung theo dõi tưởng có thay đổi.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Trước: bốn tầng phòng thủ</span>
+<span class="kw">let</span> tp = <span class="str">'chưa rõ'</span>;
+<span class="kw">if</span> (nd &amp;&amp; nd.dc &amp;&amp; nd.dc.tp) tp = nd.dc.tp;
+
+<span class="cm">// Sau: một dòng, cùng ý nghĩa</span>
+<span class="kw">const</span> tp2 = nd?.dc?.tp ?? <span class="str">'chưa rõ'</span>;
+
+<span class="cm">// Canh cửa: chỉ tính khi đã có quyền</span>
+coQuyen &amp;&amp; tinhBaoCaoNang();</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b><code>||</code> nuốt giá trị hợp lệ.</b> Bug chạy đúng 99% thời gian, chỉ sai đúng lúc người dùng nhập <code>0</code> — nên rất khó bắt được lúc kiểm thử.</li>
+        <li><b><code>?.</code> rắc bừa thì giấu mất lỗi.</b> Dữ liệu về sai cấu trúc lẽ ra phải nổ ngay, giờ lặng lẽ thành <code>undefined</code> và trôi thêm mười tầng mới lộ ra.</li>
+        <li><b>Chỉ chắn được <code>null</code> và <code>undefined</code>.</b> <code>?.</code> không cứu bạn khỏi mảng rỗng, chuỗi rỗng hay object thiếu trường.</li>
+        <li><b>Trả về <code>undefined</code> chứ không phải <code>null</code>.</b> Nếu tầng dưới phân biệt hai thứ này thì bạn vừa đổi ngầm ý nghĩa dữ liệu.</li>
+        <li><b>Che mất lỗi thiết kế.</b> Phải viết <code>a?.b?.c?.d</code> thường nghĩa là chỗ tạo dữ liệu đang thả lỏng, chứ không phải chỗ đọc thiếu dấu hỏi.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// ✗ người dùng chọn "hiện 0 dòng" → thành 20 dòng</span>
+<span class="kw">const</span> soDong = cauHinh.soDong || <span class="kw">20</span>;
+
+<span class="cm">// ✓ chỉ thay khi thật sự không có</span>
+<span class="kw">const</span> soDong2 = cauHinh.soDong ?? <span class="kw">20</span>;
+
+<span class="cm">// ✗ giấu lỗi: API đổi tên trường, không ai biết</span>
+<span class="kw">const</span> ten = res?.data?.user?.fullName;
+<span class="cm">// ten = undefined, giao diện hiện ô trống, không lỗi nào báo</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Luật dùng cho gọn:</strong> mặc định là <code>??</code>; chỉ đổi sang <code>||</code> khi bạn <em>nói ra được</em> lý do muốn <code>0</code> và <code>''</code> cũng bị thay. Đặt <code>?.</code> ở đúng chỗ dữ liệu <b>thật sự có thể vắng mặt</b> — trường tuỳ chọn, dữ liệu chưa về, tham số không bắt buộc — chứ đừng rắc đều cả chuỗi cho "chắc ăn": chỗ nào bạn tin là luôn có mà lại không có, thì nổ ngay còn hơn im lặng. Và khi thấy mình viết tới ba dấu hỏi trong một dòng, hãy nhìn lại chỗ <em>tạo</em> ra dữ liệu đó, đừng chữa ở chỗ đọc.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> <code>||</code> lấy vế phải khi vế trái <b>"giả"</b> — tám giá trị, gồm cả <code>0</code>, <code>''</code>, <code>false</code>, <code>NaN</code>. <code>??</code> chỉ lấy vế phải khi vế trái là <b><code>null</code> hoặc <code>undefined</code></b>. Sáu giá trị chênh nhau đó chính là chỗ sinh bug, vì chúng là những thứ người dùng cố tình nhập. Thêm hai điều cần nói: cả hai <b>trả về toán hạng chứ không phải boolean</b>, và cả hai <b>đoản mạch</b> nên vế phải có thể không bao giờ chạy. <code>?.</code> thì khác họ — nó chặn lỗi khi đọc <span class="gl" data-gl="property" tabindex="0">thuộc tính</span> của thứ rỗng, và một khi bật thì bỏ qua cả phần còn lại của chuỗi.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3><code>||</code> và <code>??</code> khác nhau chỗ nào?</h3>
+      <p>Đừng trả lời "<code>??</code> chặt chẽ hơn" — hãy nói ra <b>đúng sáu giá trị</b> chênh nhau: <code>0</code>, <code>-0</code>, <code>0n</code>, <code>''</code>, <code>false</code>, <code>NaN</code>. Rồi cho một ví dụ đời thật: người dùng chọn giảm giá 0%, dùng <code>||</code> là biến thành mức mặc định. Nêu được ví dụ cụ thể luôn ăn điểm hơn nêu định nghĩa.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>'a' || 'b'</code> trả về gì?</h3>
+      <p><code>'a'</code>, <b>không phải <code>true</code></b>. Đây là chỗ tách người dùng theo thói quen với người hiểu cơ chế: <code>||</code> và <code>&amp;&amp;</code> trả về <em>một trong hai toán hạng</em>, chính vì thế mới viết được <code>x || 'mặc định'</code>. Nói thêm được <code>'a' &amp;&amp; 'b'</code> ra <code>'b'</code> — vế cuối cùng — là trọn ý.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Với <code>a = {b: null}</code>, <code>a?.b.c</code> ra gì?</h3>
+      <p><b>Ném <code>TypeError</code></b> — nhiều người đoán <code>undefined</code>. Dấu <code>?.</code> chỉ kiểm tra <code>a</code>; <code>a</code> có thật nên nó không bật, rồi <code>.c</code> đâm vào <code>null</code>. Luật đúng: <b>mắt xích nào có thể rỗng thì mắt xích đó phải có dấu hỏi</b> — <code>a?.b?.c</code>. Còn khi <code>?.</code> <em>đã</em> bật thì nó bỏ qua toàn bộ phần còn lại, nên <code>a?.b.c.d</code> với <code>a = null</code> lại an toàn.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3><code>a ??= b</code> khác <code>a = a ?? b</code> thế nào?</h3>
+      <p>Kết quả giống nhau, nhưng <code>??=</code> <b>không thực hiện phép gán</b> khi <code>a</code> đã có giá trị — còn <code>a = a ?? b</code> thì <em>luôn</em> ghi một lượt. Khác biệt lộ ra ngay khi thuộc tính đó có <code>setter</code>, được bọc <code>Proxy</code>, hay là một tín hiệu đang được theo dõi: cách viết dài kích hoạt một lần cập nhật vô ích và có thể làm giao diện vẽ lại. Nói thêm được rằng <code>??</code> cũng không dịch được nếu trộn với <code>||</code> mà thiếu ngoặc, là đã nắm hết họ toán tử này.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "Cứ dùng <code>?.</code> khắp nơi cho an toàn." Nó không làm code an toàn hơn — nó chỉ làm code <em>im lặng</em> hơn. Một trường đổi tên ở máy chủ lẽ ra phải nổ ngay dòng đầu tiên, giờ trôi qua mười tầng thành <code>undefined</code>, và thứ bạn thấy chỉ là một ô trống trên giao diện không kèm lỗi nào. Dấu <code>?.</code> là lời khẳng định "chỗ này <b>được phép</b> vắng mặt" — dùng nó ở nơi dữ liệu <em>phải</em> có mặt là đang xoá mất cái chuông báo cháy.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>operator</td><td>Toán tử — ký hiệu đứng giữa các giá trị để tạo ra một giá trị mới.</td></tr>
+      <tr><td>operand</td><td>Toán hạng — giá trị đứng hai bên một toán tử.</td></tr>
+      <tr><td>truthy</td><td>"Đáng tin" — mọi giá trị mà <code>if</code> coi là đúng; tức là mọi thứ không nằm trong danh sách falsy.</td></tr>
+      <tr><td>falsy</td><td>"Giả" — đúng tám giá trị: <code>false</code>, <code>0</code>, <code>-0</code>, <code>0n</code>, <code>''</code>, <code>null</code>, <code>undefined</code>, <code>NaN</code>.</td></tr>
+      <tr><td>nullish</td><td>"Không có" — chỉ gồm <code>null</code> và <code>undefined</code>; đây là thứ <code>??</code> quan tâm.</td></tr>
+      <tr><td>short-circuit</td><td>Đoản mạch — dừng ngay khi đã biết kết quả, nên vế còn lại không được chạy.</td></tr>
+      <tr><td>nullish coalescing (<code>??</code>)</td><td>Toán tử lấy vế phải chỉ khi vế trái là <code>null</code> hoặc <code>undefined</code>.</td></tr>
+      <tr><td>optional chaining (<code>?.</code>)</td><td>Truy cập có điều kiện — vế trái rỗng thì cả chuỗi phía sau bị bỏ qua, trả về <code>undefined</code>.</td></tr>
+      <tr><td>logical assignment</td><td>Gán rút gọn — <code>??=</code>, <code>||=</code>, <code>&amp;&amp;=</code>; chỉ ghi khi điều kiện thoả.</td></tr>
+      <tr><td>setter</td><td>Hàm chạy khi có ai ghi vào một thuộc tính, thay cho phép gán thẳng.</td></tr>
+      <tr><td>Proxy</td><td>Lớp bọc quanh một object để chặn và can thiệp mọi thao tác đọc/ghi lên nó.</td></tr>
+      <tr><td>SyntaxError</td><td>Lỗi cú pháp — code không dịch được, nên không dòng nào chạy cả.</td></tr>
+      <tr><td>TypeError</td><td>Lỗi kiểu — ví dụ đọc thuộc tính của <code>null</code> lúc chương trình đang chạy.</td></tr>
+      <tr><td>NaN</td><td>"Không phải một số" — kết quả của một phép tính số học hỏng.</td></tr>
+      <tr><td>BigInt (<code>0n</code>)</td><td>Kiểu số nguyên lớn không giới hạn; <code>0n</code> cũng là một giá trị falsy.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<nav class="pager"><a class="prev" href="browser-storage.html"><span class="dir">← Bài trước</span><span class="nm">Năm cái kho của trình duyệt — cái nào đựng gì</span></a><a class="next" href="service-worker.html"><span class="dir">Bài tiếp →</span><span class="nm">Service Worker — Chú bồi bàn ngầm biến web thành app</span></a></nav>
+<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 16/18</p></footer>
+</div>
+</body>
+</html>

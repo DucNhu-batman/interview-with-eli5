@@ -277,13 +277,22 @@ pre .gl::after,pre .gl::before{display:none}
 <span class="kw">const</span> daKhoa = ai.bind(a);
 daKhoa();                <span class="out">// 'A'</span>
 daKhoa.call(b);          <span class="out">// 'A'  ← call vô hiệu</span>
-ai.bind(a).bind(b)();    <span class="out">// 'A'  ← bind lần hai vô hiệu</span></code></pre>
+ai.bind(a).bind(b)();    <span class="out">// 'A'  ← bind lần hai không đổi được this</span></code></pre>
   <p>Lý do: lần bind thứ hai khoá <code>this</code> cho <em>hàm đã khoá</em>, mà hàm đó lúc chạy vốn đã bỏ qua <code>this</code> được truyền vào. Cách duy nhất để "unbind" là giữ lấy hàm gốc.</p>
+  <div class="callout">
+    <p><strong>Nhưng đừng nói "bind lần hai vô hiệu" — chỉ <code>this</code> bị bỏ qua thôi, đối số thì <em>cộng dồn</em>.</strong> Đây là chi tiết gần như không ai để ý, và nó là hệ quả trực tiếp của cách bind được cài đặt: mỗi lớp bind nối thêm đối số của mình vào <em>đầu</em> danh sách rồi mới gọi tiếp xuống lớp dưới.</p>
+  </div>
+<pre><code><span class="kw">function</span> f(...a) { <span class="kw">return</span> [<span class="kw">this</span>.ten, a]; }
+
+f.bind(a, 1).bind(b, 2)();
+<span class="out">// ['A', [1, 2]]</span>
+<span class="cm">//   ↑ this của lần bind ĐẦU thắng</span>
+<span class="cm">//         ↑ nhưng đối số của CẢ HAI lần đều còn</span></code></pre>
 </section>
 
 <section class="col">
   <div class="sec-head"><p class="eyebrow">Luật 2</p><h2>Gặp new thì this bị bỏ qua, đối số thì không</h2></div>
-  <p>Đây là ngoại lệ duy nhất. Khi gọi bằng <code>new</code>, đối tượng mới luôn thắng — <code>thisArg</code> đã khoá bị vứt đi. Nhưng các đối số đã khoá thì vẫn được giữ nguyên.</p>
+  <p>Đây là ngoại lệ duy nhất. Khi gọi bằng <code>new</code>, đối tượng mới luôn thắng — <code>thisArg</code> đã khoá bị vứt đi. Nhưng các đối số (argument — giá trị truyền vào hàm) đã khoá thì vẫn được giữ nguyên, và <span class="gl" data-gl="prototype chain" tabindex="0">chuỗi nguyên mẫu</span> vẫn nối đúng nên <code>instanceof</code> không sai.</p>
 <pre><code><span class="kw">function</span> Diem(x, y) { <span class="kw">this</span>.x = x; <span class="kw">this</span>.y = y; }
 
 <span class="kw">const</span> DiemTrucX = Diem.bind(<span class="kw">null</span>, 0);   <span class="cm">// khoá x = 0</span>
@@ -305,13 +314,13 @@ console.log(d <span class="kw">instanceof</span> Diem);   <span class="out">// t
     </tbody>
   </table></div>
   <div class="callout bad">
-    <p><strong>Hệ quả thực tế:</strong> thư viện nào đọc <code>fn.length</code> để đoán số tham số (nhiều framework tiêm phụ thuộc, một số hàm middleware) sẽ hiểu sai một hàm đã bind. Và mọi cơ chế so sánh hàm bằng <code>===</code> — <code>removeEventListener</code>, memo hoá, so sánh <code>@Input</code> — đều thất bại.</p>
+    <p><strong>Hệ quả thực tế:</strong> thư viện nào đọc <code>fn.length</code> để đoán số tham số (nhiều framework — bộ khung dựng sẵn của một hệ sinh thái — làm <span class="gl" data-gl="dependency injection" tabindex="0">tiêm phụ thuộc</span>, hay các hàm middleware: lớp trung gian xử lý request trước khi tới đích) sẽ hiểu sai một hàm đã bind. Và mọi cơ chế so sánh hàm bằng <code>===</code> — <code>removeEventListener</code>, memo hoá, so sánh <code>@Input</code> — đều thất bại.</p>
   </div>
 </section>
 
 <section class="col">
   <div class="sec-head"><p class="eyebrow">Hiểu tận gốc</p><h2>Tự viết lại bind trong 6 dòng</h2></div>
-  <p>Không có phép màu nào ở đây — <code>bind</code> chỉ là một closure (bao đóng) nhớ lấy <code>this</code> và các đối số, rồi gọi hàm gốc bằng <code>apply</code>:</p>
+  <p>Không có phép màu nào ở đây — <code>bind</code> chỉ là một closure (bao đóng — hàm nhớ được biến ở nơi nó ra đời) nhớ lấy <code>this</code> và các đối số, rồi gọi hàm gốc bằng <code>apply</code>:</p>
 <pre><code>Function.prototype.myBind = <span class="kw">function</span> (ctx, ...daKhoa) {
   <span class="kw">const</span> goc = <span class="kw">this</span>;                       <span class="cm">// hàm đang được bind</span>
   <span class="kw">return</span> <span class="kw">function</span> (...themVao) {
@@ -328,7 +337,7 @@ console.log(d <span class="kw">instanceof</span> Diem);   <span class="out">// t
     <div class="card">
       <span class="tag warn">bind trong constructor</span>
       <h3>Lối cũ, vẫn ổn</h3>
-      <p>Bind một lần khi khởi tạo, cất vào thuộc tính. Tham chiếu ổn định nên gỡ sự kiện được.</p>
+      <p>Bind một lần khi khởi tạo, cất vào thuộc tính. <span class="gl" data-gl="reference" tabindex="0">Tham chiếu</span> ổn định nên gỡ sự kiện được.</p>
 <pre><code><span class="kw">constructor</span>() {
   <span class="kw">this</span>.onClick = <span class="kw">this</span>.onClick.bind(<span class="kw">this</span>);
 }</code></pre>
@@ -344,7 +353,7 @@ console.log(d <span class="kw">instanceof</span> Diem);   <span class="out">// t
     <div class="card">
       <span class="tag bad">Tránh</span>
       <h3>bind ngay trong template</h3>
-      <p>Mỗi lần vẽ lại sinh hàm mới → con của bạn nhận <code>@Input</code> "mới" mỗi vòng, gỡ sự kiện thì trượt.</p>
+      <p>Mỗi lần vẽ lại sinh hàm mới → con của bạn nhận <code>@Input</code> (dữ liệu cha truyền xuống component con) "mới" mỗi vòng, gỡ sự kiện thì trượt.</p>
 <pre><code>&lt;child [cb]="handle.bind(this)"&gt;
 <span class="cm">// ✗ đừng làm thế này</span></code></pre>
     </div>
@@ -375,10 +384,10 @@ f.call(nguoiB);                              <span class="out">// vẫn là tên
     <div class="panel con">
       <h3><span class="dot">−</span>Mặt hại</h3>
       <ul>
-        <li><b>Danh tính hàm thay đổi.</b> <code>name</code>, <code>length</code>, <code>prototype</code>, <code>toString</code> đều khác — phá vỡ code phản chiếu (reflection) và một số framework.</li>
+        <li><b>Danh tính hàm thay đổi.</b> <code>name</code>, <code>length</code>, <code>prototype</code>, <code>toString</code> đều khác — phá vỡ code phản chiếu (reflection — code đọc thông tin về chính code) và một số framework.</li>
         <li><b>Không đảo ngược được.</b> Lỡ bind sai đối tượng thì phải quay lại hàm gốc, không có "unbind".</li>
-        <li><b>Sinh rác nếu gọi trong vòng lặp/render.</b> Mỗi lần một object hàm mới, tăng áp lực cho bộ thu gom rác.</li>
-        <li><b>Chậm hơn arrow một chút.</b> Có thêm một lớp gọi trung gian; nhỏ, nhưng đáng cân nhắc trong vòng lặp nóng.</li>
+        <li><b>Sinh rác nếu gọi trong vòng lặp/render (dựng lại giao diện).</b> Mỗi lần một object hàm mới, tăng áp lực cho <span class="gl" data-gl="garbage collector" tabindex="0">bộ thu gom rác</span>.</li>
+        <li><b>Chậm hơn arrow một chút.</b> Có thêm một lớp gọi trung gian; nhỏ, nhưng đáng cân nhắc trong <span class="gl" data-gl="hot loop" tabindex="0">vòng lặp nóng</span>.</li>
         <li><b>Che mất lỗi thiết kế.</b> Phải bind ở quá nhiều nơi thường là dấu hiệu logic bị rải sai chỗ, chứ không phải thiếu <code>bind</code>.</li>
       </ul>
       <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
@@ -392,6 +401,44 @@ console.log(g.prototype);             <span class="out">// undefined</span>
 <span class="cm">// sẽ hiểu sai hàm đã bind → gọi thiếu/thừa đối số, lỗi rất khó lần.</span></code></pre></div>
     </div>
   </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> coi <code>bind</code> là việc làm <b>một lần lúc khởi tạo</b>, không phải việc làm mỗi lượt vẽ — bind trong <code>constructor</code> hoặc dùng class field mũi tên, rồi cất vào một thuộc tính có tên, để sau này còn gỡ sự kiện được. Giữ luôn hàm gốc nếu có khả năng cần dùng cho đối tượng khác, vì không có "unbind". Và khi đưa hàm cho một thư viện đọc <code>fn.length</code> hay <code>fn.name</code>, đừng đưa bản đã bind — bọc bằng arrow thì danh tính hàm không bị đổi.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> Hàm đã bind là một <em>đối tượng hàm khác</em>, không phải hàm cũ đội tên mới. Ba hệ quả: <b>khoá là vĩnh viễn</b> (<code>call</code> và bind chồng đều không đổi được <code>this</code>), <b><code>new</code> là ngoại lệ duy nhất</b> (object mới thắng, nhưng đối số đã khoá vẫn giữ và <code>instanceof</code> vẫn đúng), và <b>danh tính hàm đổi</b> — <code>name</code> thành <code>bound …</code>, <code>length</code> bị trừ, <code>prototype</code> biến mất, và nó không bao giờ <code>===</code> lần bind trước. Bên trong chỉ là một closure giữ <code>ctx</code> rồi gọi <code>apply</code>.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Bind hai lần thì <code>this</code> theo lần nào?</h3>
+      <p><b>Lần đầu</b> — lần sau bị bỏ qua, vì nó chỉ khoá <code>this</code> cho một hàm vốn đã không thèm đọc <code>this</code> nữa. Nhưng đừng dừng ở đó: <b>đối số thì cộng dồn</b>. <code>f.bind(a,1).bind(b,2)()</code> cho <code>this</code> là <code>a</code> và đối số là <code>[1,2]</code>. Trả lời được cả hai vế là dấu hiệu đã thật sự đọc cách bind hoạt động.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Gọi <code>new</code> trên một hàm đã bind thì sao?</h3>
+      <p><code>this</code> đã khoá <b>bị vứt</b> — đối tượng mới luôn thắng. Đây là ngoại lệ duy nhất của luật "khoá là vĩnh viễn". Hai vế phụ hay bị bỏ sót: đối số đã khoá <b>vẫn giữ</b>, nên bind đối số + <code>new</code> tạo được "constructor rút gọn"; và tuy hàm đã bind không có <code>prototype</code>, <code>d instanceof HamGoc</code> vẫn trả về <code>true</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>tinh.bind(null, 1).length</code> bằng mấy?</h3>
+      <p>Với <code>function tinh(a,b,c)</code> thì bằng <b>2</b> — <code>length</code> bị trừ đi số đối số đã khoá. Nghe như chuyện vặt cho tới khi bạn đưa hàm đã bind cho một thư viện <em>đoán số tham số qua <code>fn.length</code></em>: nó sẽ gọi thiếu hoặc thừa đối số, và lỗi nổ ở một chỗ chẳng liên quan gì.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Tự viết lại <code>bind</code> — chỗ nào khó nhất?</h3>
+      <p>Không phải phần khoá <code>this</code> (một closure là xong), mà là <b>nhánh <code>new</code></b>: phải phát hiện hàm đang được gọi bằng <code>new</code> — dấu hiệu là <code>this instanceof hamGoc</code> — rồi khi đó dùng <code>this</code> mới thay vì <code>ctx</code> đã khoá. Nói thêm được rằng bản tự viết vẫn <em>không</em> giống hàng thật — nó có <code>prototype</code>, <code>toString</code> ra mã nguồn thay vì <code>[native code]</code>, và <code>length</code> không tự trừ — thì là đã hiểu tới đáy.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "Bind lần hai để đổi <code>this</code> sang đối tượng khác." Không đổi được — và cái sai nguy hiểm hơn là nó <em>trông như</em> có tác dụng, vì đối số truyền ở lần bind thứ hai thật sự đi vào hàm. Người viết thấy đối số vào đúng rồi tin rằng <code>this</code> cũng đã đổi theo, trong khi hàm vẫn đang chạy trên đối tượng của lần bind đầu tiên.</p>
+  </div>
 </section>
 
 <section>
@@ -404,15 +451,20 @@ console.log(g.prototype);             <span class="out">// undefined</span>
       <tr><td>polyfill</td><td>Đoạn code tự viết lại một tính năng có sẵn, để hiểu hoặc để chạy trên môi trường cũ.</td></tr>
       <tr><td>instanceof</td><td>Toán tử kiểm tra một object có thuộc chuỗi nguyên mẫu của hàm khởi tạo hay không.</td></tr>
       <tr><td>prototype chain</td><td>Chuỗi nguyên mẫu — đường tra cứu thuộc tính/method của object.</td></tr>
+      <tr><td>closure</td><td>Bao đóng — hàm nhớ được các biến ở nơi nó ra đời, kể cả khi đã rời khỏi đó.</td></tr>
+      <tr><td>dependency injection</td><td>Tiêm phụ thuộc — khung chương trình tự đưa thứ một lớp cần vào, thay vì lớp tự đi lấy.</td></tr>
+      <tr><td>middleware</td><td>Lớp trung gian xử lý một yêu cầu trước khi nó tới đích.</td></tr>
       <tr><td>reflection</td><td>Phản chiếu — code đọc thông tin về chính code (tên hàm, số tham số…).</td></tr>
       <tr><td>native code</td><td>Mã do engine cài sẵn, không xem được phần thân bằng <code>toString()</code>.</td></tr>
       <tr><td>memo hoá</td><td>Ghi nhớ kết quả cũ để khỏi tính lại; dựa trên so sánh tham chiếu.</td></tr>
+      <tr><td>garbage collector</td><td>Bộ thu gom rác — tự động thu hồi vùng nhớ không còn ai dùng.</td></tr>
+      <tr><td>hot loop</td><td>Vòng lặp nóng — đoạn lặp chạy rất nhiều lần, nơi chi phí nhỏ cũng thành đáng kể.</td></tr>
       <tr><td>rest (...args)</td><td>Cú pháp gom các đối số còn lại vào một mảng.</td></tr>
     </tbody>
   </table></div>
 </section>
 <nav class="pager"><a class="prev" href="bind-part-1.html"><span class="dir">← Bài trước</span><span class="nm">Fn.bind() — phần 1: cơ bản</span></a><a class="next" href="closure-var-settimeout.html"><span class="dir">Bài tiếp →</span><span class="nm">Closure qua vòng lặp for + var + setTimeout</span></a></nav>
-<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 11/13</p></footer>
+<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 11/18</p></footer>
 </div>
 </body>
 </html>

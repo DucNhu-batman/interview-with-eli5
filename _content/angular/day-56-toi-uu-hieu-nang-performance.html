@@ -1,0 +1,349 @@
+<!--meta
+title: Day 56 — Các tuyệt chiêu tăng tốc: Bức tranh toàn cảnh tối ưu hiệu năng Angular
+eyebrow: Angular · Day 56
+short: Tối ưu hiệu năng
+lede: Tối ưu hiệu năng Angular không phải là bấm một nút ma thuật, mà là kiểm soát ba van lớn: van tải mạng ban đầu (bundle), van chu kỳ dò thay đổi giao diện (runtime change detection), và van giải phóng tài nguyên bộ nhớ (memory).
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Ba van nước quyết định độ mượt của ứng dụng</h2></div>
+  <p>Một ứng dụng <strong>Angular</strong> (khung làm việc phát triển giao diện web bằng TypeScript do Google phát triển) bị người dùng chê "nặng, chậm, giật lag" thường chỉ vì nghẽn ở một trong ba van nước sau:</p>
+  <ol class="steps">
+    <li><strong>Van tải ban đầu (Load time / Bundle size):</strong> Người dùng phải tải về bao nhiêu <strong>megabyte</strong> (đơn vị đo dung lượng dữ liệu) mã <strong>JavaScript</strong> (ngôn ngữ lập trình chạy trên trình duyệt) và tài nguyên trước khi nhìn thấy chữ đầu tiên trên màn hình.</li>
+    <li><strong>Van dò thay đổi giao diện (Runtime / Change Detection):</strong> Mỗi khi người dùng bấm nút, gõ phím hay có dữ liệu mạng trả về, Angular phải tính lại bao nhiêu biểu thức và vẽ lại bao nhiêu phần tử <strong>DOM</strong> (cây cấu trúc phần tử HTML thật của trình duyệt).</li>
+    <li><strong>Van tiêu thụ bộ nhớ (Memory footprint):</strong> Ứng dụng dùng càng lâu có bị ngốn thêm <strong>RAM</strong> (bộ nhớ truy xuất ngẫu nhiên) và đơ dần vì những <strong>subscription</strong> (đăng ký lắng nghe luồng dữ liệu) bị bỏ quên hay không.</li>
+  </ol>
+  <div class="callout">
+    <p><strong>Hình tượng quán ăn:</strong> Tối ưu hiệu năng không phải là bắt đầu bếp chạy nhanh gấp đôi (vì <strong>CPU</strong> — bộ vi xử lý của máy khách có hạn). Tối ưu là: <em>(1)</em> Khách chưa vào phòng VIP thì chưa dọn chén đĩa cồng kềnh ra bày sẵn (tải lười theo nhu cầu); <em>(2)</em> Món nào xong thì bưng thẳng bàn đó, không đi gõ cửa hỏi lại cả 100 bàn (chiến lược OnPush và Signal); <em>(3)</em> Khách ăn xong là dọn bàn sạch sẽ để đón lượt mới (huỷ đăng ký bộ nhớ).</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Sơ đồ toàn cảnh 3 tầng tối ưu hiệu năng</h2></div>
+  <p class="col">Dưới đây là bản đồ các tuyệt chiêu tăng tốc được chia thành ba tầng rõ rệt: Tầng Nạp (trước khi chạy), Tầng Dò thay đổi (khi đang tương tác), và Tầng Xử lý nền &amp; Bộ nhớ.</p>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 760 380" role="img" aria-label="Sơ đồ 3 tầng tối ưu hiệu năng trong Angular: Tầng 1 Nạp mã gồm Lazy route, @defer, NgOptimizedImage; Tầng 2 Dò thay đổi gồm OnPush, Signals, Zoneless, @for track, Pure Pipe; Tầng 3 Bộ nhớ gồm takeUntilDestroyed, Virtual Scroll, Web Worker.">
+        <defs>
+          <marker id="perf-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <!-- Tầng 1: Nạp ban đầu -->
+        <rect x="20" y="24" width="220" height="330" rx="14" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"></rect>
+        <rect x="34" y="38" width="192" height="32" rx="8" fill="var(--accent-soft)"></rect>
+        <text x="130" y="59" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">1. TẦNG NẠP MÃ (LOAD)</text>
+        
+        <rect x="34" y="82" width="192" height="60" rx="8" fill="var(--surface)"></rect>
+        <text x="46" y="104" font-size="11" font-weight="700" fill="currentColor">Lazy Loading Route</text>
+        <text x="46" y="124" font-size="9.5" fill="var(--muted)">loadComponent / split chunk</text>
+
+        <rect x="34" y="152" width="192" height="60" rx="8" fill="var(--surface)"></rect>
+        <text x="46" y="174" font-size="11" font-weight="700" fill="currentColor">Deferrable Views (@defer)</text>
+        <text x="46" y="194" font-size="9.5" fill="var(--muted)">on viewport / idle / interaction</text>
+
+        <rect x="34" y="222" width="192" height="60" rx="8" fill="var(--surface)"></rect>
+        <text x="46" y="244" font-size="11" font-weight="700" fill="currentColor">NgOptimizedImage</text>
+        <text x="46" y="264" font-size="9.5" fill="var(--muted)">Chống layout shift, auto srcset</text>
+
+        <rect x="34" y="292" width="192" height="48" rx="8" fill="var(--surface)"></rect>
+        <text x="46" y="312" font-size="10.5" font-weight="700" fill="currentColor">Tree-shakable Service</text>
+        <text x="46" y="328" font-size="9.5" fill="var(--muted)">providedIn: 'root'</text>
+
+        <!-- Mũi tên 1 -> 2 -->
+        <path d="M244 185 L266 185" fill="none" stroke="currentColor" stroke-width="1.6" marker-end="url(#perf-arr)" opacity=".6"></path>
+
+        <!-- Tầng 2: Dò thay đổi Runtime -->
+        <rect x="270" y="24" width="220" height="330" rx="14" fill="var(--surface-2)" stroke="var(--accent)" stroke-width="2"></rect>
+        <rect x="284" y="38" width="192" height="32" rx="8" fill="var(--accent-soft)"></rect>
+        <text x="380" y="59" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">2. TẦNG CHẠY (RUNTIME)</text>
+
+        <rect x="284" y="82" width="192" height="50" rx="8" fill="var(--surface)"></rect>
+        <text x="296" y="103" font-size="11" font-weight="700" fill="currentColor">ChangeDetection.OnPush</text>
+        <text x="296" y="120" font-size="9.5" fill="var(--muted)">Bỏ qua nhánh cây không đổi</text>
+
+        <rect x="284" y="140" width="192" height="50" rx="8" fill="var(--surface)"></rect>
+        <text x="296" y="161" font-size="11" font-weight="700" fill="currentColor">Signals &amp; Zoneless</text>
+        <text x="296" y="178" font-size="9.5" fill="var(--muted)">Tổ tiên chỉ đi qua, bỏ Zone.js</text>
+
+        <rect x="284" y="198" width="192" height="42" rx="8" fill="var(--surface)"></rect>
+        <text x="296" y="217" font-size="10.5" font-weight="700" fill="currentColor">@for (track item.id)</text>
+        <text x="296" y="231" font-size="9" fill="var(--muted)">Tái sử dụng DOM, không tạo lại</text>
+
+        <rect x="284" y="248" width="192" height="44" rx="8" fill="var(--surface)"></rect>
+        <text x="296" y="267" font-size="10.5" font-weight="700" fill="currentColor">Pure Pipe / computed</text>
+        <text x="296" y="282" font-size="9" fill="var(--muted)">Nhớ đệm kết quả, cấm gọi hàm HTML</text>
+
+        <rect x="284" y="300" width="192" height="42" rx="8" fill="var(--surface)"></rect>
+        <text x="296" y="318" font-size="10" font-weight="700" fill="currentColor">runOutsideAngular</text>
+        <text x="296" y="332" font-size="9" fill="var(--muted)">Chặn scroll/mousemove rung chuông</text>
+
+        <!-- Mũi tên 2 -> 3 -->
+        <path d="M494 185 L516 185" fill="none" stroke="currentColor" stroke-width="1.6" marker-end="url(#perf-arr)" opacity=".6"></path>
+
+        <!-- Tầng 3: Bộ nhớ & Tác vụ nền -->
+        <rect x="520" y="24" width="220" height="330" rx="14" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"></rect>
+        <rect x="534" y="38" width="192" height="32" rx="8" fill="var(--accent-soft)"></rect>
+        <text x="630" y="59" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)" font-family="monospace">3. BỘ NHỚ &amp; TÁC VỤ NỀN</text>
+
+        <rect x="534" y="82" width="192" height="70" rx="8" fill="var(--surface)"></rect>
+        <text x="546" y="104" font-size="11" font-weight="700" fill="currentColor">takeUntilDestroyed</text>
+        <text x="546" y="124" font-size="9.5" fill="var(--muted)">Huỷ RxJS subscription tự động</text>
+        <text x="546" y="140" font-size="9" fill="var(--good)">Chống memory leak</text>
+
+        <rect x="534" y="162" width="192" height="70" rx="8" fill="var(--surface)"></rect>
+        <text x="546" y="184" font-size="11" font-weight="700" fill="currentColor">CDK Virtual Scrolling</text>
+        <text x="546" y="204" font-size="9.5" fill="var(--muted)">10.000 dòng chỉ vẽ 20 phần tử</text>
+        <text x="546" y="220" font-size="9" fill="var(--good)">Giữ DOM siêu nhẹ</text>
+
+        <rect x="534" y="242" width="192" height="70" rx="8" fill="var(--surface)"></rect>
+        <text x="546" y="264" font-size="11" font-weight="700" fill="currentColor">Web Workers</text>
+        <text x="546" y="284" font-size="9.5" fill="var(--muted)">Tính toán ma trận / xử lý file</text>
+        <text x="546" y="300" font-size="9" fill="var(--good)">Không nghẽn luồng chính (60 FPS)</text>
+      </svg>
+    </div>
+    <figcaption>Bức tranh toàn cảnh: Tối ưu hiệu năng Angular là sự kết hợp nhịp nhàng giữa ba tầng nạp mã, chạy kiểm tra và giải phóng bộ nhớ.</figcaption>
+  </figure>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Chi tiết kỹ thuật</p><h2>1. Tối ưu nạp mã ban đầu (Bundle &amp; Loading)</h2></div>
+  <p>Một gói mã nạp khổng lồ sẽ khiến trình duyệt mất hàng giây để tải về, <strong>parse</strong> (phân tích cú pháp) và biên dịch. Dưới đây là các kỹ thuật then chốt để cắt giảm kích thước gói nạp ban đầu:</p>
+
+  <h3>A. Tách mã theo đường dẫn (Route Lazy Loading)</h3>
+  <p>Đừng nạp toàn bộ màn hình ứng dụng vào một gói <code>main.js</code> duy nhất. Hãy dùng <code>loadComponent</code> hoặc <code>loadChildren</code> để chia nhỏ thành từng mảnh (chunk) chỉ tải khi người dùng chuyển trang:</p>
+<pre><code><span class="kw">export const</span> routes: Routes = [
+  {
+    path: <span class="str">'dashboard'</span>,
+    <span class="cm">// Chỉ tải file dashboard.component.ts khi người dùng vào URL /dashboard</span>
+    loadComponent: () =&gt; <span class="kw">import</span>(<span class="str">'./dashboard/dashboard.component'</span>)
+      .then(m =&gt; m.DashboardComponent),
+  },
+];</code></pre>
+
+  <h3>B. Trì hoãn nạp khối giao diện với <code>@defer</code></h3>
+  <p>Từ Angular 17, khối <code>@defer</code> cho phép trì hoãn nạp mã và trì hoãn hiển thị các <strong>component</strong> (thành phần giao diện đóng gói) nặng cho tới khi thoả mãn một điều kiện thực tế:</p>
+<pre><code><span class="cm">&lt;!-- Chỉ nạp bundle và render biểu đồ khi người dùng cuộn tới nó trên màn hình --&gt;</span>
+@defer (on viewport) {
+  &lt;app-heavy-chart [data]=<span class="str">"stats()"</span> /&gt;
+} @placeholder {
+  &lt;div class=<span class="str">"skeleton"</span>&gt;Đang chờ cuộn tới biểu đồ...&lt;/div&gt;
+} @loading (minimum 200ms) {
+  &lt;app-spinner /&gt;
+}</code></pre>
+  <p>Các điều kiện kích hoạt <code>@defer</code> phổ biến: <code>on viewport</code> (khi lọt vào tầm nhìn), <code>on interaction</code> (khi người dùng bấm/rê chuột vào khung), <code>on idle</code> (khi trình duyệt rảnh rỗi), <code>on timer(2s)</code> (hẹn giờ sau 2 giây), hoặc <code>when condition</code> (theo biến luận lý).</p>
+
+  <h3>C. Tối ưu ảnh với <code>NgOptimizedImage</code></h3>
+  <p>Hình ảnh thường chiếm hơn 70% dung lượng trang web. Directive <code>ngSrc</code> của Angular tự động ngăn chặn tình trạng nhảy giật bố cục (<strong>CLS</strong> — Cumulative Layout Shift), tạo thuộc tính kích thước linh hoạt (responsive <code>srcset</code>), và tự động <strong>lazy-load</strong> (tải lười các ảnh nằm ngoài màn hình):</p>
+<pre><code><span class="cm">&lt;!-- Ảnh lớn biểu ngữ đầu trang (LCP): nạp ưu tiên cao, không lazy-load --&gt;</span>
+&lt;img ngSrc=<span class="str">"/assets/hero.webp"</span> width=<span class="str">"1200"</span> height=<span class="str">"600"</span> priority alt=<span class="str">"Banner"</span>&gt;
+
+<span class="cm">&lt;!-- Ảnh danh sách sản phẩm bên dưới: tự động tải lười khi cuộn tới --&gt;</span>
+&lt;img ngSrc=<span class="str">"/assets/item.webp"</span> width=<span class="str">"300"</span> height=<span class="str">"200"</span> alt=<span class="str">"Product"</span>&gt;</code></pre>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Chi tiết kỹ thuật</p><h2>2. Tối ưu chu kỳ dò thay đổi (Runtime &amp; Change Detection)</h2></div>
+  <p>Khi ứng dụng đã chạy, trải nghiệm mượt mà 60 khung hình/giây (<strong>FPS</strong> — Frames Per Second) phụ thuộc hoàn toàn vào việc bạn bắt Angular phải tính toán ít đến mức nào mỗi khi có sự kiện.</p>
+
+  <h3>A. Bật chiến lược <code>ChangeDetectionStrategy.OnPush</code></h3>
+  <p>Mặc định (<code>Default</code>), mỗi khi có bất kỳ sự kiện nào xảy ra trong ứng dụng, Angular sẽ duyệt lại toàn bộ cây component từ gốc tới lá. Với <code>OnPush</code>, Angular sẽ bỏ qua hoàn toàn cả nhánh con nếu <code>@Input()</code> không đổi tham chiếu và không có sự kiện nào kích hoạt bên trong nó:</p>
+<pre><code>@Component({
+  selector: <span class="str">'app-user-card'</span>,
+  standalone: <span class="kw">true</span>,
+  <span class="cm">// Bật OnPush: Angular chỉ kiểm tra component này khi input đổi tham chiếu hoặc có signal đổi</span>
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: <span class="str">`&lt;h3&gt;{{ user().name }}&lt;/h3&gt;`</span>,
+})
+<span class="kw">export class</span> UserCardComponent {
+  user = input.required&lt;User&gt;();
+}</code></pre>
+
+  <h3>B. Chuyển sang Signals và Zoneless</h3>
+  <p>Khi dùng <strong>Signal</strong> (tín hiệu phản ứng dữ liệu) cùng <code>provideZonelessChangeDetection()</code>, ứng dụng loại bỏ hoàn toàn thư viện <code>zone.js</code> (~30KB). Angular không còn bị đánh thức bởi những tiếng chuông ồn ào không tên, mà chỉ cập nhật chính xác các <strong>view</strong> (bản thể hiện giao diện) chứa signal bị thay đổi, các component tổ tiên chỉ bị <em>đi qua</em> chứ không bị tính lại.</p>
+
+  <h3>C. Luôn dùng <code>track</code> trong vòng lặp <code>@for</code></h3>
+  <p>Khi danh sách dữ liệu có thêm, bớt hoặc đảo thứ tự, nếu không có khóa định danh <code>track</code>, Angular buộc phải phá bỏ toàn bộ các thẻ DOM cũ và dựng lại từ đầu. Dùng <code>track item.id</code> giúp Angular tái sử dụng lại các DOM node có sẵn và chỉ di chuyển vị trí của chúng:</p>
+<pre><code><span class="cm">&lt;!-- Cú pháp Angular mới: bắt buộc khai báo track --&gt;</span>
+@for (item of products(); track item.id) {
+  &lt;app-product-item [product]=<span class="str">"item"</span> /&gt;
+}</code></pre>
+
+  <h3>D. Tuyệt đối không gọi hàm tính toán trực tiếp trong Template HTML</h3>
+  <p>Trong template HTML, nếu bạn viết <code>{{ calculateTotal(item) }}</code> hoặc <code>[disabled]="isInvalidForm()"</code>, hàm đó sẽ bị gọi lại <strong>hàng chục đến hàng trăm lần</strong> trong mỗi chu kỳ dò thay đổi! Hãy thay thế bằng một <strong>Pure Pipe</strong> (ống biến đổi dữ liệu thuần khiết) hoặc một <code>computed()</code> signal để ghi nhớ kết quả vào bộ nhớ đệm (<strong>memoization</strong>):</p>
+<pre><code><span class="cm">// ✗ TỆ: Hàm chạy lại liên tục mỗi khi ai đó gõ phím hay rê chuột</span>
+&lt;span&gt;{{ getDiscountPrice(product) }}&lt;/span&gt;
+
+<span class="cm">// ✓ TỐT: Pure Pipe chỉ tính lại khi tham chiếu product thay đổi</span>
+&lt;span&gt;{{ product | discountPrice }}&lt;/span&gt;
+
+<span class="cm">// ✓ HOẶC: Signal computed tự động lưu cache kết quả</span>
+discountPrice = computed(() =&gt; <span class="kw">this</span>.product().price * <span class="kw">0.8</span>);</code></pre>
+
+  <h3>E. Tách tác vụ ồn ào ra ngoài với <code>runOutsideAngular</code></h3>
+  <p>Những sự kiện phát ra liên tục 60 lần/giây như <code>scroll</code>, <code>mousemove</code>, hoặc vòng lặp <code>requestAnimationFrame</code> của bản đồ/canvas sẽ liên tục kích hoạt chu kỳ dò thay đổi nếu chạy trong Zone. Hãy bọc chúng bằng <code>ngZone.runOutsideAngular()</code>:</p>
+<pre><code><span class="kw">this</span>.ngZone.runOutsideAngular(() =&gt; {
+  window.addEventListener(<span class="str">'scroll'</span>, () =&gt; {
+    <span class="cm">// Sự kiện cuộn chạy mượt mà ở luồng trình duyệt, không làm Angular giật mình</span>
+    <span class="kw">this</span>.updateScrollIndicator();
+  });
+});</code></pre>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Chi tiết kỹ thuật</p><h2>3. Tối ưu bộ nhớ &amp; Danh sách lớn (Memory &amp; Big Data)</h2></div>
+
+  <h3>A. Cuộn ảo (Virtual Scrolling) cho danh sách hàng ngàn phần tử</h3>
+  <p>Nếu bạn cố render 5.000 dòng HTML cùng lúc vào trang, trình duyệt sẽ bị nghẽn bộ nhớ và giật cục ngay lập tức. Dùng <code>CdkVirtualScrollViewport</code> từ thư viện <code>@angular/cdk/scrolling</code> giúp ứng dụng chỉ render 15-20 phần tử thực sự nằm trong khung nhìn của người dùng:</p>
+<pre><code>&lt;cdk-virtual-scroll-viewport itemSize=<span class="str">"50"</span> class=<span class="str">"viewport"</span>&gt;
+  &lt;div *cdkVirtualFor=<span class="str">"let item of massiveList"</span> class=<span class="str">"row"</span>&gt;
+    {{ item.name }}
+  &lt;/div&gt;
+&lt;/cdk-virtual-scroll-viewport&gt;</code></pre>
+
+  <h3>B. Tự động dọn dẹp Subscription với <code>takeUntilDestroyed</code></h3>
+  <p>Một <strong>Observable</strong> (luồng dữ liệu phản ứng trong thư viện RxJS) không được huỷ khi component bị tháo gỡ sẽ tiếp tục giữ tham chiếu đến component đó trong bộ nhớ, gây ra hiện tượng <strong>rò rỉ bộ nhớ</strong> (memory leak) khiến web chạy càng lúc càng chậm. Hãy dùng toán tử <code>takeUntilDestroyed()</code> hoặc chuyển hẳn sang <code>toSignal()</code>:</p>
+<pre><code><span class="kw">export class</span> StockTrackerComponent {
+  <span class="kw">private</span> stockService = inject(StockService);
+  <span class="kw">private</span> destroyRef = inject(DestroyRef);
+
+  ngOnInit() {
+    <span class="kw">this</span>.stockService.getPriceStream().pipe(
+      <span class="cm">// Tự động unsubscribe khi component bị phá huỷ khỏi DOM</span>
+      takeUntilDestroyed(<span class="kw">this</span>.destroyRef)
+    ).subscribe(price =&gt; <span class="kw">this</span>.renderChart(price));
+  }
+}</code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Bảng tổng hợp các vũ khí tối ưu &amp; mức độ ưu tiên</h2></div>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Giải pháp</th><th>Tầng tác động</th><th>Chi phí thực hiện</th><th>Mức độ tăng tốc</th><th>Khi nào nên áp dụng</th></tr></thead>
+    <tbody>
+      <tr><td><code>ChangeDetectionStrategy.OnPush</code></td><td>Dò thay đổi (Runtime)</td><td>Thấp</td><td><span class="yes">Rất cao</span></td><td>Mọi component mới (đặt làm mặc định dự án)</td></tr>
+      <tr><td><code>@for (track item.id)</code></td><td>Dò thay đổi (DOM)</td><td>Rất thấp</td><td><span class="yes">Cao</span></td><td>Bắt buộc 100% các vòng lặp danh sách</td></tr>
+      <tr><td>Route Lazy Loading</td><td>Nạp mã (Bundle)</td><td>Thấp</td><td><span class="yes">Rất cao</span></td><td>Mọi dự án có nhiều trang/phân hệ</td></tr>
+      <tr><td>Khối <code>@defer</code></td><td>Nạp mã &amp; Render</td><td>Thấp</td><td><span class="yes">Cao</span></td><td>Biểu đồ, bảng tính, modal, phần tử dưới trang</td></tr>
+      <tr><td><code>Pure Pipe</code> / <code>computed()</code></td><td>Dò thay đổi (Template)</td><td>Thấp</td><td><span class="yes">Cao</span></td><td>Bất kỳ nơi nào có logic tính toán trên UI</td></tr>
+      <tr><td><code>NgOptimizedImage</code></td><td>Tải mạng &amp; Trình duyệt</td><td>Rất thấp</td><td><span class="yes">Cao</span></td><td>Tất cả các thẻ hình ảnh trong ứng dụng</td></tr>
+      <tr><td><code>takeUntilDestroyed()</code></td><td>Bộ nhớ (Memory)</td><td>Thấp</td><td><span class="yes">Bền vững</span></td><td>Mọi RxJS subscription thủ công</td></tr>
+      <tr><td>CDK Virtual Scroll</td><td>DOM &amp; Bộ nhớ</td><td>Trung bình</td><td><span class="yes">Đột phá</span></td><td>Bảng dữ liệu &gt; 100 dòng hoặc cuộn vô tận</td></tr>
+      <tr><td>Zoneless + Signals</td><td>Toàn diện hệ thống</td><td>Trung bình</td><td><span class="yes">Rất cao</span></td><td>Dự án Angular hiện đại (v18+)</td></tr>
+      <tr><td>Web Workers</td><td>Luồng xử lý (CPU)</td><td>Cao</td><td><span class="yes">Cao</span></td><td>Xử lý file Excel lớn, ma trận, nén ảnh client</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Đánh đổi khi tối ưu hoá hiệu năng</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Tốc độ mở trang tức thì:</b> Gói nạp ban đầu giảm từ 50% đến 80% nhờ Lazy Loading và <code>@defer</code>.</li>
+        <li><b>Mượt mà đạt chuẩn 60 FPS:</b> CPU không bị nghẽn vì Angular chỉ soát các view thực sự có dữ liệu mới.</li>
+        <li><b>Chống hiện tượng đơ ứng dụng:</b> Bộ nhớ RAM được thu hồi triệt để khi rời trang nhờ dọn subscription.</li>
+        <li><b>Trải nghiệm người dùng đạt chuẩn Core Web Vitals:</b> Cải thiện mạnh các chỉ số <strong>LCP</strong> (thời gian vẽ nội dung lớn nhất) và <strong>CLS</strong> (độ giật khung hình).</li>
+        <li><b>Tiết kiệm băng thông máy chủ:</b> Giảm tải lưu lượng truyền dữ liệu mạng cho người dùng di động.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Mã nguồn tối ưu chuẩn</p>
+<pre><code><span class="cm">// ✓ Gọn nhẹ, OnPush, Signal phản ứng chính xác</span>
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: <span class="str">`
+    @for (user of users(); track user.id) {
+      &lt;div&gt;{{ user | formatName }}&lt;/div&gt;
+    }
+  `</span>
+})
+<span class="kw">export class</span> UsersComponent {
+  users = input.required&lt;User[]&gt;();
+}</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Đòi hỏi kỷ luật dữ liệu bất biến:</b> Bật <code>OnPush</code> mà lỡ sửa trực tiếp thuộc tính của object (<strong>mutate</strong>) thì giao diện sẽ không chịu cập nhật.</li>
+        <li><b>Độ phức tạp mã nguồn tăng lên:</b> Phải viết thêm Pipe, quản lý <code>DestroyRef</code>, cấu hình <code>@defer</code> và trigger.</li>
+        <li><b>Bẫy tối ưu sớm (Premature Optimization):</b> Tốn công viết Web Worker hay Virtual Scroll cho danh sách chỉ có 10 dòng làm mã nguồn cồng kềnh vô ích.</li>
+        <li><b>Khó tích hợp thư viện jQuery/DOM cũ:</b> Các thư viện thao tác DOM trực tiếp bên ngoài dễ xung đột với vòng đời OnPush/Zoneless của Angular.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Mã nguồn cấm kỵ (Gây giật lag)</p>
+<pre><code><span class="cm">// ✗ TỆ: Default CD, mutate object, gọi hàm trong loop HTML</span>
+@Component({
+  template: <span class="str">`
+    &lt;div *ngFor="let u of users"&gt;
+      &lt;!-- Hàm runHeavyCalc chạy hàng trăm lần/giây --&gt;
+      &lt;span&gt;{{ runHeavyCalc(u) }}&lt;/span&gt;
+    &lt;/div&gt;
+  `</span>
+})</code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách tiếp cận an toàn chuẩn Senior (Quy tắc 80/20):</strong> Không tối ưu mù quáng! Hãy luôn dùng <strong>Chrome DevTools Performance</strong> và <strong>Angular DevTools Profiler</strong> để ghi lại và xác định chính xác "chỗ nghẽn" ở đâu trước. Đặt <code>OnPush</code> làm mặc định cho toàn bộ component mới, luôn khai báo <code>track</code> trong <code>@for</code>, bọc <code>@defer</code> cho các component nặng, và chỉ tìm tới Virtual Scroll hay Web Worker khi đo đạc thấy DOM/CPU thực sự quá tải.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Góc nhìn Senior Architect</h2></div>
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> Tối ưu hiệu năng Angular là một chiến lược 3 tầng toàn diện. Ở <em>tầng nạp</em>, tôi cắt nhỏ bundle bằng Route Lazy Loading, tận dụng khối <code>@defer</code> cho các component nặng ngoài tầm nhìn và dùng <code>NgOptimizedImage</code> để tối ưu tải ảnh và chống CLS. Ở <em>tầng chạy</em>, tôi chuyển 100% component sang <code>OnPush</code> hoặc Signals/Zoneless, dùng <code>@for</code> kèm <code>track</code> bắt buộc, và thay toàn bộ hàm trong template bằng Pure Pipe hoặc <code>computed()</code> để tận dụng cơ chế memoization. Ở <em>tầng bộ nhớ</em>, tôi triệt tiêu memory leak bằng <code>takeUntilDestroyed()</code> và dùng <code>CdkVirtualScrollViewport</code> cho các tập dữ liệu lớn.</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Khi web Angular bị giật lag, bạn tiến hành điều tra theo các bước nào?</h3>
+      <p>Không bao giờ nhảy vào sửa code bừa bãi! Bước 1: Mở <strong>Angular DevTools Profiler</strong> ghi lại tương tác để xem component nào bị re-render nhiều lần và tốn bao nhiêu mili-giây. Bước 2: Dùng <strong>Chrome DevTools Performance</strong> kiểm tra xem luồng chính (Main Thread) bị nghẽn do tính toán JavaScript nặng hay do vẽ lại layout DOM. Bước 3: Áp dụng giải pháp đích danh (OnPush/Pipe/Defer/Virtual Scroll) và đo lại để so sánh chỉ số trước - sau.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Tại sao gọi hàm trong Template HTML lại nguy hiểm và khắc phục ra sao?</h3>
+      <p>Angular không thể biết kết quả của hàm có đổi hay không nên buộc phải thực thi lại hàm đó trong <strong>mỗi lượt change detection tick</strong> (kể cả khi người dùng chỉ rê chuột hay ấn phím bất kỳ). Khắc phục: chuyển sang <strong>Pure Pipe</strong> (chỉ tính lại khi đầu vào đổi tham chiếu nhờ bộ nhớ đệm) hoặc dùng <strong>Signal computed()</strong>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>@defer</code> khác gì directive <code>*ngIf</code> truyền thống?</h3>
+      <p><code>*ngIf</code> chỉ ẩn/hiện DOM nhưng <strong>mã JavaScript của component đó vẫn nằm nguyên trong bundle tải về ban đầu</strong>. Trong khi đó, <code>@defer</code> tự động tách component bên trong thành một <strong>chunk JS riêng biệt</strong> và chỉ thực sự gửi request tải file đó về qua mạng khi điều kiện (như cuộn tới viewport) được kích hoạt.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Bảng có 10.000 dòng dữ liệu, bật OnPush và Signals có hết giật không?</h3>
+      <p><strong>Không!</strong> OnPush và Signal chỉ giúp Angular không phải tính toán lại dữ liệu khi không đổi. Nhưng việc tạo ra 10.000 thẻ DOM thật trên trang sẽ làm trình duyệt cạn kiệt bộ nhớ và tê liệt cây render tree. Trong trường hợp này, bắt buộc phải dùng <strong>Virtual Scrolling (CDK Virtual Scroll)</strong> để chỉ duy trì khoảng 20 node DOM thật trên màn hình.</p>
+    </div>
+  </div>
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "Em chỉ cần thêm ChangeDetectionStrategy.OnPush vào tất cả component là web tự khắc nhanh gấp 10 lần." Sai lầm lớn! Nếu trong template vẫn gọi hàm nặng, vòng lặp không có <code>track</code>, hoặc truyền object tạo mới liên tục qua input thì OnPush vẫn bị kích hoạt kiểm tra liên miên và không giải quyết được vấn đề gốc rễ.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng trong bài</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>Performance Optimization</td><td>Tối ưu hiệu năng — các kỹ thuật làm cho ứng dụng tải nhanh hơn, chạy mượt hơn và tiêu tốn ít tài nguyên hơn.</td></tr>
+      <tr><td>Bundle Size</td><td>Kích thước gói mã nguồn — tổng dung lượng các file JavaScript/CSS mà trình duyệt phải tải về từ máy chủ.</td></tr>
+      <tr><td>Lazy Loading</td><td>Tải lười — kỹ thuật trì hoãn việc tải tài nguyên hoặc mã nguồn cho tới khi thực sự cần dùng tới.</td></tr>
+      <tr><td>Deferrable Views (@defer)</td><td>Khối giao diện trì hoãn — tính năng của Angular cho phép tách chunk và nạp component theo các điều kiện kích hoạt linh hoạt.</td></tr>
+      <tr><td>Change Detection</td><td>Dò thay đổi — cơ chế Angular quét lại cây component để đồng bộ dữ liệu vào giao diện người dùng.</td></tr>
+      <tr><td>ChangeDetectionStrategy.OnPush</td><td>Chiến lược OnPush — chỉ kiểm tra component khi input đổi tham chiếu, có sự kiện phát ra từ template hoặc signal cập nhật.</td></tr>
+      <tr><td>DOM (Document Object Model)</td><td>Mô hình đối tượng tài liệu — cây phần tử HTML thật mà trình duyệt đang hiển thị và xử lý.</td></tr>
+      <tr><td>Pure Pipe</td><td>Ống biến đổi dữ liệu thuần khiết — chỉ chạy lại khi giá trị tham chiếu đầu vào thay đổi, có sẵn bộ nhớ đệm kết quả.</td></tr>
+      <tr><td>Memoization</td><td>Kỹ thuật ghi nhớ đệm — lưu lại kết quả của các phép tính tốn kém dựa trên tham số đầu vào để tái sử dụng mà không phải tính lại.</td></tr>
+      <tr><td>track / trackBy</td><td>Khóa định danh phần tử trong vòng lặp — giúp Angular nhận diện chính xác phần tử nào bị thêm/sửa/xoá để tái sử dụng DOM node.</td></tr>
+      <tr><td>NgOptimizedImage</td><td>Chỉ thị tối ưu hình ảnh — tự động quản lý lazy load, kích thước responsive và chống nhảy giật layout.</td></tr>
+      <tr><td>Virtual Scrolling</td><td>Cuộn ảo — kỹ thuật chỉ tạo phần tử DOM cho những mục đang nhìn thấy trên màn hình, giải phóng hàng ngàn node ẩn.</td></tr>
+      <tr><td>Memory Leak</td><td>Rò rỉ bộ nhớ — hiện tượng bộ nhớ RAM bị chiếm giữ liên tục bởi các đối tượng không còn dùng nhưng chưa được dọn dẹp.</td></tr>
+      <tr><td>takeUntilDestroyed()</td><td>Toán tử tự huỷ RxJS — tự động ngừng lắng nghe luồng dữ liệu khi component bị tháo dỡ khỏi cây DOM.</td></tr>
+      <tr><td>CLS (Cumulative Layout Shift)</td><td>Độ giật bố cục tích luỹ — chỉ số đo lường sự dịch chuyển bất ngờ của các phần tử giao diện khi trang đang nạp.</td></tr>
+      <tr><td>LCP (Largest Contentful Paint)</td><td>Thời gian hiển thị phần tử nội dung lớn nhất — chỉ số đo lường thời điểm phần tử chính của trang được vẽ xong.</td></tr>
+      <tr><td>FPS (Frames Per Second)</td><td>Số khung hình trên giây — thước đo độ mượt mà của chuyển động giao diện (chuẩn mượt là 60 FPS).</td></tr>
+      <tr><td>Web Worker</td><td>Luồng xử lý nền độc lập trong trình duyệt — chạy các phép toán nặng mà không làm đơ giao diện người dùng chính.</td></tr>
+      <tr><td>Tree-shaking</td><td>Cơ chế rung cây loại bỏ mã chết — công cụ đóng gói tự động loại bỏ các đoạn mã không được gọi tới khỏi bản build cuối cùng.</td></tr>
+      <tr><td>Zoneless</td><td>Chế độ chạy không cần Zone.js — Angular chỉ cập nhật chính xác nơi có tín hiệu signal mà không cần quét toàn bộ cây.</td></tr>
+    </tbody>
+  </table></div>
+</section>

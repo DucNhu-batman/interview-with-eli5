@@ -265,7 +265,7 @@ pre .gl::after,pre .gl::before{display:none}
 </header>
 <section class="col">
   <div class="sec-head"><p class="eyebrow">Vấn đề</p><h2>Angular không có mắt</h2></div>
-  <p>JavaScript không hề báo cho ai biết khi một biến vừa đổi giá trị. Gán <code>this.tong = 5</code> thì chỉ có ô nhớ đổi, không có chuông nào reo. Vậy làm sao Angular biết lúc nào phải vẽ lại màn hình?</p>
+  <p>JavaScript không hề báo cho ai biết khi một biến vừa đổi giá trị. Gán <code>this.tong = 5</code> thì chỉ có ô nhớ đổi, không có chuông nào reo. Vậy làm sao Angular biết lúc nào phải <span class="gl" data-gl="render" tabindex="0">vẽ lại màn hình</span>?</p>
   <p>Câu trả lời của Angular đời cũ: <b>đừng đoán khi nào dữ liệu đổi — hãy canh khi nào <i>có khả năng</i> nó đổi.</b> Dữ liệu trong một ứng dụng web hầu như chỉ đổi sau ba loại việc: người dùng bấm/gõ, hết giờ hẹn, hoặc máy chủ trả lời. Cả ba đều là <b>API bất đồng bộ</b> (asynchronous — việc không chạy xong ngay, mà chạy xong lúc nào đó về sau) của trình duyệt.</p>
   <div class="callout">
     <p><strong>Zone.js là người canh ba cái cửa đó.</strong> Hãy hình dung một toà nhà: thư ký dán một cái chuông vào <i>mọi</i> cánh cửa. Ai đi qua cửa nào, chuông cũng reo, thư ký ghi sổ "đang có 1 người bên trong". Khi người cuối cùng đi ra, sổ về 0, thư ký hô lên một tiếng — và người quản lý đi kiểm tra lại toàn bộ phòng ốc xem có gì vừa bị xê dịch.</p>
@@ -276,7 +276,7 @@ pre .gl::after,pre .gl::before{display:none}
   <div class="sec-head col"><p class="eyebrow">Cơ chế 1</p><h2>"Vá" (monkey-patch) nghĩa là gì</h2></div>
   <div class="col">
     <p><b>Monkey-patch</b> (vá đè lúc chạy) là kỹ thuật: giữ lại hàm gốc của trình duyệt, rồi thay tên hàm đó bằng hàm của mình; hàm của mình làm thêm việc riêng rồi mới gọi hàm gốc. Bên ngoài vẫn gọi đúng cái tên cũ nên không ai phải sửa code — nhưng bên trong đã có thêm cái chuông.</p>
-    <p>Zone.js được nạp <b>trước cả Angular</b> (khai trong mục <code>polyfills</code> của <code>angular.json</code>), nên khi code ứng dụng chạy thì các hàm đã là bản vá.</p>
+    <p>Zone.js được nạp <b>trước cả Angular</b> (khai trong mục <code>polyfills</code> của <code>angular.json</code>), nên khi code ứng dụng chạy thì các hàm đã là <span class="gl" data-gl="patch" tabindex="0">bản vá</span>.</p>
   </div>
 <pre><code><span class="cm">// Đại ý bản vá của Zone.js, rút gọn tối đa</span>
 <span class="kw">const</span> setTimeoutGoc = window.setTimeout;          <span class="cm">// 1. cất bản gốc đi</span>
@@ -311,7 +311,7 @@ window.setTimeout = <span class="kw">function</span> (viec, tre) {       <span c
             <polygon points="0,0 10,5 0,10" fill="currentColor"></polygon>
           </marker>
           <marker id="z-ar-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <polygon points="0,0 10,5 0,10" fill="#D9821F"></polygon>
+            <polygon points="0,0 10,5 0,10" fill="var(--accent)"></polygon>
           </marker>
         </defs>
 
@@ -340,7 +340,7 @@ window.setTimeout = <span class="kw">function</span> (viec, tre) {       <span c
         <text x="310" y="355" font-size="13" font-weight="700" text-anchor="middle" fill="currentColor">Hàng đợi microtask rỗng</text>
         <text x="310" y="374" font-size="11.5" text-anchor="middle" fill="currentColor" opacity=".72" font-family="monospace">Zone bắn onMicrotaskEmpty</text>
 
-        <line x1="310" y1="390" x2="310" y2="434" stroke="#D9821F" stroke-width="2.2" marker-end="url(#z-ar-a)"></line>
+        <line x1="310" y1="390" x2="310" y2="434" stroke="var(--accent)" stroke-width="2.2" marker-end="url(#z-ar-a)"></line>
         <text x="330" y="417" font-size="11" fill="var(--accent)" font-weight="700">Angular đang nghe sự kiện này</text>
 
         <rect x="100" y="434" width="420" height="66" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></rect>
@@ -351,7 +351,7 @@ window.setTimeout = <span class="kw">function</span> (viec, tre) {       <span c
     <figcaption>Zone.js không biết dữ liệu nào đổi. Nó chỉ biết “một việc bất đồng bộ vừa chạy xong” — và với Angular, chừng đó là đủ lý do để đi kiểm tra lại tất cả.</figcaption>
   </figure>
   <div class="col">
-    <p><b>Microtask</b> (việc con) là loại việc chen ngay sau việc đang chạy, trước khi trình duyệt kịp vẽ lại — <code>Promise.then</code> là microtask điển hình. Zone chỉ hô lên khi hàng đợi microtask đã <i>rỗng</i>, tức là chuỗi <code>await</code> nối đuôi nhau cũng chỉ tính là một lần, chứ không phải mỗi mắt xích một lần.</p>
+    <p><b>Microtask</b> (việc con) là loại việc chen ngay sau việc đang chạy, trước khi trình duyệt kịp vẽ lại — <code>Promise.then</code> là microtask điển hình. Zone chỉ hô lên khi <span class="gl" data-gl="queue" tabindex="0">hàng đợi</span> microtask đã <i>rỗng</i>, tức là chuỗi <code>await</code> nối đuôi nhau cũng chỉ tính là một lần, chứ không phải mỗi mắt xích một lần.</p>
   </div>
 </section>
 
@@ -400,24 +400,24 @@ window.setTimeout = <span class="kw">function</span> (viec, tre) {       <span c
     <p>Ở mỗi node, Angular đọc lại từng biểu thức trong template (khuôn giao diện) và so với giá trị lần trước. Nghĩa là <code>{{ tinhTong() }}</code> viết trong template sẽ <b>chạy lại mỗi lần quét</b>, không phải mỗi lần dữ liệu đổi.</p>
   </div>
   <div class="callout">
-    <p><strong>“Toàn cây” không có nghĩa là “vẽ lại toàn bộ màn hình”.</strong> Angular chỉ ghi vào DOM (cây phần tử HTML thật) ở đúng chỗ có giá trị khác đi. Và component đặt <code>changeDetection: OnPush</code> sẽ bị bỏ qua cả nhánh nếu không có input mới, không có sự kiện, không có signal nào đổi — đó là lý do dự án này để OnPush ở mọi component.</p>
+    <p><strong>“Toàn cây” không có nghĩa là “vẽ lại toàn bộ màn hình”.</strong> Angular chỉ ghi vào DOM (cây phần tử HTML thật) ở đúng chỗ có giá trị khác đi. Và component đặt <code>changeDetection: OnPush</code> sẽ bị bỏ qua cả <span class="gl" data-gl="subtree" tabindex="0">nhánh</span> nếu không có input mới, không có sự kiện, không có signal nào đổi — đó là lý do dự án này để OnPush ở mọi component.</p>
   </div>
 </section>
 
 <section>
   <div class="sec-head col"><p class="eyebrow">Chỗ can thiệp</p><h2>eventCoalescing — gộp nhiều sự kiện thành một lần quét</h2></div>
   <div class="col">
-    <p>Một cú click không chỉ bắn ra một sự kiện. Sự kiện <b>nổi bọt</b> (bubbling — đi ngược từ phần tử bị bấm lên các phần tử cha). Nếu nút nằm trong một hàng có <code>(click)</code>, hàng lại nằm trong một khối có <code>(click)</code>, thì một cú bấm chuột kích hoạt ba hàm xử lý — và theo cơ chế ở trên, đó là <b>ba lần quét toàn cây</b>.</p>
+    <p>Một cú click không chỉ bắn ra một sự kiện. Sự kiện <b>nổi bọt</b> (bubbling — đi ngược từ phần tử bị bấm lên các phần tử cha). Nếu nút nằm trong một hàng có <code>(click)</code>, hàng lại nằm trong một khối có <code>(click)</code>, thì một cú bấm chuột kích hoạt ba <span class="gl" data-gl="event handler" tabindex="0">hàm xử lý</span> — và theo cơ chế ở trên, đó là <b>ba lần quét toàn cây</b>.</p>
   </div>
   <figure>
     <div class="fig-scroll">
       <svg viewBox="0 0 880 300" role="img" aria-label="So sánh: khi tắt eventCoalescing, một cú click nổi bọt qua ba lớp gây ba lần tick; khi bật, cả ba sự kiện được gom lại và chỉ chạy một lần tick ở khung hình kế tiếp.">
         <defs>
           <marker id="z-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <polygon points="0,0 10,5 0,10" fill="#B92F55"></polygon>
+            <polygon points="0,0 10,5 0,10" fill="var(--bad)"></polygon>
           </marker>
           <marker id="z-good" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <polygon points="0,0 10,5 0,10" fill="#12816F"></polygon>
+            <polygon points="0,0 10,5 0,10" fill="var(--good)"></polygon>
           </marker>
         </defs>
 
@@ -435,9 +435,9 @@ window.setTimeout = <span class="kw">function</span> (viec, tre) {       <span c
         <text x="115" y="204" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="monospace">(click) ở &lt;section&gt;</text>
         <text x="115" y="219" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".7">nổi bọt lên khối</text>
 
-        <line x1="212" y1="74" x2="266" y2="74" stroke="#B92F55" stroke-width="2" marker-end="url(#z-bad)"></line>
-        <line x1="212" y1="140" x2="266" y2="140" stroke="#B92F55" stroke-width="2" marker-end="url(#z-bad)"></line>
-        <line x1="212" y1="206" x2="266" y2="206" stroke="#B92F55" stroke-width="2" marker-end="url(#z-bad)"></line>
+        <line x1="212" y1="74" x2="266" y2="74" stroke="var(--bad)" stroke-width="2" marker-end="url(#z-bad)"></line>
+        <line x1="212" y1="140" x2="266" y2="140" stroke="var(--bad)" stroke-width="2" marker-end="url(#z-bad)"></line>
+        <line x1="212" y1="206" x2="266" y2="206" stroke="var(--bad)" stroke-width="2" marker-end="url(#z-bad)"></line>
 
         <rect x="268" y="52" width="140" height="44" rx="10" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.6"></rect>
         <text x="338" y="80" font-size="12.5" text-anchor="middle" fill="var(--bad)" font-weight="700" font-family="monospace">tick() #1</text>
@@ -454,9 +454,9 @@ window.setTimeout = <span class="kw">function</span> (viec, tre) {       <span c
         <rect x="464" y="184" width="190" height="44" rx="10" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.1"></rect>
         <text x="559" y="211" font-size="11.5" text-anchor="middle" fill="currentColor" font-family="monospace">(click) ở &lt;section&gt;</text>
 
-        <path d="M 658 74 C 700 74 700 120 726 132" fill="none" stroke="#12816F" stroke-width="2" marker-end="url(#z-good)"></path>
-        <line x1="658" y1="140" x2="726" y2="140" stroke="#12816F" stroke-width="2" marker-end="url(#z-good)"></line>
-        <path d="M 658 206 C 700 206 700 160 726 148" fill="none" stroke="#12816F" stroke-width="2" marker-end="url(#z-good)"></path>
+        <path d="M 658 74 C 700 74 700 120 726 132" fill="none" stroke="var(--good)" stroke-width="2" marker-end="url(#z-good)"></path>
+        <line x1="658" y1="140" x2="726" y2="140" stroke="var(--good)" stroke-width="2" marker-end="url(#z-good)"></line>
+        <path d="M 658 206 C 700 206 700 160 726 148" fill="none" stroke="var(--good)" stroke-width="2" marker-end="url(#z-good)"></path>
         <text x="692" y="102" font-size="10.5" text-anchor="middle" fill="var(--good)" font-weight="700">gom lại</text>
 
         <rect x="730" y="110" width="130" height="60" rx="12" fill="var(--good-soft)" stroke="var(--good)" stroke-width="2"></rect>
@@ -501,8 +501,8 @@ provideZoneChangeDetection({ eventCoalescing: <span class="kw">true</span> })</c
       <h3><span class="dot">−</span>Mặt hại</h3>
       <ul>
         <li><b>Quét thừa vẫn là quét thừa.</b> Gõ một phím trong ô tìm kiếm cũng làm cả cây bị hỏi lại, dù chỉ một chỗ đổi.</li>
-        <li><b>Hàm gọi trong template chạy lại mỗi lượt quét</b> — một hàm nặng đặt trong <code>{{ }}</code> là cái bẫy hiệu năng kinh điển.</li>
-        <li><b><code>eventCoalescing</code> chỉ gộp sự kiện DOM,</b> không gộp <code>setTimeout</code> hay lời gọi máy chủ trả về.</li>
+        <li><b>Hàm gọi trong template chạy lại mỗi lượt quét</b> — một hàm nặng đặt trong <code>{{ }}</code> là cái bẫy <span class="gl" data-gl="performance" tabindex="0">hiệu năng</span> kinh điển.</li>
+        <li><b><code>eventCoalescing</code> chỉ gộp sự kiện DOM,</b> không gộp <code>setTimeout</code> hay <span class="gl" data-gl="HTTP request" tabindex="0">lời gọi máy chủ</span> trả về.</li>
         <li><b>Thời điểm cập nhật lệch đi một khung hình,</b> nên code (và test) đọc DOM ngay sau khi bấm có thể còn thấy giá trị cũ.</li>
         <li><b>Zone.js tốn ~35KB</b> và làm mọi stack trace (dấu vết lỗi) dài thêm mấy tầng của Zone.</li>
       </ul>
@@ -516,17 +516,55 @@ expect(el.textContent).toBe(<span class="str">'2'</span>);   <span class="cm">//
 <span class="cm">// → cần await fixture.whenStable() rồi mới kiểm tra</span></code></pre></div>
     </div>
   </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> hai dòng cấu hình lo phần khung — <code>eventCoalescing: true</code> để cắt <em>số lượt</em> quét, và <code>OnPush</code> ở mọi component để cắt <em>bề rộng</em> mỗi lượt. Phần còn lại là kỷ luật viết template: đừng bao giờ gọi hàm trong <code>{{ }}</code> hay trong <code>&#64;for</code> — đẩy sang <code>computed()</code> hoặc một pipe thuần, vì hai thứ đó có nhớ kết quả còn hàm thì không. Với việc chạy nền dày đặc (hoạt ảnh, WebSocket, hỏi máy chủ theo nhịp), bọc trong <code>ngZone.runOutsideAngular()</code> rồi chỉ <code>ngZone.run()</code> đúng lúc thật sự cần vẽ lại.</p>
+  </div>
 </section>
 
 <section class="col">
   <div class="sec-head"><p class="eyebrow">Hướng đi mới</p><h2>Bỏ hẳn người canh cửa</h2></div>
-  <p>Cách chữa gốc rễ không phải là quét ít lần hơn, mà là <b>đừng quét mò nữa</b>. Với <b>signal</b> (ô dữ liệu tự biết ai đang đọc mình), Angular biết chính xác component nào phụ thuộc vào giá trị vừa đổi và chỉ đánh dấu đúng nhánh đó. Khi toàn bộ ứng dụng chạy bằng signal thì không còn cần Zone.js — đó là chế độ <b>zoneless</b> (không vùng), bật bằng <code>provideZonelessChangeDetection()</code>.</p>
-  <ul class="steps">
+  <p>Cách chữa gốc rễ không phải là quét ít lần hơn, mà là <b>đừng quét mò nữa</b>. Với <b>signal</b> (ô dữ liệu tự biết ai đang đọc mình), Angular biết chính xác component nào phụ thuộc vào giá trị vừa đổi và chỉ <span class="gl" data-gl="mark dirty" tabindex="0">đánh dấu bẩn</span> đúng nhánh đó. Khi toàn bộ ứng dụng chạy bằng signal thì không còn cần Zone.js — đó là chế độ <b>zoneless</b> (không vùng), bật bằng <code>provideZonelessChangeDetection()</code>.</p>
+  <ol class="steps">
     <li><b>Zone + Default:</b> mọi việc bất đồng bộ → quét toàn cây. Dễ viết, tốn nhất.</li>
     <li><b>Zone + OnPush:</b> vẫn duyệt từ gốc, nhưng bỏ qua nhánh không bị đánh dấu bẩn. Đây là chỗ dự án này đang đứng.</li>
     <li><b>Zone + OnPush + eventCoalescing:</b> giữ nguyên như trên, thêm việc gộp sự kiện DOM để giảm <i>số lượt</i> duyệt.</li>
     <li><b>Zoneless + signal:</b> không còn ai canh cửa; chỉ nhánh có signal đổi mới được kiểm tra.</li>
-  </ul>
+  </ol>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> JavaScript không báo cho ai biết khi một biến đổi, nên Angular đời cũ không dò <em>thay đổi</em> — nó dò <em>thời điểm có khả năng thay đổi</em>. Zone.js vá đè mọi API bất đồng bộ để đếm số việc đang chạy; khi đếm về 0 nó bắn <code>onMicrotaskEmpty</code>, Angular gọi <code>ApplicationRef.tick()</code> và quét từ gốc xuống hết cây. Hai câu phải nói cho đúng: <b>Zone không biết cái gì vừa đổi</b>, nó chỉ biết "vừa có việc xong"; và <b><code>tick()</code> luôn đi từ gốc</b> — <code>OnPush</code> không đổi điều đó, nó chỉ cho phép bỏ qua những nhánh không được đánh dấu bẩn.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Zone.js làm gì, và vì sao Angular cần nó?</h3>
+      <p>Đừng nói "Zone.js phát hiện thay đổi" — đó là câu sai trọng tâm. Nó <b>vá đè</b> <code>setTimeout</code>, <code>Promise</code>, <code>addEventListener</code>, <code>fetch</code>… để đếm việc bất đồng bộ, rồi báo cho Angular <em>khi nào nên đi kiểm tra</em>. Việc so sánh giá trị cũ–mới là của Angular, không phải của Zone. Nói được ranh giới đó là đã hơn phần lớn ứng viên.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Component <code>OnPush</code>, dữ liệu đổi mà màn hình đứng im — vì sao?</h3>
+      <p>Vì "bẩn" <b>không</b> đồng nghĩa với "dữ liệu đã đổi". Cờ bẩn chỉ bật bởi bốn thứ rất cụ thể: <code>&#64;Input</code> đổi <em>tham chiếu</em>, sự kiện phát ra từ template của chính component đó, <code>async</code> pipe có giá trị mới, hoặc một signal được đọc trong template đổi. Sửa thuộc tính bên trong object đã truyền vào, hay cập nhật từ một callback ngoài zone, đều không bật cờ nào. Chữa: đổi tham chiếu, hoặc <code>markForCheck()</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>eventCoalescing: true</code> làm một lần quét rẻ đi chứ?</h3>
+      <p><b>Không hề.</b> Mỗi lượt quét vẫn đắt y như cũ — nó chỉ giảm <em>số lượt</em> bằng cách gộp các sự kiện rơi vào cùng một khung hình. Hai vế phụ hay bị bỏ sót: nó <b>chỉ gộp sự kiện DOM</b>, không đụng tới <code>setTimeout</code> hay lời gọi máy chủ; và nó <b>đẩy lượt quét trễ một khung hình</b>, nên test đọc DOM ngay sau <code>click()</code> có thể còn thấy giá trị cũ.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3><code>markForCheck()</code> khác <code>detectChanges()</code> chỗ nào?</h3>
+      <p>Khác cả <em>hướng</em> lẫn <em>thời điểm</em>. <code>markForCheck()</code> <b>không chạy gì cả</b> — nó bật cờ bẩn dọc đường <b>đi lên</b> tới gốc, để lượt <code>tick()</code> kế tiếp không bỏ qua nhánh này. <code>detectChanges()</code> thì quét <b>ngay lập tức</b> và chỉ <b>từ component đó xuống dưới</b>, không đi lên. Nên với dữ liệu về bất đồng bộ trong <code>OnPush</code>, <code>markForCheck</code> mới đúng; <code>detectChanges</code> chạy ngoài nhịp dễ đẻ ra <code>ExpressionChangedAfterItHasBeenCheckedError</code>.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "<code>OnPush</code> làm Angular chỉ kiểm tra component nào có dữ liệu thay đổi." Sai ở cả hai vế. Angular <em>vẫn</em> duyệt từ gốc mỗi lượt <code>tick()</code>; <code>OnPush</code> chỉ cho phép <b>bỏ qua</b> một nhánh khi nhánh đó không được đánh dấu bẩn. Và Angular <b>không biết</b> dữ liệu nào đổi — nó chỉ đọc một cái cờ mà những sự kiện rất cụ thể mới bật lên. Chính khoảng cách giữa "dữ liệu đã đổi" và "cờ đã bật" là nơi mọi bug "màn hình không cập nhật" sinh ra.</p>
+  </div>
 </section>
 
 <section>
@@ -555,6 +593,9 @@ expect(el.textContent).toBe(<span class="str">'2'</span>);   <span class="cm">//
       <tr><td>component tree</td><td>Cây component — các component lồng nhau từ gốc xuống.</td></tr>
       <tr><td>DOM</td><td>Cây phần tử HTML thật mà trình duyệt đang hiển thị.</td></tr>
       <tr><td>OnPush</td><td>Chế độ chỉ kiểm tra component khi có input/sự kiện/signal mới.</td></tr>
+      <tr><td>markForCheck()</td><td>Bật cờ bẩn dọc đường đi lên tới gốc; không quét ngay, chỉ để lượt tick kế tiếp không bỏ qua nhánh này.</td></tr>
+      <tr><td>detectChanges()</td><td>Quét ngay lập tức, chỉ từ component đó xuống dưới — không đi lên phía cha.</td></tr>
+      <tr><td>dirty (bẩn)</td><td>Cờ đánh dấu "nhánh này cần kiểm tra lại" — bật bởi input đổi tham chiếu, sự kiện, async pipe hoặc signal.</td></tr>
       <tr><td>eventCoalescing</td><td>Gộp nhiều sự kiện trong cùng một khung hình thành một lần quét.</td></tr>
       <tr><td>runCoalescing</td><td>Gộp nhiều lời gọi <code>ngZone.run()</code> liên tiếp thành một lần quét.</td></tr>
       <tr><td>frame (khung hình)</td><td>Một nhịp vẽ màn hình, khoảng 16ms ở 60Hz.</td></tr>
@@ -563,12 +604,15 @@ expect(el.textContent).toBe(<span class="str">'2'</span>);   <span class="cm">//
       <tr><td>polyfill</td><td>Đoạn mã nạp sớm để bù/đổi hành vi sẵn có của trình duyệt.</td></tr>
       <tr><td>signal</td><td>Ô dữ liệu tự biết ai đang đọc mình, nên báo đúng nơi cần cập nhật.</td></tr>
       <tr><td>zoneless</td><td>Chế độ chạy Angular không dùng Zone.js.</td></tr>
+      <tr><td>runOutsideAngular()</td><td>Chạy một việc bên ngoài vùng Zone, nên nó không kích hoạt lượt quét nào.</td></tr>
+      <tr><td>ExpressionChangedAfterItHasBeenChecked</td><td>Lỗi khi một giá trị đổi sau lúc Angular vừa kiểm tra xong nó trong cùng một lượt.</td></tr>
+      <tr><td>subtree (nhánh)</td><td>Một component và toàn bộ con cháu của nó trong cây.</td></tr>
       <tr><td>stack trace</td><td>Dấu vết các lời gọi hàm dẫn tới chỗ lỗi.</td></tr>
     </tbody>
   </table></div>
 </section>
 <nav class="pager"><a class="prev" href="day-48-di-activatedroute.html"><span class="dir">← Bài trước</span><span class="nm">Day 48 — Dùng DI để lấy dữ liệu từ ActivatedRoute</span></a><a class="next" href="day-50-after-next-render.html"><span class="dir">Bài tiếp →</span><span class="nm">Day 50 — afterNextRender: đợi vẽ xong rồi hãy đo</span></a></nav>
-<footer class="page-foot col"><p>Sổ tay eli5 · Angular · trang 49/55</p></footer>
+<footer class="page-foot col"><p>Sổ tay eli5 · Angular · trang 49/56</p></footer>
 </div>
 </body>
 </html>

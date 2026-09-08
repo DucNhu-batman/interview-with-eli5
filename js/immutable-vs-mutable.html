@@ -268,13 +268,13 @@ pre .gl::after,pre .gl::before{display:none}
   <p>Hình dung dữ liệu của bạn là thứ để viết chữ lên.</p>
   <p><strong>Mutable</strong> (khả biến — sửa được tại chỗ) giống một <em>tấm bảng phấn</em>. Vẫn là tấm bảng ấy, treo đúng chỗ ấy, nhưng ai cầm giẻ cũng xoá được và viết đè lên. Ai đang nhìn tấm bảng sẽ thấy chữ đổi ngay trước mắt.</p>
   <p><strong>Immutable</strong> (bất biến — không sửa được tại chỗ) giống một <em>con tem đã in</em>. Muốn nội dung khác thì phải in một con tem mới; con tem cũ vẫn nằm đó, y nguyên. Ai đang cầm tem cũ thì mãi mãi thấy nội dung cũ.</p>
-  <p>Trong JavaScript, chuyện này không phải bạn chọn — nó do <em>kiểu dữ liệu</em> quyết định:</p>
+  <p>Trong JavaScript, chuyện này không phải bạn chọn — nó do <em><span class="gl" data-gl="data type" tabindex="0">kiểu dữ liệu</span></em> quyết định:</p>
   <ul>
     <li>Mọi <strong>primitive</strong> (kiểu nguyên thuỷ: <code>string</code>, <code>number</code>, <code>boolean</code>, <code>null</code>, <code>undefined</code>, <code>symbol</code>, <code>bigint</code>) đều <strong>bất biến</strong>. Không có cách nào sửa một chuỗi hay một số tại chỗ.</li>
     <li>Mọi <strong>object</strong> (đối tượng — kể cả <code>array</code>/mảng, <code>function</code>/hàm, <code>Date</code>, <code>Map</code>, <code>Set</code>) đều <strong>khả biến</strong> theo mặc định.</li>
   </ul>
   <div class="callout">
-    <p><strong>Đừng nhầm với bài trước:</strong> <em>primitive / reference</em> nói về <strong>cách biến cất giữ</strong> giá trị (giữ thẳng giá trị hay chỉ giữ địa chỉ). <em>Mutable / immutable</em> nói về <strong>bản thân giá trị có sửa được không</strong>. Hai câu hỏi khác nhau, nhưng ở JS chúng đi kèm nhau: cái gì primitive thì bất biến, cái gì reference thì khả biến.</p>
+    <p><strong>Đừng nhầm với bài trước:</strong> <em>primitive / reference</em> nói về <strong>cách biến cất giữ</strong> giá trị (giữ thẳng giá trị hay chỉ giữ <span class="gl" data-gl="reference / address" tabindex="0">địa chỉ</span>). <em>Mutable / immutable</em> nói về <strong>bản thân giá trị có sửa được không</strong>. Hai câu hỏi khác nhau, nhưng ở JS chúng đi kèm nhau: cái gì primitive thì bất biến, cái gì reference thì khả biến.</p>
   </div>
 </section>
 
@@ -344,7 +344,7 @@ ds.push(4);
 console.log(ds2);             <span class="out">// [1,2,3,4] — ds2 chưa hề bị đụng tới</span></code></pre>
   </div>
   <div class="callout bad col">
-    <p><strong>Bẫy số một:</strong> <code>const</code> <em>không</em> có nghĩa là bất biến. <code>const</code> chỉ khoá <strong>cái tên biến</strong>, cấm bạn gán lại địa chỉ khác; ruột của object thì vẫn sửa vô tư. <code>const o = {a:1}; o.a = 2;</code> chạy ngon lành, còn <code>o = {}</code> mới báo lỗi.</p>
+    <p><strong>Bẫy số một:</strong> <code>const</code> <em>không</em> có nghĩa là <span class="gl" data-gl="immutable" tabindex="0">bất biến</span>. <code>const</code> chỉ khoá <strong><span class="gl" data-gl="binding" tabindex="0">cái tên biến</span></strong>, cấm bạn gán lại địa chỉ khác; ruột của object thì vẫn sửa vô tư. <code>const o = {a:1}; o.a = 2;</code> chạy ngon lành, còn <code>o = {}</code> mới báo lỗi.</p>
   </div>
 </section>
 
@@ -352,8 +352,8 @@ console.log(ds2);             <span class="out">// [1,2,3,4] — ds2 chưa hề 
   <div class="sec-head"><p class="eyebrow">Cách làm</p><h2>Ba mức khoá dữ liệu lại</h2></div>
   <ol class="steps">
     <li><span><strong>Không sửa tại chỗ — chỉ dựng bản mới.</strong> Đây là cách phổ biến nhất và không cần công cụ gì: <code>{...cu, ten:'mới'}</code>, <code>[...ds, x]</code>, <code>ds.filter(...)</code>, <code>ds.map(...)</code>. Kỷ luật nằm ở người viết, không có ai chặn nếu bạn quên.</span></li>
-    <li><span><strong><code>Object.freeze(obj)</code> — đóng băng.</strong> Sau khi gọi, mọi phép sửa lên object đó bị bỏ qua (strict mode thì ném <code>TypeError</code>). Nhưng nó <em>nông</em> (shallow): chỉ đóng băng tầng ngoài cùng, object con bên trong vẫn sửa được như thường.</span></li>
-    <li><span><strong>Tách bản sao sâu trước khi đưa ra ngoài.</strong> <code>structuredClone(obj)</code> chép toàn bộ các tầng lồng nhau, nên người nhận có sửa cũng không đụng tới bản gốc của bạn. Đổi lại là tốn bộ nhớ và thời gian.</span></li>
+    <li><span><strong><code>Object.freeze(obj)</code> — <span class="gl" data-gl="freeze" tabindex="0">đóng băng</span>.</strong> Sau khi gọi, mọi phép sửa lên object đó bị bỏ qua (strict mode thì ném <code>TypeError</code>). Nhưng nó <em>nông</em> (shallow): chỉ đóng băng tầng ngoài cùng, object con bên trong vẫn sửa được như thường.</span></li>
+    <li><span><strong>Tách <span class="gl" data-gl="deep clone" tabindex="0">bản sao sâu</span> trước khi đưa ra ngoài.</strong> <code>structuredClone(obj)</code> chép toàn bộ các tầng lồng nhau, nên người nhận có sửa cũng không đụng tới bản gốc của bạn. Đổi lại là tốn bộ nhớ và thời gian.</span></li>
   </ol>
 <pre><code><span class="kw">const</span> cauHinh = Object.freeze({ trang: 1, boLoc: { trang: 1 } });
 
@@ -378,7 +378,39 @@ console.log(cauHinh.boLoc.trang); <span class="out">// 9  — thủng ở tầng
       <tr><td><code>ds.push / pop / shift / unshift / fill</code></td><td><code>[...ds, x]</code>, <code>ds.slice(...)</code>, <code>ds.concat(...)</code></td><td>Thêm / bớt đầu cuối</td></tr>
     </tbody>
   </table></div>
-  <p>Còn <code>map</code>, <code>filter</code>, <code>slice</code>, <code>concat</code>, <code>flat</code>, <code>join</code> thì <strong>vốn đã</strong> không sửa mảng gốc — cứ yên tâm dùng.</p>
+  <p>Còn <code>map</code>, <code>filter</code>, <code>slice</code>, <code>concat</code>, <code>flat</code> thì <strong>vốn đã</strong> không sửa mảng gốc. Nhưng đừng dừng ở đó — có một câu hỏi thứ hai mà rất ít người hỏi tiếp.</p>
+
+  <div class="callout bad">
+    <p><strong>Cả bộ này chỉ chép nông — đúng một tầng.</strong> Tiền tố <code>to</code> hứa <em>không sửa mảng gốc</em>, nó <b>không</b> hứa <em>tách rời dữ liệu</em>. Bạn nhận được một cái vỏ mảng mới, còn các phần tử bên trong vẫn đúng những địa chỉ cũ. <code>map</code>, <code>filter</code>, <code>slice</code>, <code>[...ds]</code> cũng y như vậy. Trong cả nhóm, chỉ <code>structuredClone</code> mới chép sâu.</p>
+  </div>
+
+<pre><code><span class="kw">const</span> goc = [{ id: <span class="kw">1</span>, tag: { mau: <span class="str">'đỏ'</span> } }];
+
+<span class="kw">const</span> b = goc.toSorted();
+console.log(b === goc);          <span class="out">// false → vỏ mảng đúng là mới</span>
+console.log(b[0] === goc[0]);    <span class="out">// true  → nhưng ruột thì vẫn chung!</span>
+
+b[0].tag.mau = <span class="str">'tím'</span>;
+console.log(goc[0].tag.mau);     <span class="out">// 'tím' — gốc đã bị sửa xuyên qua b</span>
+
+<span class="cm">// Chép sâu thật thì gốc mới thoát:</span>
+<span class="kw">const</span> c = structuredClone(goc);
+c[0].tag.mau = <span class="str">'vàng'</span>;
+console.log(goc[0].tag.mau);     <span class="out">// 'tím' — không xi nhê</span></code></pre>
+
+  <p>Nghe thì đáng sợ, nhưng <b>nông là đủ</b> cho việc dò thay đổi: <code>OnPush</code> và <code>memo</code> so cái <em>vỏ mảng</em>, mà vỏ thì đã mới thật. Chỗ vỡ trận chỉ là khi bạn <b>sửa xuyên qua phần tử</b> — <code>moi[0].tag.mau = …</code> là đang thò tay vào gốc. Quy tắc gọn: <strong>dựng bản mới ở đúng từng tầng bạn chạm tới</strong>, tầng nào không chạm thì cứ để dùng chung — đó chính là <span class="gl" data-gl="structural sharing" tabindex="0">chia sẻ cấu trúc</span>, và cũng là lý do bất biến không tốn như người ta tưởng.</p>
+
+<pre><code><span class="cm">// ✗ vỏ mới nhưng sửa thủng xuống gốc</span>
+<span class="kw">const</span> xau = ds.toSorted();
+xau[0].tag.mau = <span class="str">'tím'</span>;
+
+<span class="cm">// ✓ mới ở đúng 2 tầng chạm tới, phần còn lại dùng chung</span>
+<span class="kw">const</span> tot = ds.map((x) =&gt;
+  x.id === <span class="kw">1</span>
+    ? { ...x, tag: { ...x.tag, mau: <span class="str">'tím'</span> } }
+    : x);                        <span class="cm">// x giữ nguyên địa chỉ cũ</span></code></pre>
+
+  <p><code>structuredClone</code> là cách chép sâu đúng chuẩn — nó xử lý được cả <code>Date</code>, <code>Map</code>, <code>Set</code> và vòng lặp tham chiếu (object trỏ vòng lại chính nó), thứ mà mẹo cũ <code>JSON.parse(JSON.stringify(x))</code> làm hỏng hoặc ném lỗi. Bù lại nó <b>không</b> chép được hàm, <strong>DOM node</strong> (nút trong cây giao diện của trình duyệt), và làm mất <strong>prototype</strong> (khuôn gốc — bản sao trở về object thường, không còn là thực thể của lớp bạn).</p>
 </section>
 
 <section>
@@ -387,9 +419,9 @@ console.log(cauHinh.boLoc.trang); <span class="out">// 9  — thủng ở tầng
     <div class="panel pro">
       <h3><span class="dot">+</span>Immutable — lợi</h3>
       <ul>
-        <li><b>Không có tác dụng phụ.</b> Truyền dữ liệu cho hàm lạ mà không sợ nó sửa trộm; bug "ai đó đổi mảng của tôi" biến mất.</li>
-        <li><b>So sánh siêu rẻ.</b> Chỉ cần <code>cu !== moi</code> là biết có thay đổi — đây chính là thứ <code>OnPush</code> của Angular và <code>memo</code> của React dựa vào.</li>
-        <li><b>Giữ được lịch sử.</b> Bản cũ còn nguyên nên làm undo/redo (hoàn tác), time-travel debug rất dễ.</li>
+        <li><b>Không có <span class="gl" data-gl="side effect" tabindex="0">tác dụng phụ</span>.</b> Truyền dữ liệu cho hàm lạ mà không sợ nó sửa trộm; bug "ai đó đổi mảng của tôi" biến mất.</li>
+        <li><b>So sánh siêu rẻ.</b> Chỉ cần <code>cu !== moi</code> là biết có thay đổi — đây chính là thứ <code>OnPush</code> của Angular và <code>memo</code> (bộ nhớ kết quả cũ của React) dựa vào.</li>
+        <li><b>Giữ được lịch sử.</b> Bản cũ còn nguyên nên làm undo/redo (hoàn tác), time-travel debug (gỡ lỗi kiểu tua ngược — chạy lại ứng dụng qua từng bản trạng thái cũ) rất dễ.</li>
         <li><b>Dễ suy luận, dễ chạy song song.</b> Giá trị không đổi giữa chừng thì đọc code tới đâu chắc tới đó.</li>
       </ul>
       <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
@@ -403,7 +435,7 @@ console.log(cu[0].xong);      <span class="out">// false → bản cũ để und
     <div class="panel con">
       <h3><span class="dot">−</span>Immutable — hại</h3>
       <ul>
-        <li><b>Tốn bộ nhớ và CPU.</b> Mỗi lần đổi một ô là dựng lại cả mảng/object; với danh sách vạn dòng cập nhật liên tục thì thấy rõ độ giật.</li>
+        <li><b>Tốn bộ nhớ và CPU (bộ xử lý trung tâm — nơi thật sự làm phép tính).</b> Mỗi lần đổi một ô là dựng lại cả mảng/object; với danh sách vạn dòng cập nhật liên tục thì thấy rõ độ giật.</li>
         <li><b>Code dài dòng khi lồng sâu.</b> Đổi một trường ở tầng thứ tư phải trải spread qua cả bốn tầng.</li>
         <li><b>Tạo nhiều rác.</b> Bộ thu gom (garbage collector) phải dọn liên tục các bản trung gian.</li>
         <li><b>Không ai ép buộc.</b> Trừ khi dùng <code>Object.freeze</code>, đây chỉ là thoả thuận — một dòng <code>push</code> lọt vào là hỏng cả hệ thống.</li>
@@ -423,8 +455,8 @@ console.log(cu[0].xong);      <span class="out">// false → bản cũ để und
       <ul>
         <li><b>Nhanh và tiết kiệm.</b> Sửa một ô chỉ đụng đúng ô đó, không cấp phát vùng nhớ mới.</li>
         <li><b>Viết ngắn, đọc thuận.</b> <code>ds.push(x)</code> nói đúng ý định, không vòng vo.</li>
-        <li><b>Chia sẻ state tự nhiên.</b> Nhiều nơi cùng trỏ vào một dữ liệu là thấy thay đổi ngay, không cần cơ chế đồng bộ.</li>
-        <li><b>Hợp với thuật toán tại chỗ.</b> Sắp xếp, hoán vị, gom nhóm trên mảng lớn.</li>
+        <li><b>Chia sẻ state (trạng thái — dữ liệu hiện thời của ứng dụng) tự nhiên.</b> Nhiều nơi cùng trỏ vào một dữ liệu là thấy thay đổi ngay, không cần cơ chế đồng bộ.</li>
+        <li><b>Hợp với thuật toán <span class="gl" data-gl="in-place" tabindex="0">tại chỗ</span>.</b> Sắp xếp, hoán vị, gom nhóm trên mảng lớn.</li>
       </ul>
       <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
 <pre><code><span class="kw">const</span> kq = [];
@@ -436,7 +468,7 @@ console.log(cu[0].xong);      <span class="out">// false → bản cũ để und
       <h3><span class="dot">−</span>Mutable — hại</h3>
       <ul>
         <li><b>Tác dụng phụ từ xa.</b> Một hàm ở tầng nào đó sửa dữ liệu của bạn mà không báo — loại bug tốn nhiều giờ nhất để lần ra.</li>
-        <li><b>UI không nhận ra thay đổi.</b> Sửa tại chỗ thì địa chỉ không đổi, nên phép so sánh tham chiếu của <code>OnPush</code>/<code>memo</code> kết luận "chẳng có gì mới".</li>
+        <li><b>UI không nhận ra thay đổi.</b> Sửa tại chỗ thì địa chỉ không đổi, nên phép so sánh <span class="gl" data-gl="reference" tabindex="0">tham chiếu</span> của <code>OnPush</code>/<code>memo</code> kết luận "chẳng có gì mới".</li>
         <li><b>Không hoàn tác được.</b> Bản cũ đã bị đè, muốn undo phải tự chép lại từ trước.</li>
         <li><b>Hằng số giả.</b> Một <code>const</code> dùng chung bị sửa một lần là sai vĩnh viễn cho mọi lượt chạy sau.</li>
       </ul>
@@ -452,7 +484,42 @@ console.log(daSap === goc);  <span class="out">// true → OnPush nghĩ "không 
     </div>
   </div>
   <div class="callout good col">
-    <p><strong>Chọn thế nào cho đỡ đau đầu:</strong> mặc định dùng <em>bất biến</em> cho mọi dữ liệu đi ra khỏi hàm — state của ứng dụng, dữ liệu bind ra template, tham số truyền đi nơi khác. Chỉ dùng <em>khả biến</em> ở phần bên trong một hàm, trên biến cục bộ mà không ai ngoài kia nhìn thấy (dựng mảng trong vòng lặp, sắp xếp bản nháp). Ranh giới là: <strong>sửa tại chỗ thì được, miễn là không ai khác đang cầm cái đó</strong>.</p>
+    <p><strong>Chọn thế nào cho đỡ đau đầu:</strong> mặc định dùng <em>bất biến</em> cho mọi dữ liệu đi ra khỏi hàm — state của ứng dụng, dữ liệu bind (gắn dữ liệu vào giao diện) ra template (khuôn giao diện), tham số truyền đi nơi khác. Chỉ dùng <em>khả biến</em> ở phần bên trong một hàm, trên <span class="gl" data-gl="local variable" tabindex="0">biến cục bộ</span> mà không ai ngoài kia nhìn thấy (dựng mảng trong vòng lặp, sắp xếp bản nháp). Ranh giới là: <strong>sửa tại chỗ thì được, miễn là không ai khác đang cầm cái đó</strong>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> Trong JavaScript, kiểu quyết định chứ không phải mình chọn: primitive thì bất biến, object và mảng thì khả biến. <code>const</code> <b>không</b> liên quan — nó khoá <span class="gl" data-gl="binding" tabindex="0">ràng buộc tên biến với địa chỉ</span>, không khoá ruột. Muốn bất biến thật thì hoặc <b>kỷ luật</b> (luôn dựng bản mới bằng spread, <code>map</code>, <code>toSorted</code>), hoặc <b>ép bằng <code>Object.freeze</code></b> — nhưng freeze chỉ nông. Cái được đổi lại cho chi phí bộ nhớ là phép so sánh: bất biến biến việc dò thay đổi từ so sâu từng trường thành đúng một dấu <code>!==</code>.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3><code>const</code> có làm object bất biến không?</h3>
+      <p>Không — và nói được <em>nó khoá cái gì</em> mới ăn điểm. <code>const</code> khoá ràng buộc giữa <b>tên biến</b> và <b>địa chỉ</b>: gán lại địa chỉ khác thì lỗi, còn sửa ruột thì thoải mái. <code>const o={a:1}; o.a=2</code> chạy tốt; <code>o={}</code> mới ném lỗi. Bất biến nói về <em>giá trị</em>, <code>const</code> nói về <em>biến</em> — hai tầng khác nhau.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>{...obj}</code> có phải bản sao sâu không?</h3>
+      <p><b>Không, chỉ nông một tầng.</b> Tầng ngoài là object mới, nhưng mọi giá trị object bên trong vẫn là <em>đúng cái địa chỉ cũ</em> — sửa <code>ban.user.dc.tp</code> là gốc đổi theo. Nói rộng ra được cả họ thì mới ăn điểm: <code>toSorted</code>, <code>toReversed</code>, <code>with</code>, <code>map</code>, <code>filter</code>, <code>[...ds]</code> <em>đều</em> nông y hệt — chúng chỉ hứa không sửa mảng gốc, không hứa tách rời dữ liệu. Trong cả nhóm chỉ <code>structuredClone</code> chép sâu.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>arr.sort()</code> trả về cái gì?</h3>
+      <p>Trả về <b>chính mảng đó</b>, đã bị sắp xếp tại chỗ — không phải bản mới. Nên <code>const daSap = arr.sort()</code> cho cảm giác an toàn giả: <code>daSap === arr</code> là <code>true</code>, gốc đã hỏng, và <code>OnPush</code> kết luận "không có gì đổi". Cùng nhóm với nó: <code>reverse</code>, <code>splice</code>, <code>fill</code>, <code>push</code>. Bản an toàn có sẵn từ ES2023: <code>toSorted</code>, <code>toReversed</code>, <code>toSpliced</code>, <code>with</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Bất biến tốn bộ nhớ hơn, sao lại làm giao diện nhanh hơn?</h3>
+      <p>Vì nó đổi <em>loại phép so sánh</em>. Muốn biết dữ liệu có đổi không, khả biến buộc phải duyệt sâu từng trường — tốn theo kích thước dữ liệu; bất biến chỉ cần so hai địa chỉ, một phép tính duy nhất bất kể dữ liệu to cỡ nào. Nói thêm được <span class="gl" data-gl="structural sharing" tabindex="0">chia sẻ cấu trúc</span> — bản mới dùng lại nguyên các nhánh không đổi của bản cũ, nên "dựng bản mới" không có nghĩa là chép lại toàn bộ — thì rõ là đã đọc bên trong, không phải học thuộc.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "Muốn bất biến thì cứ dùng <code>const</code>, thêm <code>Object.freeze</code> cho chắc." Sai ở cả hai vế. <code>const</code> không đụng gì tới ruột object. Còn <code>freeze</code> thì chỉ khoá tầng ngoài cùng, <b>và ở chế độ thường nó nuốt lỗi im lặng</b> — bạn viết <code>o.a = 9</code>, không có lỗi nào hiện ra, giá trị thì vẫn là cũ. Một dòng gán trông như đã chạy mà thật ra không làm gì cả, là kiểu bug tốn hàng giờ để lần ra.</p>
   </div>
 </section>
 
@@ -464,22 +531,32 @@ console.log(daSap === goc);  <span class="out">// true → OnPush nghĩ "không 
       <tr><td>immutable</td><td>Bất biến — giá trị không thể sửa tại chỗ, muốn đổi phải tạo bản mới.</td></tr>
       <tr><td>mutable</td><td>Khả biến — sửa được ngay trên chính giá trị đó.</td></tr>
       <tr><td>mutate / sửa tại chỗ</td><td>Thay đổi ruột của một dữ liệu mà giữ nguyên địa chỉ của nó.</td></tr>
+      <tr><td>binding</td><td>Ràng buộc — mối nối giữa tên biến và địa chỉ nó đang trỏ tới. <code>const</code> khoá đúng cái này.</td></tr>
+      <tr><td>reference</td><td>Tham chiếu — địa chỉ ô nhớ của một đối tượng, không phải nội dung bên trong nó.</td></tr>
       <tr><td>primitive</td><td>Kiểu nguyên thuỷ — string, number, boolean, null, undefined, symbol, bigint.</td></tr>
       <tr><td>object</td><td>Đối tượng — gồm cả mảng (array), hàm (function), Date, Map, Set.</td></tr>
       <tr><td>Object.freeze</td><td>Hàm đóng băng object, chặn mọi phép sửa — nhưng chỉ ở tầng ngoài cùng.</td></tr>
       <tr><td>shallow / deep</td><td>Nông / sâu — chỉ tầng ngoài cùng, hay xuyên qua mọi tầng lồng nhau.</td></tr>
+      <tr><td>shallow copy</td><td>Bản sao nông — vỏ ngoài là mới, mọi giá trị object bên trong vẫn dùng chung địa chỉ với bản gốc.</td></tr>
+      <tr><td>deep copy</td><td>Bản sao sâu — chép xuyên qua mọi tầng, bản mới không còn dính gì tới bản gốc.</td></tr>
       <tr><td>structuredClone</td><td>Hàm có sẵn của trình duyệt, chép sâu một object đúng chuẩn.</td></tr>
       <tr><td>spread (<code>...</code>)</td><td>Cú pháp "rải" — trải các phần tử/thuộc tính của cái cũ vào một cái mới.</td></tr>
+      <tr><td>in-place</td><td>Tại chỗ — thao tác sửa thẳng lên dữ liệu gốc thay vì dựng bản mới.</td></tr>
+      <tr><td>structural sharing</td><td>Chia sẻ cấu trúc — bản mới dùng lại nguyên các nhánh không đổi của bản cũ, nên không phải chép lại toàn bộ.</td></tr>
       <tr><td>side effect</td><td>Tác dụng phụ — hàm thay đổi thứ nằm ngoài chính nó.</td></tr>
       <tr><td>strict mode</td><td>Chế độ nghiêm ngặt của JS; biến các lỗi im lặng thành lỗi thật.</td></tr>
       <tr><td>OnPush</td><td>Chiến lược phát hiện thay đổi của Angular, so sánh bằng địa chỉ chứ không so nội dung.</td></tr>
       <tr><td>garbage collector</td><td>Bộ thu gom rác — tự động thu hồi vùng nhớ không còn ai dùng.</td></tr>
+      <tr><td>prototype</td><td>Khuôn gốc — object mà một object khác kế thừa thuộc tính và phương thức từ đó.</td></tr>
+      <tr><td>DOM node</td><td>Nút trong cây giao diện của trình duyệt — một thẻ HTML dưới dạng đối tượng JavaScript.</td></tr>
+      <tr><td>state</td><td>Trạng thái — dữ liệu hiện thời của ứng dụng, thứ quyết định màn hình đang hiện gì.</td></tr>
+      <tr><td>time-travel debugging</td><td>Gỡ lỗi kiểu tua ngược — chạy lại ứng dụng qua từng bản trạng thái cũ để tìm chỗ hỏng.</td></tr>
       <tr><td>undo / redo</td><td>Hoàn tác / làm lại — quay về một bản dữ liệu trước đó.</td></tr>
     </tbody>
   </table></div>
 </section>
 <nav class="pager"><a class="prev" href="pass-by-value-vs-reference.html"><span class="dir">← Bài trước</span><span class="nm">Pass by value và pass by reference</span></a><a class="next" href="loose-vs-strict-equality.html"><span class="dir">Bài tiếp →</span><span class="nm">== và === — so sánh lỏng và so sánh nghiêm</span></a></nav>
-<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 6/13</p></footer>
+<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 6/18</p></footer>
 </div>
 </body>
 </html>

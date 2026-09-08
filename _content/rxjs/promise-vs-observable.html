@@ -1,0 +1,280 @@
+<!--meta
+title: Promise vs Observable — Chiếc bánh giao một lần và Vòi nước chảy mãi
+eyebrow: RxJS · Bài 11
+short: Promise vs Observable
+lede: Cùng giải quyết bài toán bất đồng bộ, nhưng Promise như chiếc bánh pizza giao đúng một lần rồi thôi, còn Observable là chiếc vòi nước có thể mở ra chảy mãi, gắn đầu lọc, và khoá van lại bất cứ lúc nào.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Bánh pizza giao tận nhà và Vòi nước thông minh</h2></div>
+  <p>Khi làm việc với các tác vụ <strong>bất đồng bộ</strong> (asynchronous — việc cần thời gian để xong như gọi mạng, đọc file, chờ người dùng bấm), JavaScript cho chúng ta hai công cụ phổ biến nhất: <strong>Promise</strong> và <strong>Observable</strong>.</p>
+  <p>Để hiểu bản chất mà không bị rối bởi thuật ngữ toán học, hãy tưởng tượng:</p>
+  <ol class="steps">
+    <li><b>Promise giống như đặt một chiếc bánh Pizza 🍕:</b> Bạn bấm đặt hàng. Nhà bếp bắt tay vào nướng bánh ngay lập tức (<strong>eager</strong> — háo hức chạy ngay). Shipper chỉ giao tới bạn đúng <b>MỘT chiếc bánh duy nhất</b> (hoặc báo lỗi hết bánh). Sau khi giao xong, đơn hàng kết thúc vĩnh viễn và bạn không thể bấm nút "Huỷ không nhận bánh nữa" giữa chừng.</li>
+    <li><b>Observable giống như lắp một chiếc Vòi nước thông minh 🚰:</b> Bạn lắp vòi xong, nếu chưa ai vặn van thì không có giọt nước nào chảy ra cả (<strong>lazy</strong> — lười biếng, chỉ chạy khi có người cần). Khi có người mở van (<strong>subscribe</strong> — đăng ký nhận), nước có thể chảy ra 1 giọt, 10 giọt, hoặc <b>chảy liên tục thành một dòng suối</b> (<strong>stream</strong> — luồng dữ liệu). Bạn có thể gắn thêm các đầu lọc (<strong>operators</strong> — toán tử biến đổi như <code>map</code>, <code>filter</code>), và có thể vặn khoá van lại bất cứ lúc nào để ngắt dòng chảy (<strong>unsubscribe</strong> — huỷ nhận).</li>
+  </ol>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> <b>Promise</b> trả về đúng <em>một giá trị duy nhất</em>, chạy ngay khi khởi tạo và <em>không thể huỷ</em>. <b>Observable</b> phát ra <em>nhiều giá trị theo dòng thời gian</em>, lười biếng <em>chỉ chạy khi có người đăng ký</em>, và <em>huỷ bỏ được bất cứ lúc nào</em>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 1</p><h2>Dòng thời gian: Một phát bắn vs Dòng chảy liên tục</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 760 340" role="img" aria-label="Sơ đồ so sánh dòng thời gian của Promise và Observable. Promise chỉ phát 1 giá trị rồi hoàn thành. Observable phát nhiều giá trị theo thời gian và có thể huỷ giữa chừng.">
+        <defs>
+          <marker id="po-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"></polygon>
+          </marker>
+        </defs>
+
+        <!-- PROMISE TIMELINE -->
+        <text x="30" y="40" font-size="13" font-weight="700" font-family="monospace" fill="var(--accent)">1. PROMISE (Đơn giá trị · Eager · Không thể huỷ)</text>
+        <line x1="30" y1="85" x2="710" y2="85" stroke="currentColor" stroke-width="2" marker-end="url(#po-ar)"></line>
+
+        <!-- Promise Start -->
+        <circle cx="90" cy="85" r="7" fill="var(--accent)"></circle>
+        <text x="90" y="112" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">Khởi tạo (Chạy ngay)</text>
+
+        <!-- Promise Value -->
+        <circle cx="380" cy="85" r="18" fill="var(--good-soft)" stroke="var(--good)" stroke-width="2"></circle>
+        <text x="380" y="90" font-size="12" font-weight="700" text-anchor="middle" fill="var(--good)">100$</text>
+        <text x="380" y="120" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--good)">Resolve (Xong &amp; Đóng)</text>
+
+        <line x1="430" y1="75" x2="430" y2="95" stroke="currentColor" stroke-width="3"></line>
+        <text x="560" y="89" font-size="11" font-family="monospace" fill="var(--muted)">Đóng băng vĩnh viễn (Không phát thêm)</text>
+
+        <!-- DIVIDER -->
+        <line x1="30" y1="150" x2="730" y2="150" stroke="var(--line)" stroke-dasharray="6"></line>
+
+        <!-- OBSERVABLE TIMELINE -->
+        <text x="30" y="185" font-size="13" font-weight="700" font-family="monospace" fill="var(--good)">2. OBSERVABLE (Đa giá trị · Lazy · Huỷ được bất cứ lúc nào)</text>
+        <line x1="30" y1="240" x2="710" y2="240" stroke="currentColor" stroke-width="2" marker-end="url(#po-ar)"></line>
+
+        <!-- Observable Subscribe -->
+        <circle cx="90" cy="240" r="7" fill="var(--good)"></circle>
+        <text x="90" y="268" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">subscribe()</text>
+
+        <!-- Observable Item 1 -->
+        <circle cx="220" cy="240" r="16" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></circle>
+        <text x="220" y="245" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent)">A</text>
+        <text x="220" y="272" font-size="9.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">next('A')</text>
+
+        <!-- Observable Item 2 -->
+        <circle cx="360" cy="240" r="16" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></circle>
+        <text x="360" y="245" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent)">B</text>
+        <text x="360" y="272" font-size="9.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">next('B')</text>
+
+        <!-- Observable Item 3 -->
+        <circle cx="500" cy="240" r="16" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></circle>
+        <text x="500" y="245" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent)">C</text>
+        <text x="500" y="272" font-size="9.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">next('C')</text>
+
+        <!-- Observable Unsubscribe / Complete -->
+        <line x1="620" y1="228" x2="620" y2="252" stroke="var(--bad)" stroke-width="4"></line>
+        <text x="620" y="272" font-size="10.5" font-weight="700" text-anchor="middle" font-family="monospace" fill="var(--bad)">unsubscribe() / complete</text>
+        <text x="620" y="290" font-size="9.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">Khoá van, ngắt tài nguyên</text>
+      </svg>
+    </div>
+    <figcaption>Promise chỉ có đúng một lần nổ kết quả (Resolve/Reject). Observable là một trục toạ độ thời gian phát ra 0, 1 hoặc vô số giá trị và cho phép người nhận chủ động rút lui bằng <code>unsubscribe()</code>.</figcaption>
+  </figure>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Cơ chế 2</p><h2>Bốn trụ cột phân định ranh giới</h2></div>
+  <p>Hãy đặt Promise và Observable lên bàn cân qua 4 câu hỏi thực chiến:</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Tiêu chí so sánh</th>
+          <th>Promise 🍕</th>
+          <th>Observable 🚰</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>1. Số lượng giá trị</b></td>
+          <td>Chỉ <b>1 giá trị duy nhất</b> (hoặc 1 lỗi), rồi đóng vĩnh viễn.</td>
+          <td><b>0, 1 hoặc nhiều giá trị</b> phát ra liên tục theo thời gian.</td>
+        </tr>
+        <tr>
+          <td><b>2. Thời điểm kích hoạt</b></td>
+          <td><b>Eager (Háo hức):</b> Chạy ngay tại thời điểm tạo <code>new Promise()</code>.</td>
+          <td><b>Lazy (Lười biếng):</b> Không làm gì cả cho tới khi có người gọi <code>.subscribe()</code>.</td>
+        </tr>
+        <tr>
+          <td><b>3. Khả năng huỷ bỏ</b></td>
+          <td><b>Không huỷ được</b> một cách tự nhiên (trừ khi tự gắn thêm <code>AbortController</code>).</td>
+          <td><b>Huỷ cực dễ</b> bằng cách gọi hàm <code>subscription.unsubscribe()</code>.</td>
+        </tr>
+        <tr>
+          <td><b>4. Bộ công cụ xử lý</b></td>
+          <td>Chỉ có <code>.then()</code>, <code>.catch()</code>, <code>.finally()</code> cơ bản.</td>
+          <td>Hơn <b>100+ toán tử cực mạnh</b>: lọc, gộp luồng, trì hoãn (<code>debounce</code>), đổi luồng (<code>switchMap</code>), tự thử lại (<code>retry</code>).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Cân nhắc chọn đúng vũ khí cho đúng bài toán</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3>Khi nào nên dùng Promise</h3>
+      <ul>
+        <li><b>Tác vụ 1 lần (One-shot request):</b> Đọc 1 file cấu hình, gọi API lấy thông tin người dùng lúc đăng nhập, truy vấn 1 bản ghi Database.</li>
+        <li><b>Cú pháp sạch với async/await:</b> Code nhìn phẳng như đồng bộ, dễ đọc, dễ dùng <code>try/catch</code>.</li>
+        <li><b>Không phụ thuộc thư viện:</b> Có sẵn trong lõi JavaScript (ES6+), không cần cài đặt thêm gói dung lượng nào.</li>
+        <li><b>Cả team dễ hiểu:</b> Đường cong học tập thấp, lập trình viên Junior hay Senior đều viết được chuẩn xác.</li>
+      </ul>
+    </div>
+    <div class="panel con">
+      <h3>Khi nào bắt buộc dùng Observable</h3>
+      <ul>
+        <li><b>Luồng dữ liệu liên tục:</b> Sự kiện gõ phím ô tìm kiếm, toạ độ chuột di chuyển, tin nhắn realtime từ WebSocket.</li>
+        <li><b>Cần huỷ request thừa:</b> Người dùng gõ "h-a-n-o-i", cần huỷ 4 request mạng trước đó để không bị đè dữ liệu sai thứ tự (Race condition).</li>
+        <li><b>Xử lý luồng phức tạp:</b> Tự động gọi lại 3 lần khi mất mạng (<code>retry(3)</code>), gom nhiều nguồn API cùng lúc (<code>forkJoin</code>, <code>combineLatest</code>).</li>
+        <li><b>Đồng bộ kiến trúc Reactive:</b> Lõi xử lý luồng dữ liệu trong các framework hiện đại như Angular.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="ex col">
+    <p class="ex-title">Code thực tế 1: Chứng minh tính Eager (Promise) vs Lazy (Observable)</p>
+    <pre><code><span class="cm">// 1. PROMISE: In log ngay lập tức kể cả khi KHÔNG CÓ AI gọi .then()</span>
+<span class="kw">const</span> p = <span class="kw">new</span> <span class="kw">Promise</span>(resolve =&gt; {
+  console.<span class="kw">log</span>(<span class="str">'🔥 Promise đang chạy ngay lập tức!'</span>);
+  <span class="kw">resolve</span>(<span class="str">'Dữ liệu bánh'</span>);
+});
+<span class="cm">// Console in ra: "🔥 Promise đang chạy ngay lập tức!" (Dù chưa gọi p.then())</span>
+
+<span class="cm">// 2. OBSERVABLE: Nằm im bất động nếu chưa có ai .subscribe()</span>
+<span class="kw">const</span> obs$ = <span class="kw">new</span> <span class="kw">Observable</span>(subscriber =&gt; {
+  console.<span class="kw">log</span>(<span class="str">'🚰 Observable bắt đầu chảy nước!'</span>);
+  subscriber.<span class="kw">next</span>(<span class="str">'Dữ liệu nước 1'</span>);
+  subscriber.<span class="kw">next</span>(<span class="str">'Dữ liệu nước 2'</span>);
+  subscriber.<span class="kw">complete</span>();
+});
+<span class="cm">// Không có dòng nào được in ra!</span>
+
+<span class="cm">// Chỉ khi bấm mở van (subscribe), code bên trong mới bắt đầu chạy:</span>
+<span class="kw">const</span> sub = obs$.<span class="kw">subscribe</span>(val =&gt; console.<span class="kw">log</span>(<span class="str">'Nhận được:'</span>, val));
+<span class="cm">// Console in ra: "🚰 Observable bắt đầu chảy nước!" -&gt; "Nhận được: Dữ liệu nước 1" ...</span></code></pre>
+  </div>
+
+  <div class="ex col">
+    <p class="ex-title">Code thực tế 2: Bài toán Ô tìm kiếm (Autocomplete) — Nơi Promise đầu hàng</p>
+    <pre><code><span class="cm">// Dùng Observable xử lý: Chờ gõ xong 300ms + Bỏ qua chữ trùng + Huỷ request cũ</span>
+<span class="kw">import</span> { fromEvent } <span class="kw">from</span> <span class="str">'rxjs'</span>;
+<span class="kw">import</span> { debounceTime, distinctUntilChanged, switchMap, map } <span class="kw">from</span> <span class="str">'rxjs/operators'</span>;
+
+<span class="kw">const</span> searchInput = document.<span class="kw">getElementById</span>(<span class="str">'search-box'</span>);
+
+fromEvent(searchInput, <span class="str">'input'</span>).<span class="kw">pipe</span>(
+  map(event =&gt; event.target.value),
+  <span class="kw">debounceTime</span>(300),          <span class="cm">// 1. Chờ ngừng gõ 300ms mới xử lý</span>
+  <span class="kw">distinctUntilChanged</span>(),      <span class="cm">// 2. Chữ không đổi thì không gửi mạng</span>
+  <span class="kw">switchMap</span>(term =&gt; {          <span class="cm">// 3. HUỶ request cũ nếu có từ khoá mới gõ vào!</span>
+    <span class="kw">return</span> fetchSearchApi(term); 
+  })
+).<span class="kw">subscribe</span>(results =&gt; renderUI(results));</code></pre>
+  </div>
+
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> Không đối đầu nhau — hãy kết hợp! Dùng <code>async/await</code> và Promise cho các tác vụ lấy dữ liệu tĩnh đơn lẻ. Dùng Observable cho luồng sự kiện giao diện và kết nối thời gian thực. Khi cần chuyển đổi trong RxJS 7+, hãy dùng <code>firstValueFrom(obs$)</code> hoặc <code>lastValueFrom(obs$)</code> để chuyển Observable thành Promise một cách an toàn và tường minh.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+
+  <div class="board col">
+    <p><strong>Trả lời 30 giây như Senior:</strong> <b>Promise</b> và <b>Observable</b> là hai mô hình xử lý bất đồng bộ khác nhau ở 4 chiều: <b>(1) Số lượng:</b> Promise đơn giá trị (Single-value), Observable là luồng đa giá trị (Stream); <b>(2) Thực thi:</b> Promise là <em>Eager</em> (chạy ngay lúc khởi tạo), Observable là <em>Lazy</em> (chỉ chạy khi gọi <code>.subscribe()</code>); <b>(3) Huỷ bỏ:</b> Promise không huỷ được (Uncancellable), Observable huỷ tức thì bằng <code>.unsubscribe()</code>; <b>(4) Biến đổi:</b> Observable sở hữu hệ sinh thái toán tử cực mạnh (Pipeable Operators) hỗ trợ xử lý luồng phức tạp như debouncing, cancelling, retry và concurrency control.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Vì sao nói Observable là "Lazy" còn Promise là "Eager"?</h3>
+      <p>Khi bạn viết <code>new Promise(executor)</code>, hàm executor được thực thi <b>ngay lập tức trong cùng tick đó</b> dù bạn có gọi <code>.then()</code> hay không. Ngược lại, hàm khởi tạo <code>new Observable(subscribeFn)</code> chỉ lưu lại công thức; toàn bộ logic bên trong <b>chỉ thực sự chạy</b> khi và chỉ khi có ai đó gọi <code>.subscribe()</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>toPromise()</code> trong RxJS vì sao bị khai tử ở RxJS 7?</h3>
+      <p><code>toPromise()</code> gây mơ hồ vì không nói rõ nó sẽ lấy <b>giá trị đầu tiên</b> hay <b>giá trị cuối cùng</b> trước khi complete, và dễ nuốt mất lỗi nếu stream không phát ra gì. RxJS 7 tách bạch thành hai hàm chuẩn: <code>firstValueFrom(obs$)</code> (lấy giá trị đầu rồi ngắt ngay) và <code>lastValueFrom(obs$)</code> (chờ stream complete lấy giá trị chót).</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi Senior</span>
+      <h3>Tại sao Angular HttpClient dùng Observable thay vì Promise?</h3>
+      <p>Có 3 lý do sống còn: <b>(1) Hỗ trợ huỷ request (Cancellation):</b> Người dùng chuyển trang giữa chừng thì Component bị destroy $\rightarrow$ HTTP request tự động bị abort, không tốn băng thông; <b>(2) Tiến trình tải (HttpEventType):</b> Phát ra nhiều sự kiện báo phần trăm upload/download; <b>(3) Ghép nối toán tử:</b> Dễ dàng gắn <code>retry(2)</code> hoặc bắt nhịp với các luồng State khác của RxJS.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Có thể dùng <code>async/await</code> trực tiếp với Observable không?</h3>
+      <p><b>Không thể trực tiếp</b>, vì <code>await</code> trong cú pháp JavaScript được thiết kế để chỉ đợi một đối tượng dạng <em>Thenable / Promise</em> giải quyết đúng 1 lần. Muốn <code>await</code> một Observable, bạn bắt buộc phải bọc nó qua <code>firstValueFrom(obs$)</code> hoặc <code>lastValueFrom(obs$)</code> để ép nó về dạng Promise đơn giá trị.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> <em>"Promise chạy bất đồng bộ còn Observable chạy đồng bộ (hoặc ngược lại)."</em> Sai nghiêm trọng! Cả hai đều có thể chạy đồng bộ hoặc bất đồng bộ tuỳ thuộc vào đoạn code nằm bên trong executor/subscriber. Promise tự đưa callback vào Microtask Queue, còn Observable phát dữ liệu ngay tại thời điểm gọi <code>subscriber.next()</code> (có thể đồng bộ 100% nếu không gọi hàm hẹn giờ hay API mạng).</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ dùng trong bài</h2></div>
+  <div class="tbl-wrap col">
+    <table>
+      <thead>
+        <tr>
+          <th>Thuật ngữ</th>
+          <th>Nghĩa tiếng Việt &amp; Giải thích</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Promise</strong></td>
+          <td>Lời hứa — đối tượng đại diện cho một kết quả duy nhất sẽ có trong tương lai (thành công hoặc thất bại).</td>
+        </tr>
+        <tr>
+          <td><strong>Observable</strong></td>
+          <td>Đối tượng quan sát được — luồng phát ra các giá trị theo thời gian mà người khác có thể đăng ký theo dõi.</td>
+        </tr>
+        <tr>
+          <td><strong>Eager Evaluation</strong></td>
+          <td>Tính toán háo hức — thực thi ngay lập tức khi đối tượng vừa được định nghĩa mà không chờ đợi.</td>
+        </tr>
+        <tr>
+          <td><strong>Lazy Evaluation</strong></td>
+          <td>Tính toán lười biếng — trì hoãn thực thi cho tới khi giá trị thực sự được yêu cầu hoặc đăng ký.</td>
+        </tr>
+        <tr>
+          <td><strong>Stream</strong></td>
+          <td>Dòng dữ liệu — chuỗi các sự kiện hoặc giá trị được đẩy ra liên tiếp theo trục thời gian.</td>
+        </tr>
+        <tr>
+          <td><strong>Subscribe</strong></td>
+          <td>Đăng ký nhận — hành động mở van để kích hoạt Observable bắt đầu phát dữ liệu cho người nghe.</td>
+        </tr>
+        <tr>
+          <td><strong>Unsubscribe</strong></td>
+          <td>Huỷ đăng ký — hành động ngắt kết nối và giải phóng tài nguyên để dừng nhận dữ liệu.</td>
+        </tr>
+        <tr>
+          <td><strong>Pipeable Operator</strong></td>
+          <td>Toán tử có thể nối ống — các hàm thuần tuý dùng để lọc, gộp, hoặc biến đổi luồng dữ liệu của Observable.</td>
+        </tr>
+        <tr>
+          <td><strong>firstValueFrom</strong></td>
+          <td>Lấy giá trị đầu tiên — hàm chuyển Observable thành Promise, hoàn thành ngay khi nhận giá trị đầu tiên.</td>
+        </tr>
+        <tr>
+          <td><strong>Race Condition</strong></td>
+          <td>Xung đột thứ tự đua — lỗi dữ liệu khi các yêu cầu mạng phản hồi không theo đúng thứ tự gửi đi.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>

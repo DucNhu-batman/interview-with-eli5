@@ -1,0 +1,301 @@
+<!--meta
+title: Service Worker — Chú bồi bàn ngầm biến web thành app
+eyebrow: JavaScript · Bài 17
+short: Service Worker
+lede: Một người gác cổng chạy ngầm giữa trình duyệt và mạng — đứng chặn mọi yêu cầu, móc đồ từ bộ nhớ đệm đưa ra khi mất mạng, và nhận thông báo đẩy ngay cả khi người dùng đã đóng tab.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Chú bồi bàn riêng có túi đồ dự phòng</h2></div>
+  <p>Bình thường, khi trang web muốn tải một bức ảnh hay gọi dữ liệu, trình duyệt sẽ gửi thẳng <strong>request</strong> (yêu cầu gửi lên mạng) ra ngoài <span class="gl" data-gl="server" tabindex="0">máy chủ</span>. Nếu mất mạng hoặc máy chủ sập, trình duyệt lập tức đầu hàng và hiện màn hình con khủng long 🦖.</p>
+  <p><strong>Service Worker</strong> (công nhân dịch vụ chạy ngầm) xuất hiện như một <strong>chú bồi bàn cá nhân</strong> đứng chắn ngay giữa trang web và thế giới Internet:</p>
+  <ol class="steps">
+    <li><b>Đứng chặn ở cửa:</b> Mọi yêu cầu lấy file HTML, CSS, JavaScript hay hình ảnh đều phải đi qua chú bồi bàn trước khi được bay ra ngoài mạng.</li>
+    <li><b>Tự quyết định nguồn lấy:</b> Chú bồi bàn có một chiếc tủ riêng tên là <strong>Cache Storage</strong> (kho lưu trữ bộ nhớ đệm). Nếu trong tủ có sẵn đồ, chú móc ra đưa ngay tại chỗ trong 0 mili-giây mà chẳng cần hỏi máy chủ.</li>
+    <li><b>Sống độc lập với trang web:</b> Chú bồi bàn không sống bên trong trang web mà chạy ở một <strong>worker thread</strong> (luồng xử lý ngầm riêng biệt). Kể cả khi người dùng đã đóng tab web, chú vẫn có thể thức để nhận <strong>push notification</strong> (thông báo đẩy) hoặc thực hiện <strong>background sync</strong> (đồng bộ ngầm khi có mạng lại).</li>
+  </ol>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> Service Worker là một <strong>network proxy</strong> (người trung gian chặn bắt mạng) nằm ngay trong trình duyệt của người dùng, giúp ứng dụng web có thể chạy mượt mà khi <span class="gl" data-gl="offline" tabindex="0">offline</span> (mất mạng) và hoạt động bền bỉ như một ứng dụng di động thực thụ.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 1</p><h2>Đứng ở giữa: chặn bắt và điều phối mọi yêu cầu</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 760 330" role="img" aria-label="Sơ đồ minh họa Service Worker đứng ở giữa Client và Network. Khi Client gửi yêu cầu, Service Worker kiểm tra Cache Storage trước, nếu có trả về ngay, nếu không có mới gọi ra Server mạng ngoài.">
+        <defs>
+          <marker id="sw-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="var(--accent)"></polygon>
+          </marker>
+          <marker id="sw-gr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="var(--good)"></polygon>
+          </marker>
+        </defs>
+
+        <!-- CLIENT BOX -->
+        <rect x="20" y="40" width="180" height="240" rx="14" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="110" y="70" font-size="13" font-weight="700" text-anchor="middle" font-family="monospace" fill="currentColor">TRANG WEB (Tab)</text>
+        <text x="110" y="92" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">Giao diện &amp; DOM</text>
+        <circle cx="110" cy="150" r="30" fill="var(--surface)" stroke="currentColor" stroke-width="1"></circle>
+        <text x="110" y="157" font-size="28" text-anchor="middle">👦</text>
+        <text x="110" y="215" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">fetch('/app.js')</text>
+        <text x="110" y="235" font-size="10" text-anchor="middle" font-family="monospace" fill="var(--muted)">Đòi tải file/dữ liệu</text>
+
+        <!-- ARROW CLIENT TO SW -->
+        <line x1="200" y1="150" x2="278" y2="150" stroke="var(--accent)" stroke-width="2.2" marker-end="url(#sw-ar)"></line>
+        <text x="240" y="140" font-size="10" text-anchor="middle" font-family="monospace" fill="var(--accent)">1. Bắt lấy</text>
+
+        <!-- SERVICE WORKER BOX -->
+        <rect x="290" y="30" width="200" height="260" rx="16" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></rect>
+        <text x="390" y="60" font-size="13" font-weight="800" text-anchor="middle" font-family="monospace" fill="currentColor">SERVICE WORKER</text>
+        <text x="390" y="80" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--accent)">Chạy ngầm (Worker)</text>
+        <circle cx="390" cy="135" r="32" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"></circle>
+        <text x="390" y="144" font-size="30" text-anchor="middle">🤵‍♂️</text>
+        <rect x="306" y="185" width="168" height="85" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1"></rect>
+        <text x="390" y="206" font-size="10.5" font-weight="700" text-anchor="middle" font-family="monospace" fill="currentColor">Sự kiện 'fetch'</text>
+        <text x="390" y="226" font-size="9.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">Kiểm tra tủ Cache</text>
+        <text x="390" y="244" font-size="9.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">hoặc thả ra mạng</text>
+
+        <!-- CACHE STORAGE -->
+        <rect x="540" y="35" width="195" height="110" rx="12" fill="var(--surface-2)" stroke="var(--good)" stroke-width="1.4"></rect>
+        <text x="637" y="62" font-size="12" font-weight="700" text-anchor="middle" font-family="monospace" fill="var(--good)">📦 Cache Storage</text>
+        <text x="637" y="84" font-size="10" text-anchor="middle" font-family="monospace" fill="currentColor">Lưu sẵn HTML, JS, ảnh</text>
+        <text x="637" y="104" font-size="9.5" text-anchor="middle" font-family="monospace" fill="var(--good)">⚡ Phản hồi 0ms (Offline)</text>
+
+        <!-- ARROW SW TO CACHE -->
+        <line x1="490" y1="95" x2="528" y2="95" stroke="var(--good)" stroke-width="2" marker-end="url(#sw-gr)"></line>
+
+        <!-- SERVER / NETWORK -->
+        <rect x="540" y="175" width="195" height="115" rx="12" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="637" y="205" font-size="12" font-weight="700" text-anchor="middle" font-family="monospace" fill="currentColor">🌐 MÁY CHỦ INTERNET</text>
+        <text x="637" y="228" font-size="10" text-anchor="middle" font-family="monospace" fill="var(--muted)">API, Database ngoài</text>
+        <text x="637" y="250" font-size="9.5" text-anchor="middle" font-family="monospace" fill="var(--bad)">Cần mạng mới tới được</text>
+
+        <!-- ARROW SW TO SERVER -->
+        <line x1="490" y1="230" x2="528" y2="230" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4" marker-end="url(#sw-ar)"></line>
+      </svg>
+    </div>
+    <figcaption>Mọi truy vấn mạng của trang web đều đi qua Service Worker. Nó quyết định trả về file có sẵn từ bộ nhớ đệm (Cache) ngay lập tức hoặc tiếp tục kết nối ra máy chủ ngoài Internet.</figcaption>
+  </figure>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Cơ chế 2</p><h2>Vòng đời 3 bước nghiêm ngặt</h2></div>
+  <p>Khác với file JS thông thường được tải về là chạy ngay, Service Worker phải trải qua một <strong>vòng đời (lifecycle)</strong> chặt chẽ để bảo đảm không làm hỏng ứng dụng đang mở:</p>
+  <ol class="steps">
+    <li><b>Đăng ký (Registration):</b> Trang web báo cho trình duyệt biết đường dẫn file Service Worker: <code>navigator.serviceWorker.register('/sw.js')</code>.</li>
+    <li><b>Cài đặt (Installation):</b> Trình duyệt tải file <code>sw.js</code> về và kích hoạt sự kiện <code>install</code>. Đây là lúc Service Worker tải sẵn toàn bộ sườn ứng dụng (HTML, CSS nền tảng) cất vào Cache.</li>
+    <li><b>Kích hoạt (Activation):</b> Khi phiên bản Service Worker cũ không còn tab nào dùng nữa, bản mới bước vào trạng thái <code>activate</code>. Đây là lúc dọn dẹp các kho Cache cũ lỗi thời và sẵn sàng kiểm soát mọi yêu cầu mạng.</li>
+  </ol>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Cân nhắc lợi ích và rào cản kỹ thuật</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3>Được gì (Ưu điểm)</h3>
+      <ul>
+        <li><b>Chạy offline 100%:</b> Người dùng vẫn mở được app, xem danh sách dữ liệu cũ và đọc bài viết kể cả khi rơi vào vùng mất sóng hoàn toàn.</li>
+        <li><b>Tốc độ tải trang tức thì:</b> Đọc từ bộ nhớ đệm trên đĩa cứng máy người dùng (0ms chờ kết nối mạng), loại bỏ độ trễ đường truyền.</li>
+        <li><b>Thông báo đẩy (Push):</b> Nhận thông báo từ máy chủ về máy ngay cả khi người dùng không mở trang web.</li>
+        <li><b>Đồng bộ nền (Background Sync):</b> Người dùng ấn "Gửi biểu mẫu" lúc mất mạng, trình duyệt ghi nhớ và tự gửi đi ngay khi vừa có sóng.</li>
+        <li><b>Không nghẽn giao diện:</b> Chạy hoàn toàn trên luồng phụ, tính toán xử lý dữ liệu nặng không làm đơ giật màn hình của người dùng.</li>
+      </ul>
+    </div>
+    <div class="panel con">
+      <h3>Mất gì (Nhược điểm &amp; Cái giá)</h3>
+      <ul>
+        <li><b>Bẫy kẹt Cache (Stale Cache):</b> Lập trình viên cập nhật tính năng mới trên máy chủ nhưng người dùng vẫn thấy phiên bản cũ do Service Worker trả về từ Cache lưu sẵn.</li>
+        <li><b>Không truy cập DOM trực tiếp:</b> Chạy ở luồng riêng nên không thể dùng <code>window</code>, <code>document</code> hay trực tiếp sửa giao diện (phải gửi tin nhắn qua <code>postMessage</code>).</li>
+        <li><b>Bắt buộc chạy HTTPS:</b> Vì đứng chặn toàn bộ kết nối mạng nên trình duyệt chỉ cho phép chạy trên kênh mã hoá an toàn <span class="gl" data-gl="https" tabindex="0">HTTPS</span> (ngoại trừ <code>localhost</code> khi phát triển).</li>
+        <li><b>Khó kiểm thử &amp; gỡ lỗi:</b> Cần thao tác xóa Cache, Update on reload hoặc unregister thủ công trong tab Application của công cụ nhà phát triển (DevTools).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="ex col">
+    <p class="ex-title">Code thực tế: Đăng ký, dọn dẹp Cache và cơ chế cập nhật an toàn</p>
+    <pre><code><span class="cm">// ==========================================</span>
+<span class="cm">// FILE 1: sw.js — Kịch bản Service Worker</span>
+<span class="cm">// ==========================================</span>
+<span class="kw">const</span> CACHE_VERSION = <span class="str">'app-v2'</span>; <span class="cm">// Đổi tên version khi có code mới</span>
+<span class="kw">const</span> STATIC_ASSETS = [<span class="str">'/'</span>, <span class="str">'/index.html'</span>, <span class="str">'/app.js'</span>, <span class="str">'/style.css'</span>];
+
+<span class="cm">// 1. Cài đặt: Tải trước tài nguyên tĩnh</span>
+self.<span class="kw">addEventListener</span>(<span class="str">'install'</span>, event =&gt; {
+  event.<span class="kw">waitUntil</span>(
+    caches.<span class="kw">open</span>(CACHE_VERSION).<span class="kw">then</span>(cache =&gt; cache.<span class="kw">addAll</span>(STATIC_ASSETS))
+  );
+});
+
+<span class="cm">// 2. Kích hoạt: TỰ ĐỘNG DỌN DẸP toàn bộ Cache phiên bản cũ</span>
+self.<span class="kw">addEventListener</span>(<span class="str">'activate'</span>, event =&gt; {
+  event.<span class="kw">waitUntil</span>(
+    caches.<span class="kw">keys</span>().<span class="kw">then</span>(keys =&gt; {
+      <span class="kw">return</span> Promise.<span class="kw">all</span>(
+        keys.<span class="kw">filter</span>(k =&gt; k !== CACHE_VERSION).<span class="kw">map</span>(k =&gt; caches.<span class="kw">delete</span>(k))
+      );
+    }).<span class="kw">then</span>(() =&gt; self.clients.<span class="kw">claim</span>()) <span class="cm">// Chiếm quyền kiểm soát ngay lập tức</span>
+  );
+});
+
+<span class="cm">// 3. Lắng nghe lệnh skipWaiting từ giao diện người dùng</span>
+self.<span class="kw">addEventListener</span>(<span class="str">'message'</span>, event =&gt; {
+  <span class="kw">if</span> (event.data &amp;&amp; event.data.action === <span class="str">'SKIP_WAITING'</span>) {
+    self.<span class="kw">skipWaiting</span>();
+  }
+});
+
+<span class="cm">// 4. Chặn bắt request: Chiến lược Stale-While-Revalidate (Lấy cache trước, cập nhật ngầm)</span>
+self.<span class="kw">addEventListener</span>(<span class="str">'fetch'</span>, event =&gt; {
+  event.<span class="kw">respondWith</span>(
+    caches.<span class="kw">open</span>(CACHE_VERSION).<span class="kw">then</span>(cache =&gt; {
+      <span class="kw">return</span> cache.<span class="kw">match</span>(event.request).<span class="kw">then</span>(cached =&gt; {
+        <span class="kw">const</span> networked = <span class="kw">fetch</span>(event.request).<span class="kw">then</span>(res =&gt; {
+          <span class="kw">if</span> (res.ok) cache.<span class="kw">put</span>(event.request, res.<span class="kw">clone</span>());
+          <span class="kw">return</span> res;
+        }).<span class="kw">catch</span>(() =&gt; cached);
+
+        <span class="kw">return</span> cached || networked;
+      });
+    })
+  );
+});</code></pre>
+  </div>
+
+  <div class="ex col">
+    <p class="ex-title">Code thực tế: main.js — Lắng nghe bản mới và nhắc người dùng Reload</p>
+    <pre><code><span class="cm">// ==========================================</span>
+<span class="cm">// FILE 2: main.js — Chạy trên giao diện web</span>
+<span class="cm">// ==========================================</span>
+<span class="kw">if</span> (<span class="str">'serviceWorker'</span> <span class="kw">in</span> navigator) {
+  navigator.serviceWorker.<span class="kw">register</span>(<span class="str">'/sw.js'</span>).<span class="kw">then</span>(reg =&gt; {
+    reg.<span class="kw">addEventListener</span>(<span class="str">'updatefound'</span>, () =&gt; {
+      <span class="kw">const</span> newWorker = reg.installing;
+      newWorker.<span class="kw">addEventListener</span>(<span class="str">'statechange'</span>, () =&gt; {
+        <span class="cm">// Đã cài xong bản mới và đang đứng đợi (waiting)</span>
+        <span class="kw">if</span> (newWorker.state === <span class="str">'installed'</span> &amp;&amp; navigator.serviceWorker.controller) {
+          showUpdateBanner(() =&gt; {
+            <span class="cm">// Người dùng bấm "Cập nhật" -&gt; Báo Service Worker bỏ qua hàng đợi</span>
+            newWorker.<span class="kw">postMessage</span>({ action: <span class="str">'SKIP_WAITING'</span> });
+          });
+        }
+      });
+    });
+  });
+
+  <span class="cm">// Khi Service Worker mới đã kích hoạt -&gt; Tải lại trang</span>
+  <span class="kw">let</span> refreshing = <span class="kw">false</span>;
+  navigator.serviceWorker.<span class="kw">addEventListener</span>(<span class="str">'controllerchange'</span>, () =&gt; {
+    <span class="kw">if</span> (!refreshing) {
+      refreshing = <span class="kw">true</span>;
+      window.location.<span class="kw">reload</span>();
+    }
+  });
+}</code></pre>
+  </div>
+
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> Không bao giờ dùng <code>skipWaiting()</code> một cách âm thầm vô điều kiện ngay lúc cài đặt nếu ứng dụng có nhiều tab đang mở với phiên bản JS cũ không tương thích. Hãy hiện <strong>thông báo cập nhật (Toast/Banner)</strong> cho người dùng bấm <em>"Có bản cập nhật mới — Tải lại ngay"</em> để kích hoạt <code>skipWaiting</code> và reload đồng bộ.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+
+  <div class="board col">
+    <p><strong>Trả lời 30 giây như Senior:</strong> <b>Service Worker</b> là một <em>programmable network proxy</em> (bộ uỷ nhiệm mạng lập trình được) chạy trên Web Worker thread riêng biệt, nằm giữa ứng dụng web và mạng. Nó có 3 đặc tính mấu chốt: <b>(1)</b> Không truy cập DOM mà giao tiếp qua <code>postMessage</code>; <b>(2)</b> Vòng đời độc lập gắn với 3 sự kiện chính (<code>install</code>, <code>activate</code>, <code>fetch</code>); và <b>(3)</b> Yêu cầu HTTPS bắt buộc. Service Worker là nền tảng của PWA để giải quyết 3 bài toán: <em>Offline-first với Cache Storage</em>, <em>Push Notifications</em> và <em>Background Sync</em>.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Service Worker khác Web Worker thông thường chỗ nào?</h3>
+      <p><b>Web Worker</b> dùng để tính toán nặng tránh nghẽn UI, gắn chặt vào vòng đời của một tab và chết khi đóng tab. <b>Service Worker</b> là bộ proxy chặn bắt toàn bộ traffic mạng của cả origin, <b>sống độc lập</b> với mọi tab (tắt hết tab vẫn nhận Push Notification), và có quyền truy cập trực tiếp vào <code>Cache Storage API</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Vì sao vừa deploy code mới nhưng người dùng F5 vẫn ra bản cũ?</h3>
+      <p>Do cơ chế bảo vệ của Service Worker: Khi có file <code>sw.js</code> mới, nó tải về và cài đặt nhưng ở trạng thái <b>Waiting</b> (chờ đợi), vì vẫn còn tab cũ đang chạy phiên bản SW trước đó. Nó không tự ý nhảy vào chiếm quyền để tránh làm vỡ dữ liệu. Muốn kích hoạt ngay, code phải gọi <code>self.skipWaiting()</code> và <code>clients.claim()</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi Senior</span>
+      <h3>Chiến lược Caching nào cho từng loại tài nguyên?</h3>
+      <p><b>Cache-First</b> (hoặc Cache-Only) cho các tài nguyên tĩnh có mã hash (CSS, JS, Fonts, Ảnh logo). <b>Network-First</b> cho dữ liệu nhạy cảm thường xuyên thay đổi (Số dư ví, giỏ hàng, thông tin thanh toán). <b>Stale-While-Revalidate</b> cho dữ liệu giao diện cần hiển thị tức thì (0ms) nhưng vẫn cập nhật dữ liệu mới ngầm phía sau (Avatar, danh sách bài viết).</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Service Worker có đọc được Token trong Cookie hay LocalStorage không?</h3>
+      <p><b>Không!</b> Service Worker hoàn toàn không có quyền truy cập vào <code>window</code>, <code>document</code> hay <code>localStorage</code> (vì localStorage là đồng bộ, làm nghẽn worker). Nó cũng không đọc được Cookie qua JavaScript (nhất là <code>HttpOnly</code>). Muốn lưu dữ liệu phức tạp trong Service Worker, ta phải dùng <code>IndexedDB</code> hoặc <code>Cache Storage</code>.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> <em>"Service Worker chỉ đơn giản là một thư viện hỗ trợ lưu cache giống như localStorage."</em> Sai hoàn toàn về bản chất! Service Worker là một <b>luồng hệ thống (OS/Browser-level background process)</b> có khả năng lập trình điều phối luồng mạng, chạy độc lập với giao diện, không phải là một API lưu trữ đơn thuần.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ dùng trong bài</h2></div>
+  <div class="tbl-wrap col">
+    <table>
+      <thead>
+        <tr>
+          <th>Thuật ngữ</th>
+          <th>Nghĩa tiếng Việt &amp; Giải thích</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Service Worker</strong></td>
+          <td>Công nhân dịch vụ chạy ngầm — kịch bản mã nguồn JavaScript chạy trên luồng riêng biệt phía sau trình duyệt.</td>
+        </tr>
+        <tr>
+          <td><strong>Network Proxy</strong></td>
+          <td>Bộ uỷ nhiệm mạng — đối tượng trung gian đứng giữa để nhận, lọc và điều phối các yêu cầu kết nối mạng.</td>
+        </tr>
+        <tr>
+          <td><strong>Cache Storage</strong></td>
+          <td>Kho lưu trữ bộ nhớ đệm — nơi lưu các cặp yêu cầu / phản hồi mạng (Request/Response) dưới máy người dùng.</td>
+        </tr>
+        <tr>
+          <td><strong>skipWaiting()</strong></td>
+          <td>Bỏ qua hàng đợi — hàm ép Service Worker mới kích hoạt ngay lập tức mà không cần chờ đóng hết các tab cũ.</td>
+        </tr>
+        <tr>
+          <td><strong>clients.claim()</strong></td>
+          <td>Chiếm quyền kiểm soát — hàm giúp Service Worker vừa kích hoạt nhận quyền điều khiển mọi trang web đang mở ngay tức thì.</td>
+        </tr>
+        <tr>
+          <td><strong>Stale-While-Revalidate</strong></td>
+          <td>Trả cache cũ trước, tải mới ngầm sau — chiến lược vừa giúp app tải tức thì 0ms vừa cập nhật dữ liệu nền.</td>
+        </tr>
+        <tr>
+          <td><strong>Offline</strong></td>
+          <td>Ngoại tuyến / Mất kết nối — trạng thái thiết bị không có tín hiệu Internet.</td>
+        </tr>
+        <tr>
+          <td><strong>Worker Thread</strong></td>
+          <td>Luồng làm việc ngầm — luồng thực thi tách biệt khỏi luồng chính (Main Thread) nơi vẽ giao diện.</td>
+        </tr>
+        <tr>
+          <td><strong>Push Notification</strong></td>
+          <td>Thông báo đẩy — tin nhắn thông báo được máy chủ gửi tới thiết bị dù trang web đang đóng.</td>
+        </tr>
+        <tr>
+          <td><strong>Background Sync</strong></td>
+          <td>Đồng bộ ngầm — cơ chế trì hoãn hành động và tự động gửi lại khi thiết bị có kết nối mạng ổn định.</td>
+        </tr>
+        <tr>
+          <td><strong>DOM (Document Object Model)</strong></td>
+          <td>Mô hình đối tượng tài liệu — cây cấu trúc biểu diễn các thẻ HTML trên giao diện màn hình.</td>
+        </tr>
+        <tr>
+          <td><strong>HTTPS</strong></td>
+          <td>Giao thức truyền siêu văn bản an toàn — kết nối mạng có mã hoá chống nghe lén và can thiệp.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>

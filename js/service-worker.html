@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="vi" data-track="js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Service Worker — Chú bồi bàn ngầm biến web thành app</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><a href="index.html">JavaScript</a><span>/</span><span class="now">Service Worker</span></nav>
+<header class="hero col">
+<p class="eyebrow">JavaScript · Bài 17</p>
+<h1>Service Worker — Chú bồi bàn ngầm biến web thành app</h1>
+<p class="lede">Một người gác cổng chạy ngầm giữa trình duyệt và mạng — đứng chặn mọi yêu cầu, móc đồ từ bộ nhớ đệm đưa ra khi mất mạng, và nhận thông báo đẩy ngay cả khi người dùng đã đóng tab.</p>
+</header>
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Chú bồi bàn riêng có túi đồ dự phòng</h2></div>
+  <p>Bình thường, khi trang web muốn tải một bức ảnh hay gọi dữ liệu, trình duyệt sẽ gửi thẳng <strong>request</strong> (yêu cầu gửi lên mạng) ra ngoài <span class="gl" data-gl="server" tabindex="0">máy chủ</span>. Nếu mất mạng hoặc máy chủ sập, trình duyệt lập tức đầu hàng và hiện màn hình con khủng long 🦖.</p>
+  <p><strong>Service Worker</strong> (công nhân dịch vụ chạy ngầm) xuất hiện như một <strong>chú bồi bàn cá nhân</strong> đứng chắn ngay giữa trang web và thế giới Internet:</p>
+  <ol class="steps">
+    <li><b>Đứng chặn ở cửa:</b> Mọi yêu cầu lấy file HTML, CSS, JavaScript hay hình ảnh đều phải đi qua chú bồi bàn trước khi được bay ra ngoài mạng.</li>
+    <li><b>Tự quyết định nguồn lấy:</b> Chú bồi bàn có một chiếc tủ riêng tên là <strong>Cache Storage</strong> (kho lưu trữ bộ nhớ đệm). Nếu trong tủ có sẵn đồ, chú móc ra đưa ngay tại chỗ trong 0 mili-giây mà chẳng cần hỏi máy chủ.</li>
+    <li><b>Sống độc lập với trang web:</b> Chú bồi bàn không sống bên trong trang web mà chạy ở một <strong>worker thread</strong> (luồng xử lý ngầm riêng biệt). Kể cả khi người dùng đã đóng tab web, chú vẫn có thể thức để nhận <strong>push notification</strong> (thông báo đẩy) hoặc thực hiện <strong>background sync</strong> (đồng bộ ngầm khi có mạng lại).</li>
+  </ol>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> Service Worker là một <strong>network proxy</strong> (người trung gian chặn bắt mạng) nằm ngay trong trình duyệt của người dùng, giúp ứng dụng web có thể chạy mượt mà khi <span class="gl" data-gl="offline" tabindex="0">offline</span> (mất mạng) và hoạt động bền bỉ như một ứng dụng di động thực thụ.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 1</p><h2>Đứng ở giữa: chặn bắt và điều phối mọi yêu cầu</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 760 330" role="img" aria-label="Sơ đồ minh họa Service Worker đứng ở giữa Client và Network. Khi Client gửi yêu cầu, Service Worker kiểm tra Cache Storage trước, nếu có trả về ngay, nếu không có mới gọi ra Server mạng ngoài.">
+        <defs>
+          <marker id="sw-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="var(--accent)"></polygon>
+          </marker>
+          <marker id="sw-gr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="var(--good)"></polygon>
+          </marker>
+        </defs>
+
+        <!-- CLIENT BOX -->
+        <rect x="20" y="40" width="180" height="240" rx="14" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="110" y="70" font-size="13" font-weight="700" text-anchor="middle" font-family="monospace" fill="currentColor">TRANG WEB (Tab)</text>
+        <text x="110" y="92" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">Giao diện &amp; DOM</text>
+        <circle cx="110" cy="150" r="30" fill="var(--surface)" stroke="currentColor" stroke-width="1"></circle>
+        <text x="110" y="157" font-size="28" text-anchor="middle">👦</text>
+        <text x="110" y="215" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">fetch('/app.js')</text>
+        <text x="110" y="235" font-size="10" text-anchor="middle" font-family="monospace" fill="var(--muted)">Đòi tải file/dữ liệu</text>
+
+        <!-- ARROW CLIENT TO SW -->
+        <line x1="200" y1="150" x2="278" y2="150" stroke="var(--accent)" stroke-width="2.2" marker-end="url(#sw-ar)"></line>
+        <text x="240" y="140" font-size="10" text-anchor="middle" font-family="monospace" fill="var(--accent)">1. Bắt lấy</text>
+
+        <!-- SERVICE WORKER BOX -->
+        <rect x="290" y="30" width="200" height="260" rx="16" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></rect>
+        <text x="390" y="60" font-size="13" font-weight="800" text-anchor="middle" font-family="monospace" fill="currentColor">SERVICE WORKER</text>
+        <text x="390" y="80" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--accent)">Chạy ngầm (Worker)</text>
+        <circle cx="390" cy="135" r="32" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5"></circle>
+        <text x="390" y="144" font-size="30" text-anchor="middle">🤵‍♂️</text>
+        <rect x="306" y="185" width="168" height="85" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1"></rect>
+        <text x="390" y="206" font-size="10.5" font-weight="700" text-anchor="middle" font-family="monospace" fill="currentColor">Sự kiện 'fetch'</text>
+        <text x="390" y="226" font-size="9.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">Kiểm tra tủ Cache</text>
+        <text x="390" y="244" font-size="9.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">hoặc thả ra mạng</text>
+
+        <!-- CACHE STORAGE -->
+        <rect x="540" y="35" width="195" height="110" rx="12" fill="var(--surface-2)" stroke="var(--good)" stroke-width="1.4"></rect>
+        <text x="637" y="62" font-size="12" font-weight="700" text-anchor="middle" font-family="monospace" fill="var(--good)">📦 Cache Storage</text>
+        <text x="637" y="84" font-size="10" text-anchor="middle" font-family="monospace" fill="currentColor">Lưu sẵn HTML, JS, ảnh</text>
+        <text x="637" y="104" font-size="9.5" text-anchor="middle" font-family="monospace" fill="var(--good)">⚡ Phản hồi 0ms (Offline)</text>
+
+        <!-- ARROW SW TO CACHE -->
+        <line x1="490" y1="95" x2="528" y2="95" stroke="var(--good)" stroke-width="2" marker-end="url(#sw-gr)"></line>
+
+        <!-- SERVER / NETWORK -->
+        <rect x="540" y="175" width="195" height="115" rx="12" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="637" y="205" font-size="12" font-weight="700" text-anchor="middle" font-family="monospace" fill="currentColor">🌐 MÁY CHỦ INTERNET</text>
+        <text x="637" y="228" font-size="10" text-anchor="middle" font-family="monospace" fill="var(--muted)">API, Database ngoài</text>
+        <text x="637" y="250" font-size="9.5" text-anchor="middle" font-family="monospace" fill="var(--bad)">Cần mạng mới tới được</text>
+
+        <!-- ARROW SW TO SERVER -->
+        <line x1="490" y1="230" x2="528" y2="230" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4" marker-end="url(#sw-ar)"></line>
+      </svg>
+    </div>
+    <figcaption>Mọi truy vấn mạng của trang web đều đi qua Service Worker. Nó quyết định trả về file có sẵn từ bộ nhớ đệm (Cache) ngay lập tức hoặc tiếp tục kết nối ra máy chủ ngoài Internet.</figcaption>
+  </figure>
+</section>
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Cơ chế 2</p><h2>Vòng đời 3 bước nghiêm ngặt</h2></div>
+  <p>Khác với file JS thông thường được tải về là chạy ngay, Service Worker phải trải qua một <strong>vòng đời (lifecycle)</strong> chặt chẽ để bảo đảm không làm hỏng ứng dụng đang mở:</p>
+  <ol class="steps">
+    <li><b>Đăng ký (Registration):</b> Trang web báo cho trình duyệt biết đường dẫn file Service Worker: <code>navigator.serviceWorker.register('/sw.js')</code>.</li>
+    <li><b>Cài đặt (Installation):</b> Trình duyệt tải file <code>sw.js</code> về và kích hoạt sự kiện <code>install</code>. Đây là lúc Service Worker tải sẵn toàn bộ sườn ứng dụng (HTML, CSS nền tảng) cất vào Cache.</li>
+    <li><b>Kích hoạt (Activation):</b> Khi phiên bản Service Worker cũ không còn tab nào dùng nữa, bản mới bước vào trạng thái <code>activate</code>. Đây là lúc dọn dẹp các kho Cache cũ lỗi thời và sẵn sàng kiểm soát mọi yêu cầu mạng.</li>
+  </ol>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Cân nhắc lợi ích và rào cản kỹ thuật</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3>Được gì (Ưu điểm)</h3>
+      <ul>
+        <li><b>Chạy offline 100%:</b> Người dùng vẫn mở được app, xem danh sách dữ liệu cũ và đọc bài viết kể cả khi rơi vào vùng mất sóng hoàn toàn.</li>
+        <li><b>Tốc độ tải trang tức thì:</b> Đọc từ bộ nhớ đệm trên đĩa cứng máy người dùng (0ms chờ kết nối mạng), loại bỏ độ trễ đường truyền.</li>
+        <li><b>Thông báo đẩy (Push):</b> Nhận thông báo từ máy chủ về máy ngay cả khi người dùng không mở trang web.</li>
+        <li><b>Đồng bộ nền (Background Sync):</b> Người dùng ấn "Gửi biểu mẫu" lúc mất mạng, trình duyệt ghi nhớ và tự gửi đi ngay khi vừa có sóng.</li>
+        <li><b>Không nghẽn giao diện:</b> Chạy hoàn toàn trên luồng phụ, tính toán xử lý dữ liệu nặng không làm đơ giật màn hình của người dùng.</li>
+      </ul>
+    </div>
+    <div class="panel con">
+      <h3>Mất gì (Nhược điểm &amp; Cái giá)</h3>
+      <ul>
+        <li><b>Bẫy kẹt Cache (Stale Cache):</b> Lập trình viên cập nhật tính năng mới trên máy chủ nhưng người dùng vẫn thấy phiên bản cũ do Service Worker trả về từ Cache lưu sẵn.</li>
+        <li><b>Không truy cập DOM trực tiếp:</b> Chạy ở luồng riêng nên không thể dùng <code>window</code>, <code>document</code> hay trực tiếp sửa giao diện (phải gửi tin nhắn qua <code>postMessage</code>).</li>
+        <li><b>Bắt buộc chạy HTTPS:</b> Vì đứng chặn toàn bộ kết nối mạng nên trình duyệt chỉ cho phép chạy trên kênh mã hoá an toàn <span class="gl" data-gl="https" tabindex="0">HTTPS</span> (ngoại trừ <code>localhost</code> khi phát triển).</li>
+        <li><b>Khó kiểm thử &amp; gỡ lỗi:</b> Cần thao tác xóa Cache, Update on reload hoặc unregister thủ công trong tab Application của công cụ nhà phát triển (DevTools).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="ex col">
+    <p class="ex-title">Code thực tế: Đăng ký, dọn dẹp Cache và cơ chế cập nhật an toàn</p>
+    <pre><code><span class="cm">// ==========================================</span>
+<span class="cm">// FILE 1: sw.js — Kịch bản Service Worker</span>
+<span class="cm">// ==========================================</span>
+<span class="kw">const</span> CACHE_VERSION = <span class="str">'app-v2'</span>; <span class="cm">// Đổi tên version khi có code mới</span>
+<span class="kw">const</span> STATIC_ASSETS = [<span class="str">'/'</span>, <span class="str">'/index.html'</span>, <span class="str">'/app.js'</span>, <span class="str">'/style.css'</span>];
+
+<span class="cm">// 1. Cài đặt: Tải trước tài nguyên tĩnh</span>
+self.<span class="kw">addEventListener</span>(<span class="str">'install'</span>, event =&gt; {
+  event.<span class="kw">waitUntil</span>(
+    caches.<span class="kw">open</span>(CACHE_VERSION).<span class="kw">then</span>(cache =&gt; cache.<span class="kw">addAll</span>(STATIC_ASSETS))
+  );
+});
+
+<span class="cm">// 2. Kích hoạt: TỰ ĐỘNG DỌN DẸP toàn bộ Cache phiên bản cũ</span>
+self.<span class="kw">addEventListener</span>(<span class="str">'activate'</span>, event =&gt; {
+  event.<span class="kw">waitUntil</span>(
+    caches.<span class="kw">keys</span>().<span class="kw">then</span>(keys =&gt; {
+      <span class="kw">return</span> Promise.<span class="kw">all</span>(
+        keys.<span class="kw">filter</span>(k =&gt; k !== CACHE_VERSION).<span class="kw">map</span>(k =&gt; caches.<span class="kw">delete</span>(k))
+      );
+    }).<span class="kw">then</span>(() =&gt; self.clients.<span class="kw">claim</span>()) <span class="cm">// Chiếm quyền kiểm soát ngay lập tức</span>
+  );
+});
+
+<span class="cm">// 3. Lắng nghe lệnh skipWaiting từ giao diện người dùng</span>
+self.<span class="kw">addEventListener</span>(<span class="str">'message'</span>, event =&gt; {
+  <span class="kw">if</span> (event.data &amp;&amp; event.data.action === <span class="str">'SKIP_WAITING'</span>) {
+    self.<span class="kw">skipWaiting</span>();
+  }
+});
+
+<span class="cm">// 4. Chặn bắt request: Chiến lược Stale-While-Revalidate (Lấy cache trước, cập nhật ngầm)</span>
+self.<span class="kw">addEventListener</span>(<span class="str">'fetch'</span>, event =&gt; {
+  event.<span class="kw">respondWith</span>(
+    caches.<span class="kw">open</span>(CACHE_VERSION).<span class="kw">then</span>(cache =&gt; {
+      <span class="kw">return</span> cache.<span class="kw">match</span>(event.request).<span class="kw">then</span>(cached =&gt; {
+        <span class="kw">const</span> networked = <span class="kw">fetch</span>(event.request).<span class="kw">then</span>(res =&gt; {
+          <span class="kw">if</span> (res.ok) cache.<span class="kw">put</span>(event.request, res.<span class="kw">clone</span>());
+          <span class="kw">return</span> res;
+        }).<span class="kw">catch</span>(() =&gt; cached);
+
+        <span class="kw">return</span> cached || networked;
+      });
+    })
+  );
+});</code></pre>
+  </div>
+
+  <div class="ex col">
+    <p class="ex-title">Code thực tế: main.js — Lắng nghe bản mới và nhắc người dùng Reload</p>
+    <pre><code><span class="cm">// ==========================================</span>
+<span class="cm">// FILE 2: main.js — Chạy trên giao diện web</span>
+<span class="cm">// ==========================================</span>
+<span class="kw">if</span> (<span class="str">'serviceWorker'</span> <span class="kw">in</span> navigator) {
+  navigator.serviceWorker.<span class="kw">register</span>(<span class="str">'/sw.js'</span>).<span class="kw">then</span>(reg =&gt; {
+    reg.<span class="kw">addEventListener</span>(<span class="str">'updatefound'</span>, () =&gt; {
+      <span class="kw">const</span> newWorker = reg.installing;
+      newWorker.<span class="kw">addEventListener</span>(<span class="str">'statechange'</span>, () =&gt; {
+        <span class="cm">// Đã cài xong bản mới và đang đứng đợi (waiting)</span>
+        <span class="kw">if</span> (newWorker.state === <span class="str">'installed'</span> &amp;&amp; navigator.serviceWorker.controller) {
+          showUpdateBanner(() =&gt; {
+            <span class="cm">// Người dùng bấm "Cập nhật" -&gt; Báo Service Worker bỏ qua hàng đợi</span>
+            newWorker.<span class="kw">postMessage</span>({ action: <span class="str">'SKIP_WAITING'</span> });
+          });
+        }
+      });
+    });
+  });
+
+  <span class="cm">// Khi Service Worker mới đã kích hoạt -&gt; Tải lại trang</span>
+  <span class="kw">let</span> refreshing = <span class="kw">false</span>;
+  navigator.serviceWorker.<span class="kw">addEventListener</span>(<span class="str">'controllerchange'</span>, () =&gt; {
+    <span class="kw">if</span> (!refreshing) {
+      refreshing = <span class="kw">true</span>;
+      window.location.<span class="kw">reload</span>();
+    }
+  });
+}</code></pre>
+  </div>
+
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> Không bao giờ dùng <code>skipWaiting()</code> một cách âm thầm vô điều kiện ngay lúc cài đặt nếu ứng dụng có nhiều tab đang mở với phiên bản JS cũ không tương thích. Hãy hiện <strong>thông báo cập nhật (Toast/Banner)</strong> cho người dùng bấm <em>"Có bản cập nhật mới — Tải lại ngay"</em> để kích hoạt <code>skipWaiting</code> và reload đồng bộ.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+
+  <div class="board col">
+    <p><strong>Trả lời 30 giây như Senior:</strong> <b>Service Worker</b> là một <em>programmable network proxy</em> (bộ uỷ nhiệm mạng lập trình được) chạy trên Web Worker thread riêng biệt, nằm giữa ứng dụng web và mạng. Nó có 3 đặc tính mấu chốt: <b>(1)</b> Không truy cập DOM mà giao tiếp qua <code>postMessage</code>; <b>(2)</b> Vòng đời độc lập gắn với 3 sự kiện chính (<code>install</code>, <code>activate</code>, <code>fetch</code>); và <b>(3)</b> Yêu cầu HTTPS bắt buộc. Service Worker là nền tảng của PWA để giải quyết 3 bài toán: <em>Offline-first với Cache Storage</em>, <em>Push Notifications</em> và <em>Background Sync</em>.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Service Worker khác Web Worker thông thường chỗ nào?</h3>
+      <p><b>Web Worker</b> dùng để tính toán nặng tránh nghẽn UI, gắn chặt vào vòng đời của một tab và chết khi đóng tab. <b>Service Worker</b> là bộ proxy chặn bắt toàn bộ traffic mạng của cả origin, <b>sống độc lập</b> với mọi tab (tắt hết tab vẫn nhận Push Notification), và có quyền truy cập trực tiếp vào <code>Cache Storage API</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Vì sao vừa deploy code mới nhưng người dùng F5 vẫn ra bản cũ?</h3>
+      <p>Do cơ chế bảo vệ của Service Worker: Khi có file <code>sw.js</code> mới, nó tải về và cài đặt nhưng ở trạng thái <b>Waiting</b> (chờ đợi), vì vẫn còn tab cũ đang chạy phiên bản SW trước đó. Nó không tự ý nhảy vào chiếm quyền để tránh làm vỡ dữ liệu. Muốn kích hoạt ngay, code phải gọi <code>self.skipWaiting()</code> và <code>clients.claim()</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi Senior</span>
+      <h3>Chiến lược Caching nào cho từng loại tài nguyên?</h3>
+      <p><b>Cache-First</b> (hoặc Cache-Only) cho các tài nguyên tĩnh có mã hash (CSS, JS, Fonts, Ảnh logo). <b>Network-First</b> cho dữ liệu nhạy cảm thường xuyên thay đổi (Số dư ví, giỏ hàng, thông tin thanh toán). <b>Stale-While-Revalidate</b> cho dữ liệu giao diện cần hiển thị tức thì (0ms) nhưng vẫn cập nhật dữ liệu mới ngầm phía sau (Avatar, danh sách bài viết).</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Service Worker có đọc được Token trong Cookie hay LocalStorage không?</h3>
+      <p><b>Không!</b> Service Worker hoàn toàn không có quyền truy cập vào <code>window</code>, <code>document</code> hay <code>localStorage</code> (vì localStorage là đồng bộ, làm nghẽn worker). Nó cũng không đọc được Cookie qua JavaScript (nhất là <code>HttpOnly</code>). Muốn lưu dữ liệu phức tạp trong Service Worker, ta phải dùng <code>IndexedDB</code> hoặc <code>Cache Storage</code>.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> <em>"Service Worker chỉ đơn giản là một thư viện hỗ trợ lưu cache giống như localStorage."</em> Sai hoàn toàn về bản chất! Service Worker là một <b>luồng hệ thống (OS/Browser-level background process)</b> có khả năng lập trình điều phối luồng mạng, chạy độc lập với giao diện, không phải là một API lưu trữ đơn thuần.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ dùng trong bài</h2></div>
+  <div class="tbl-wrap col">
+    <table>
+      <thead>
+        <tr>
+          <th>Thuật ngữ</th>
+          <th>Nghĩa tiếng Việt &amp; Giải thích</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Service Worker</strong></td>
+          <td>Công nhân dịch vụ chạy ngầm — kịch bản mã nguồn JavaScript chạy trên luồng riêng biệt phía sau trình duyệt.</td>
+        </tr>
+        <tr>
+          <td><strong>Network Proxy</strong></td>
+          <td>Bộ uỷ nhiệm mạng — đối tượng trung gian đứng giữa để nhận, lọc và điều phối các yêu cầu kết nối mạng.</td>
+        </tr>
+        <tr>
+          <td><strong>Cache Storage</strong></td>
+          <td>Kho lưu trữ bộ nhớ đệm — nơi lưu các cặp yêu cầu / phản hồi mạng (Request/Response) dưới máy người dùng.</td>
+        </tr>
+        <tr>
+          <td><strong>skipWaiting()</strong></td>
+          <td>Bỏ qua hàng đợi — hàm ép Service Worker mới kích hoạt ngay lập tức mà không cần chờ đóng hết các tab cũ.</td>
+        </tr>
+        <tr>
+          <td><strong>clients.claim()</strong></td>
+          <td>Chiếm quyền kiểm soát — hàm giúp Service Worker vừa kích hoạt nhận quyền điều khiển mọi trang web đang mở ngay tức thì.</td>
+        </tr>
+        <tr>
+          <td><strong>Stale-While-Revalidate</strong></td>
+          <td>Trả cache cũ trước, tải mới ngầm sau — chiến lược vừa giúp app tải tức thì 0ms vừa cập nhật dữ liệu nền.</td>
+        </tr>
+        <tr>
+          <td><strong>Offline</strong></td>
+          <td>Ngoại tuyến / Mất kết nối — trạng thái thiết bị không có tín hiệu Internet.</td>
+        </tr>
+        <tr>
+          <td><strong>Worker Thread</strong></td>
+          <td>Luồng làm việc ngầm — luồng thực thi tách biệt khỏi luồng chính (Main Thread) nơi vẽ giao diện.</td>
+        </tr>
+        <tr>
+          <td><strong>Push Notification</strong></td>
+          <td>Thông báo đẩy — tin nhắn thông báo được máy chủ gửi tới thiết bị dù trang web đang đóng.</td>
+        </tr>
+        <tr>
+          <td><strong>Background Sync</strong></td>
+          <td>Đồng bộ ngầm — cơ chế trì hoãn hành động và tự động gửi lại khi thiết bị có kết nối mạng ổn định.</td>
+        </tr>
+        <tr>
+          <td><strong>DOM (Document Object Model)</strong></td>
+          <td>Mô hình đối tượng tài liệu — cây cấu trúc biểu diễn các thẻ HTML trên giao diện màn hình.</td>
+        </tr>
+        <tr>
+          <td><strong>HTTPS</strong></td>
+          <td>Giao thức truyền siêu văn bản an toàn — kết nối mạng có mã hoá chống nghe lén và can thiệp.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+<nav class="pager"><a class="prev" href="nullish-logical-operators.html"><span class="dir">← Bài trước</span><span class="nm">|| và ?? và &amp;&amp; — ba cái cổng hỏi ba câu khác nhau</span></a><a class="next" href="async-javascript.html"><span class="dir">Bài tiếp →</span><span class="nm">Bất đồng bộ trong JavaScript — Quán cà phê thẻ rung và 3 thế hệ tiến hoá</span></a></nav>
+<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 17/18</p></footer>
+</div>
+</body>
+</html>

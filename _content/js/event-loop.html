@@ -1,0 +1,465 @@
+<!--meta
+title: Event loop — một người làm việc, bốn cái hộp, và chỗ màn hình được vẽ
+eyebrow: JavaScript · Bài 14
+short: Event loop
+lede: JavaScript chỉ có đúng một người làm việc. Vậy mà hẹn giờ, cú bấm chuột và lời gọi máy chủ vẫn chồng lên nhau được. Bài này đi hết một lượt của vòng lặp — từ lúc nhặt việc, vét việc con, tới đúng cái khe hẹp mà trình duyệt được phép vẽ lại màn hình — vì gần như mọi câu hỏi khó về code bất đồng bộ đều trả lời được bằng cái thứ tự đó.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Một đầu bếp, nhiều cái lò hẹn giờ</h2></div>
+  <p>JavaScript là <strong>single-threaded</strong> (đơn luồng — chỉ có một dòng thi hành, tại một thời điểm chỉ làm được một việc). Nghe thì tưởng phải rất chậm: đặt hẹn giờ 5 giây thì cả trang đứng im 5 giây à?</p>
+  <p>Không, vì có một sự phân công. Hãy hình dung một cái bếp:</p>
+  <ul>
+    <li><strong>Mặt bàn bếp</strong> là <strong>call stack</strong> (ngăn xếp lời gọi — chồng các hàm đang chạy dở, ai lên sau xuống trước). Đầu bếp chỉ làm việc trên <span class="gl" data-gl="the stack" tabindex="0">mặt bàn</span>, và mặt bàn chỉ làm được một món một lúc.</li>
+    <li><strong>Mấy cái lò có đồng hồ hẹn</strong> là <strong>Web API</strong> (bộ công cụ do trình duyệt cung cấp, chạy bên ngoài JavaScript): <code>setTimeout</code>, lời gọi máy chủ, bộ nghe sự kiện. Giao việc cho lò xong là đầu bếp <em>trả bàn ngay</em>, không đứng chờ.</li>
+    <li><strong>Cái khay đồ chờ</strong> là <strong>callback queue</strong> (hàng đợi hàm gọi lại — nơi các việc đã xong xếp hàng chờ tới lượt lên bàn).</li>
+    <li><strong>Người phục vụ</strong> là <strong>event loop</strong> (vòng lặp sự kiện). Việc duy nhất của anh ta: nhìn mặt bàn, thấy <em>trống hoàn toàn</em> thì bê món đầu tiên trong khay lên. Thấy còn đồ thì đứng im chờ.</li>
+  </ul>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> <code>setTimeout(f, 1000)</code> <b>không</b> hứa "chạy <em>sau đúng</em> 1 giây". Nó hứa "<b>không sớm hơn</b> 1 giây, và còn phải đợi mặt bàn trống đã". Mọi thứ tự khó hiểu của code bất đồng bộ đều bắt nguồn từ một câu đó.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 1</p><h2>Bốn cái hộp</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 390" role="img" aria-label="Sơ đồ bốn khối: ngăn xếp lời gọi bên trái đang chạy hàm main, mũi tên sang phải giao việc cho khối Web API của trình duyệt đang giữ hai đồng hồ hẹn giờ và một bộ nghe sự kiện click; khi hết giờ, việc rơi xuống hàng đợi ở dưới; vòng lặp sự kiện là mũi tên cong từ hàng đợi quay ngược lên đáy ngăn xếp, chỉ chạy khi ngăn xếp rỗng.">
+        <defs>
+          <marker id="el-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"></polygon>
+          </marker>
+          <marker id="el-ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="var(--accent)"></polygon>
+          </marker>
+        </defs>
+
+        <text x="20" y="24" font-size="12" font-weight="700" font-family="monospace" fill="currentColor">NGĂN XẾP LỜI GỌI</text>
+        <text x="20" y="40" font-size="10.5" font-family="monospace" fill="var(--muted)">một việc một lúc</text>
+        <rect x="20" y="50" width="200" height="230" rx="12" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="120" y="120" font-size="11" text-anchor="middle" font-family="monospace" fill="var(--muted)">(trống ở trên)</text>
+        <rect x="34" y="190" width="172" height="34" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <text x="120" y="212" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">console.log('Hi!')</text>
+        <rect x="34" y="232" width="172" height="34" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="120" y="254" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">(main)</text>
+
+        <line x1="222" y1="140" x2="462" y2="140" stroke="currentColor" stroke-width="1.8" marker-end="url(#el-ar)"></line>
+        <text x="342" y="128" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">giao việc rồi trả bàn NGAY</text>
+
+        <text x="470" y="24" font-size="12" font-weight="700" font-family="monospace" fill="currentColor">WEB API — trình duyệt lo</text>
+        <text x="470" y="40" font-size="10.5" font-family="monospace" fill="var(--muted)">chạy song song, ngoài JavaScript</text>
+        <rect x="470" y="50" width="230" height="172" rx="12" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <rect x="482" y="66" width="206" height="34" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="585" y="88" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">đồng hồ 1000ms</text>
+        <rect x="482" y="108" width="206" height="34" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="585" y="130" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">đồng hồ 5000ms</text>
+        <rect x="482" y="150" width="206" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"></rect>
+        <text x="585" y="172" font-size="11" text-anchor="middle" font-family="monospace" fill="var(--muted)">bộ nghe click — chờ mãi</text>
+        <text x="585" y="206" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">ba cái này đếm giờ ĐỘC LẬP</text>
+
+        <line x1="585" y1="222" x2="585" y2="296" stroke="currentColor" stroke-width="1.8" marker-end="url(#el-ar)"></line>
+        <text x="600" y="262" font-size="11" font-family="monospace" fill="currentColor">hết giờ → xếp cuối hàng</text>
+
+        <text x="286" y="292" font-size="12" font-weight="700" font-family="monospace" fill="currentColor">HÀNG ĐỢI HÀM GỌI LẠI</text>
+        <rect x="286" y="300" width="414" height="56" rx="12" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <rect x="298" y="312" width="142" height="32" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="369" y="333" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">timeout0s</text>
+        <rect x="450" y="312" width="142" height="32" rx="8" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="521" y="333" font-size="11" text-anchor="middle" font-family="monospace" fill="var(--muted)">timeout5s</text>
+        <text x="646" y="333" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">…</text>
+
+        <path d="M 286 340 C 200 358 132 348 120 286" fill="none" stroke="var(--accent)" stroke-width="2.2" marker-end="url(#el-ac)"></path>
+        <text x="20" y="306" font-size="12" font-weight="700" font-family="monospace" fill="var(--accent)">VÒNG LẶP SỰ KIỆN</text>
+        <text x="20" y="322" font-size="10.5" font-family="monospace" fill="var(--muted)">hỏi mãi một câu:</text>
+        <text x="20" y="338" font-size="10.5" font-family="monospace" fill="var(--muted)">"ngăn xếp rỗng chưa?"</text>
+      </svg>
+    </div>
+    <figcaption><span class="gl" data-gl="the single thread" tabindex="0">Đầu bếp</span> không bao giờ đứng chờ lò. Anh ta giao việc, trả bàn, làm tiếp món kế — và chỉ quay lại nhận đồ từ khay khi mặt bàn đã sạch bong.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 2</p><h2>Một lượt của vòng lặp gồm những gì</h2></div>
+  <div class="col">
+    <p>Đây là phần quan trọng nhất của cả bài, và cũng là phần hay bị bỏ qua nhất. Vòng lặp không chỉ "bê việc lên bàn" — mỗi lượt của nó có <b>bốn chặng theo đúng thứ tự</b>, và <span class="gl" data-gl="render" tabindex="0">vẽ lại màn hình</span> là chặng <em>cuối cùng</em>.</p>
+  </div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 350" role="img" aria-label="Một lượt vòng lặp gồm bốn chặng xếp dọc: chặng một lấy đúng một việc lớn và chạy tới xong; chặng hai vét sạch hàng việc con kể cả việc con mới sinh ra; chặng ba chạy các hàm requestAnimationFrame; chặng bốn tính style, dựng bố cục và vẽ, chỉ khi tới nhịp khung hình. Một mũi tên cong bên trái quay từ chặng bốn về lại chặng một, nghĩa là lặp mãi.">
+        <defs>
+          <marker id="el2-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"></polygon>
+          </marker>
+          <marker id="el2-ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="var(--accent)"></polygon>
+          </marker>
+        </defs>
+
+        <rect x="130" y="30" width="380" height="52" rx="11" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.3"></rect>
+        <text x="146" y="52" font-size="12" font-weight="700" font-family="monospace" fill="currentColor">1 · Lấy ĐÚNG MỘT việc lớn</text>
+        <text x="146" y="70" font-size="10.5" font-family="monospace" fill="var(--muted)">chạy tới khi xong hẳn — không ai cắt ngang được</text>
+        <text x="524" y="50" font-size="10" font-family="monospace" fill="var(--muted)">setTimeout · click</text>
+        <text x="524" y="65" font-size="10" font-family="monospace" fill="var(--muted)">HTTP trả về</text>
+        <line x1="320" y1="82" x2="320" y2="100" stroke="currentColor" stroke-width="1.6" marker-end="url(#el2-ar)"></line>
+
+        <rect x="130" y="102" width="380" height="52" rx="11" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.3"></rect>
+        <text x="146" y="124" font-size="12" font-weight="700" font-family="monospace" fill="currentColor">2 · VÉT SẠCH hàng việc con</text>
+        <text x="146" y="142" font-size="10.5" font-family="monospace" fill="var(--muted)">kể cả việc con mới sinh ra trong lúc đang vét</text>
+        <text x="524" y="122" font-size="10" font-family="monospace" fill="var(--muted)">Promise.then</text>
+        <text x="524" y="137" font-size="10" font-family="monospace" fill="var(--muted)">await · queueMicrotask</text>
+        <line x1="320" y1="154" x2="320" y2="172" stroke="currentColor" stroke-width="1.6" marker-end="url(#el2-ar)"></line>
+
+        <rect x="130" y="174" width="380" height="52" rx="11" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.3"></rect>
+        <text x="146" y="196" font-size="12" font-weight="700" font-family="monospace" fill="currentColor">3 · Chạy requestAnimationFrame</text>
+        <text x="146" y="214" font-size="10.5" font-family="monospace" fill="var(--muted)">ngay trước khi vẽ — chỗ đúng để chỉnh hoạt ảnh</text>
+        <text x="524" y="203" font-size="10" font-family="monospace" fill="var(--muted)">hoạt ảnh mượt</text>
+        <line x1="320" y1="226" x2="320" y2="244" stroke="currentColor" stroke-width="1.6" marker-end="url(#el2-ar)"></line>
+
+        <rect x="130" y="246" width="380" height="60" rx="11" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.8"></rect>
+        <text x="146" y="268" font-size="12" font-weight="700" font-family="monospace" fill="currentColor">4 · style → bố cục → VẼ</text>
+        <text x="146" y="286" font-size="10.5" font-family="monospace" fill="var(--muted)">CHỈ khi tới nhịp khung hình, khoảng 16ms một lần</text>
+        <text x="524" y="270" font-size="10" font-weight="700" font-family="monospace" fill="var(--accent)">màn hình MỚI đổi</text>
+        <text x="524" y="285" font-size="10" font-family="monospace" fill="var(--muted)">ở đây, không sớm hơn</text>
+
+        <path d="M 130 276 C 40 276 40 56 125 56" fill="none" stroke="var(--accent)" stroke-width="2.2" marker-end="url(#el2-ac)"></path>
+        <text x="24" y="160" font-size="11" font-weight="700" font-family="monospace" fill="var(--accent)">lặp</text>
+        <text x="24" y="176" font-size="11" font-weight="700" font-family="monospace" fill="var(--accent)">mãi</text>
+
+        <text x="20" y="332" font-size="11.5" font-family="monospace" fill="var(--bad)">Kẹt ở chặng 1 hoặc 2 → chặng 4 không tới lượt → trang đứng hình.</text>
+      </svg>
+    </div>
+    <figcaption>Màn hình chỉ đổi ở chặng 4. Mọi thứ bạn làm ở chặng 1 và 2 — dù có gán bao nhiêu giá trị vào DOM — người dùng đều chưa thấy gì, cho tới khi vòng lặp đi hết một lượt.</figcaption>
+  </figure>
+  <div class="col">
+    <p>Sơ đồ này giải thích luôn ba chuyện tưởng chừng không liên quan:</p>
+    <ul>
+      <li><b>Vì sao vòng lặp nặng làm đứng trang.</b> Nó giữ chặng 1, nên chặng 4 không bao giờ tới. Bạn có sửa DOM cả trăm lần trong vòng lặp đó thì người dùng vẫn nhìn màn hình cũ — rồi thấy <em>một lần nhảy</em> ở cuối.</li>
+      <li><b>Vì sao <code>requestAnimationFrame</code> mượt hơn <code>setTimeout(f, 16)</code>.</b> Nó nằm ở chặng 3, tức là đúng ngay trước lượt vẽ; còn <code>setTimeout</code> rơi vào chặng 1 của một lượt nào đó, có thể lệch nhịp và cho ra hoạt ảnh giật.</li>
+      <li><b>Vì sao đo kích thước phần tử ngay sau khi đổi <code>class</code> lại tốn.</b> Trình duyệt buộc phải dựng bố cục sớm ngay giữa chặng 1 để trả lời bạn, thay vì gộp vào chặng 4.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Chạy thử 1</p><h2>Mổ xẻ đoạn code kinh điển</h2></div>
+  <div class="col">
+    <p>Đây là ví dụ nổi tiếng từ công cụ <em>loupe</em>. Nhìn qua thì có vẻ nó phải in ra theo thứ tự viết. Thực tế thì không.</p>
+  </div>
+<pre><code>$.on(<span class="str">'button'</span>, <span class="str">'click'</span>, <span class="kw">function</span> onClick() {
+    setTimeout(<span class="kw">function</span> timer2s() {
+        console.log(<span class="str">'3'</span>);
+    }, <span class="kw">10000</span>);
+});
+
+console.log(<span class="str">"Hi!"</span>);
+
+setTimeout(<span class="kw">function</span> timeout5s() {
+    console.log(<span class="str">"2!"</span>);
+}, <span class="kw">5000</span>);
+
+setTimeout(<span class="kw">function</span> timeout0s() {
+    console.log(<span class="str">"1"</span>);
+}, <span class="kw">1000</span>);
+
+console.log(<span class="str">"Welcome to loupe."</span>);</code></pre>
+  <div class="col">
+    <p>Chạy thật thì <b>"1" ra trước "2!"</b> dù nó được viết sau. Đi từng bước, và để ý rằng năm bước đầu <b>chạy hết trong chưa tới một mili-giây</b>:</p>
+    <ol class="steps">
+      <li><code>$.on(...)</code> lên ngăn xếp. Nó chỉ <b>đăng ký</b> hàm <code>onClick</code> với <span class="gl" data-gl="event listener" tabindex="0">bộ nghe sự kiện</span> rồi trả bàn. Hàm <code>onClick</code> <em>không hề chạy</em> — nó nằm im chờ một cú bấm có thể chẳng bao giờ tới.</li>
+      <li><code>console.log("Hi!")</code> lên bàn, in ra, xuống bàn. → <b>Hi!</b></li>
+      <li><code>setTimeout(timeout5s, 5000)</code> lên bàn. Nó <b>không</b> đợi 5 giây — nó giao đồng hồ cho trình duyệt rồi xuống bàn ngay.</li>
+      <li><code>setTimeout(timeout0s, 1000)</code> cũng vậy. Giờ trình duyệt giữ <b>hai đồng hồ chạy song song</b>, cùng khởi hành ở mốc gần như bằng nhau.</li>
+      <li><code>console.log("Welcome to loupe.")</code> in ra. → <b>Welcome to loupe.</b> Hết code đồng bộ, ngăn xếp rỗng. Từ giờ vòng lặp mới có đất diễn.</li>
+      <li><b>~1000ms:</b> đồng hồ 1000ms hết trước, <code>timeout0s</code> vào hàng đợi, được bê lên ngay. → <b>1</b></li>
+      <li><b>~5000ms:</b> tới lượt <code>timeout5s</code>. → <b>2!</b></li>
+      <li><b>Lúc nào đó:</b> người dùng bấm nút. <code>onClick</code> mới chạy, và việc duy nhất nó làm là đặt thêm một đồng hồ 10000ms. Nên <b>3</b> xuất hiện <em>mười giây sau cú bấm</em>, không phải mười giây sau khi tải trang.</li>
+    </ol>
+  </div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 210" role="img" aria-label="Dòng thời gian: tại mốc 0 mili-giây in ra Hi và Welcome to loupe, tại 1000 mili-giây in ra 1, tại 5000 mili-giây in ra 2 chấm than, tại một thời điểm không xác định người dùng bấm nút, và 10000 mili-giây sau cú bấm đó mới in ra 3.">
+        <defs>
+          <marker id="el-tl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="currentColor"></polygon>
+          </marker>
+        </defs>
+        <line x1="30" y1="130" x2="690" y2="130" stroke="currentColor" stroke-width="1.6" marker-end="url(#el-tl)"></line>
+
+        <line x1="60" y1="118" x2="60" y2="142" stroke="var(--accent)" stroke-width="2.4"></line>
+        <text x="60" y="162" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">0ms</text>
+        <rect x="10" y="60" width="100" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"></rect>
+        <text x="60" y="79" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">Hi!</text>
+        <text x="60" y="96" font-size="10" text-anchor="middle" font-family="monospace" fill="currentColor">Welcome to loupe.</text>
+
+        <line x1="200" y1="118" x2="200" y2="142" stroke="currentColor" stroke-width="2"></line>
+        <text x="200" y="162" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">1000ms</text>
+        <rect x="168" y="70" width="64" height="36" rx="9" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.5"></rect>
+        <text x="200" y="93" font-size="12.5" text-anchor="middle" font-weight="700" font-family="monospace" fill="var(--good)">1</text>
+
+        <line x1="400" y1="118" x2="400" y2="142" stroke="currentColor" stroke-width="2"></line>
+        <text x="400" y="162" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">5000ms</text>
+        <rect x="368" y="70" width="64" height="36" rx="9" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.5"></rect>
+        <text x="400" y="93" font-size="12.5" text-anchor="middle" font-weight="700" font-family="monospace" fill="var(--good)">2!</text>
+
+        <line x1="520" y1="112" x2="520" y2="148" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 3"></line>
+        <text x="520" y="176" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">người dùng bấm</text>
+        <text x="520" y="190" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--muted)">(không ai biết lúc nào)</text>
+
+        <path d="M 520 100 L 630 100" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#el-tl)"></path>
+        <text x="575" y="90" font-size="10" text-anchor="middle" font-family="monospace" fill="var(--muted)">+10000ms</text>
+
+        <line x1="650" y1="118" x2="650" y2="142" stroke="currentColor" stroke-width="2"></line>
+        <rect x="618" y="42" width="64" height="36" rx="9" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.5"></rect>
+        <text x="650" y="65" font-size="12.5" text-anchor="middle" font-weight="700" font-family="monospace" fill="var(--good)">3</text>
+
+        <text x="30" y="26" font-size="11" font-family="monospace" fill="var(--muted)">Mốc của "3" không nằm trên trục này — nó tính từ cú bấm, không tính từ lúc tải trang.</text>
+      </svg>
+    </div>
+    <figcaption>Hai đồng hồ 1000ms và 5000ms cùng khởi hành ở mốc 0, nên thứ tự về đích do <em>độ dài</em> quyết định, không phải do thứ tự viết code.</figcaption>
+  </figure>
+  <div class="tbl-scroll"><table class="plain">
+    <thead><tr><th>Nhìn code, ta tưởng</th><th>Thật ra</th></tr></thead>
+    <tbody>
+      <tr><td>Hai lệnh <code>setTimeout</code> xếp hàng, cái viết trước chạy trước.</td><td>Mỗi cái là một đồng hồ <b>độc lập</b> chạy song song. Ai hết giờ trước thì vào hàng đợi trước — nên <code>1000</code> thắng <code>5000</code>.</td></tr>
+      <tr><td><code>setTimeout(f, 1000)</code> chạy <code>f</code> đúng ở mốc 1000ms.</td><td>Chỉ là "<b>không sớm hơn</b> 1000ms". Ngăn xếp còn bận thì <code>f</code> phải chờ tiếp — có thể trễ hàng giây.</td></tr>
+      <tr><td><code>onClick</code> có trong code nên nó sẽ chạy.</td><td>Nó chỉ được <b>đăng ký</b>. Không ai bấm thì nó nằm im vĩnh viễn, và <code>'3'</code> không bao giờ được in.</td></tr>
+      <tr><td>Cái hẹn 10000ms bắt đầu chạy từ lúc tải trang.</td><td>Nó chỉ bắt đầu đếm <b>khi <code>onClick</code> thật sự chạy</b>, tức là từ giây phút người dùng bấm.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Chạy thử 2</p><h2><code>await</code> chỉ là con dao cắt hàm làm đôi</h2></div>
+  <p>Nhiều người nghĩ <code>await</code> "dừng chương trình lại chờ". Không hề — nó <b>cắt hàm thành hai mảnh</b>: mảnh trước chạy đồng bộ ngay tại chỗ, mảnh sau được đóng gói thành một <span class="gl" data-gl="microtask" tabindex="0">việc con</span> và xếp hàng. Hàm gọi nó thì đi tiếp bình thường.</p>
+<pre><code><span class="kw">async function</span> f() {
+  console.log(<span class="str">'2 — trước await, ĐỒNG BỘ'</span>);
+  <span class="kw">await</span> <span class="kw">null</span>;                          <span class="cm">// ← con dao cắt ở đây</span>
+  console.log(<span class="str">'5 — sau await, là VIỆC CON'</span>);
+}
+
+console.log(<span class="str">'1'</span>);
+f();                                   <span class="cm">// chạy tới await rồi trả về ngay</span>
+Promise.resolve().then(() =&gt; console.log(<span class="str">'6 — đặt sau nên xếp sau'</span>));
+console.log(<span class="str">'3'</span>);
+setTimeout(() =&gt; console.log(<span class="str">'7 — việc LỚN, cuối cùng'</span>), <span class="kw">0</span>);
+console.log(<span class="str">'4'</span>);
+
+<span class="out">// 1 → 2 → 3 → 4 → 5 → 6 → 7</span></code></pre>
+  <p>Đọc lại kết quả theo ba nhóm thì nó hết bí ẩn ngay: <b>1 2 3 4</b> là toàn bộ code đồng bộ (kể cả phần trước <code>await</code>); <b>5 6</b> là hàng việc con được vét sạch khi ngăn xếp rỗng, theo đúng thứ tự chúng được xếp vào; <b>7</b> là việc lớn, luôn đứng chót.</p>
+  <div class="callout col">
+    <p><strong>Mẹo đọc nhanh mọi câu đố loại này:</strong> gạch ba cột trên giấy — <em>đồng bộ</em>, <em>việc con</em>, <em>việc lớn</em>. Quét code một lượt từ trên xuống, mỗi dòng ném vào đúng cột. Đọc cột 1 hết rồi tới cột 2, rồi cột 3. Chỉ cần nhớ thêm rằng phần sau mỗi <code>await</code> thuộc cột 2, và <code>await</code> thứ hai trong cùng một hàm lại đẩy phần sau nó xuống một lượt vét nữa.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Ai chen trước ai</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Loại</th><th>Gồm những gì</th><th>Được lấy khi nào</th></tr></thead>
+    <tbody>
+      <tr><td>Code đồng bộ</td><td>Mọi dòng chạy thẳng, kể cả phần <em>trước</em> <code>await</code> đầu tiên</td><td>Ngay lập tức, trên ngăn xếp hiện tại.</td></tr>
+      <tr><td>Microtask (việc con)</td><td><code>Promise.then/catch/finally</code>, phần sau <code>await</code>, <code>queueMicrotask</code>, <code>MutationObserver</code></td><td>Ngay khi ngăn xếp rỗng, và <b>vét sạch</b> cả hàng — kể cả việc con mới sinh trong lúc vét.</td></tr>
+      <tr><td>requestAnimationFrame</td><td>Hàm đăng ký để chỉnh hoạt ảnh</td><td>Sau khi vét việc con, <b>ngay trước</b> lượt vẽ. Tab bị ẩn thì không chạy.</td></tr>
+      <tr><td>Macrotask (việc lớn)</td><td><code>setTimeout</code>, <code>setInterval</code>, sự kiện DOM, lời gọi máy chủ trả về</td><td>Chỉ <b>một cái</b> mỗi lượt, sau khi <span class="gl" data-gl="queue" tabindex="0">hàng</span> việc con đã cạn.</td></tr>
+      <tr><td>requestIdleCallback</td><td>Việc không gấp: gửi thống kê, dọn bộ nhớ đệm</td><td>Chỉ khi vòng lặp còn thừa thời gian trong khung hình.</td></tr>
+    </tbody>
+  </table></div>
+<pre><code>console.log(<span class="str">'A'</span>);                                  <span class="cm">// đồng bộ</span>
+setTimeout(() =&gt; console.log(<span class="str">'D'</span>), <span class="kw">0</span>);           <span class="cm">// việc lớn</span>
+Promise.resolve().then(() =&gt; console.log(<span class="str">'C'</span>));  <span class="cm">// việc con</span>
+console.log(<span class="str">'B'</span>);                                  <span class="cm">// đồng bộ</span>
+
+<span class="out">// A → B → C → D</span>
+<span class="cm">// 'D' hẹn 0ms nhưng vẫn thua 'C', vì việc con luôn được vét trước.</span></code></pre>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cạm bẫy</p><h2>Bốn chỗ đo được mà không ai ngờ</h2></div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag warn">Hẹn giờ bị kẹp sàn</span>
+      <h3><code>setTimeout(f, 0)</code> không phải 0ms</h3>
+      <p>Đặc tả buộc trình duyệt <b><span class="gl" data-gl="clamping" tabindex="0">kẹp sàn</span> 4ms</b> khi hẹn giờ lồng nhau quá năm tầng. Một vòng lặp tự gọi lại bằng <code>setTimeout(…, 0)</code> vì thế chỉ chạy được khoảng 250 lượt mỗi giây, chứ không phải hàng nghìn.</p>
+<pre><code><span class="cm">// từ tầng lồng thứ 5 trở đi: mỗi lượt ≥ 4ms</span>
+(<span class="kw">function</span> lap() {
+  lamViec();
+  setTimeout(lap, <span class="kw">0</span>);   <span class="cm">// thực tế ~4ms</span>
+})();</code></pre>
+    </div>
+    <div class="card">
+      <span class="tag warn">Tab chạy nền</span>
+      <h3>Đổi sang tab khác là mọi thứ chậm lại</h3>
+      <p>Tab không được nhìn thấy thì hẹn giờ bị bóp xuống <b>tối đa một lần mỗi giây</b>, và <code>requestAnimationFrame</code> <b>ngừng hẳn</b>. Đồng hồ đếm ngược viết bằng <code>setInterval</code> sẽ chạy sai sau khi người dùng quay lại.</p>
+<pre><code><span class="cm">// ✗ đếm ngược bằng cách cộng dồn — sai khi tab bị ẩn</span>
+setInterval(() =&gt; conLai--, <span class="kw">1000</span>);
+
+<span class="cm">// ✓ tính lại từ mốc thời gian thật</span>
+setInterval(() =&gt; {
+  conLai = hetLuc - Date.now();
+}, <span class="kw">1000</span>);</code></pre>
+    </div>
+    <div class="card">
+      <span class="tag bad">Bỏ đói</span>
+      <h3>Việc con vô tận khoá chết trang</h3>
+      <p>Hàng việc con được <b>vét cạn</b> mỗi lượt. Một chuỗi tự sinh ra chính nó thì hàng không bao giờ cạn — việc lớn không tới lượt, chặng vẽ không tới lượt, trang đứng hình dù ngăn xếp trông có vẻ rỗng.</p>
+<pre><code><span class="kw">function</span> nuoc() {
+  Promise.resolve().then(nuoc);   <span class="cm">// ✗ treo cứng</span>
+}
+nuoc();
+<span class="cm">// setTimeout bạn thêm vào để gỡ rối</span>
+<span class="cm">// cũng không bao giờ chạy.</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag bad">Đo giữa chừng</span>
+      <h3>Đọc kích thước ép trình duyệt vẽ sớm</h3>
+      <p>Đọc <code>offsetHeight</code>, <code>getBoundingClientRect</code> ngay sau khi vừa đổi kiểu dáng buộc trình duyệt <b>dựng bố cục ngay tại chặng 1</b>, thay vì gộp vào chặng 4. Làm việc đó trong vòng lặp là tự tay nhân số lần dựng bố cục lên.</p>
+<pre><code><span class="cm">// ✗ đọc–ghi xen kẽ: mỗi vòng một lần dựng bố cục</span>
+<span class="kw">for</span> (<span class="kw">const</span> el <span class="kw">of</span> ds) {
+  el.style.height = el.offsetHeight + <span class="kw">10</span> + <span class="str">'px'</span>;
+}
+
+<span class="cm">// ✓ đọc hết một lượt, rồi ghi hết một lượt</span>
+<span class="kw">const</span> hs = ds.map((el) =&gt; el.offsetHeight);
+ds.forEach((el, i) =&gt; (el.style.height = hs[i] + <span class="kw">10</span> + <span class="str">'px'</span>));</code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Ngoài trình duyệt</p><h2>Trong Node thì vòng lặp có nhiều chặng hơn</h2></div>
+  <div class="col">
+    <p>Node cũng có vòng lặp sự kiện, nhưng thay vì "một hàng đợi việc lớn", nó chia thành <b>nhiều <span class="gl" data-gl="phase" tabindex="0">pha</span></b> chạy vòng tròn — quan trọng nhất là <em>timers</em> (chỗ <code>setTimeout</code> chạy), <em>poll</em> (chờ dữ liệu vào/ra), và <em>check</em> (chỗ <code>setImmediate</code> chạy). Hai hàng ưu tiên riêng được vét <b>giữa mọi pha</b>:</p>
+    <ol class="steps">
+      <li><code>process.nextTick</code> — hàng riêng của Node, được vét <b>trước cả</b> hàng việc con của Promise.</li>
+      <li>Hàng việc con thông thường (<code>Promise.then</code>, <code>await</code>).</li>
+    </ol>
+  </div>
+<pre><code>setTimeout(() =&gt; {
+  setTimeout(() =&gt; console.log(<span class="str">'4 — setTimeout 0'</span>), <span class="kw">0</span>);
+  setImmediate(() =&gt; console.log(<span class="str">'3 — setImmediate'</span>));
+  Promise.resolve().then(() =&gt; console.log(<span class="str">'2 — Promise.then'</span>));
+  process.nextTick(() =&gt; console.log(<span class="str">'1 — process.nextTick'</span>));
+}, <span class="kw">20</span>);
+
+<span class="out">// 1 → 2 → 3 → 4</span></code></pre>
+  <div class="callout bad col">
+    <p><strong>Bẫy chỉ có ở Node:</strong> ở <em>cấp cao nhất</em> của một file, thứ tự giữa <code>setTimeout(f, 0)</code> và <code>setImmediate(f)</code> là <b>không đoán trước được</b> — chạy hai lần có thể ra hai kết quả khác nhau, vì nó phụ thuộc lúc đó máy đã mất bao lâu để khởi động vòng lặp. Chỉ khi đứng <em>bên trong</em> một hàm gọi lại vào/ra thì <code>setImmediate</code> mới chắc chắn chạy trước. Đừng bao giờ viết code dựa vào thứ tự hai cái này.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của mô hình một luồng</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Không bao giờ có <span class="gl" data-gl="race condition" tabindex="0">tranh chấp dữ liệu</span>.</b> Chỉ một luồng nên không có hai chỗ cùng sửa một biến — cả một lớp lỗi khó nhất của lập trình đa luồng biến mất.</li>
+        <li><b>Một hàm chạy là chạy trọn vẹn.</b> Không ai cắt ngang giữa chừng, nên đọc code tới đâu chắc tới đó.</li>
+        <li><b>Chờ không tốn gì.</b> Nghìn lời gọi máy chủ cùng lúc vẫn chỉ một luồng, vì việc chờ do trình duyệt gánh.</li>
+        <li><b>Không cần khoá.</b> Không có <em>mutex</em>, không có <strong>deadlock</strong> (kẹt khoá — hai bên cùng chờ nhau mãi mãi).</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// 3 lời gọi máy chủ chạy chồng lên nhau,</span>
+<span class="cm">// vẫn chỉ một luồng, không khoá gì cả</span>
+<span class="kw">const</span> [a, b, c] = <span class="kw">await</span> Promise.all([
+  layNguoiDung(), layDonHang(), layCauHinh(),
+]);
+<span class="cm">// Tổng thời gian = cái chậm nhất, không phải tổng ba cái.</span></code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Một hàm nặng là đứng cả trang.</b> Không cuộn, không bấm, không vẽ lại — tất cả đều xếp sau nó.</li>
+        <li><b>Thời gian hẹn giờ không đáng tin.</b> <code>setTimeout(f, 0)</code> mà ngăn xếp bận 300ms thì <code>f</code> chạy ở mốc 301ms.</li>
+        <li><b>Thứ tự phản trực giác.</b> Code đọc từ trên xuống nhưng chạy theo thứ tự khác.</li>
+        <li><b>Việc con có thể bỏ đói việc lớn</b> và khoá luôn chặng vẽ, mà không có lỗi nào báo.</li>
+        <li><b>Dấu vết lỗi bị đứt.</b> Lỗi trong một hàm gọi lại không còn nhớ nơi nó được đặt lịch, nên <strong>stack trace</strong> (dấu vết lỗi) chỉ tay vào chỗ vô nghĩa.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="kw">const</span> t = Date.now();
+setTimeout(() =&gt; console.log(<span class="str">'trễ'</span>, Date.now() - t), <span class="kw">0</span>);
+
+<span class="kw">const</span> het = Date.now() + <span class="kw">300</span>;
+<span class="kw">while</span> (Date.now() &lt; het) {}   <span class="cm">// giữ bàn 300ms</span>
+
+<span class="out">// trễ 301</span>
+<span class="cm">// ✗ hẹn 0ms nhưng chờ hết 301ms — và suốt 300ms đó</span>
+<span class="cm">//   trang không nhận chuột, không vẽ lại được gì.</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách sống chung an toàn:</strong> luật duy nhất là <b>đừng giữ bàn quá lâu</b>. Việc nặng thì cắt thành từng mẻ và nhả bàn giữa chừng — nhả bằng <code>setTimeout</code> hoặc <code>scheduler.yield()</code>, <em>không</em> bằng <code>await Promise.resolve()</code>, vì việc con không nhả bàn cho chặng vẽ. Việc thật sự nặng thì đẩy hẳn sang <strong>Web Worker</strong> (luồng phụ chạy song song thật sự, không đụng tới giao diện). Đừng dùng <code>setTimeout</code> để "chờ cho dữ liệu kịp về" — hãy chờ đúng cái <code>Promise</code> của nó. Và khi giao diện khựng, chỗ cần soi là <em>hàm nào đang giữ ngăn xếp</em>, không phải số lượng lời gọi máy chủ.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> JavaScript đơn luồng, chỉ có một <span class="gl" data-gl="call stack" tabindex="0">ngăn xếp lời gọi</span>. Việc mất thời gian được giao cho trình duyệt lo, nên hàm trả về ngay chứ không đứng chờ; xong thì hàm gọi lại của nó vào hàng đợi. Mỗi lượt vòng lặp chạy đúng bốn chặng: <b>lấy một việc lớn → vét sạch việc con → chạy <code>requestAnimationFrame</code> → vẽ lại màn hình</b>. Ba hệ quả rút ra từ đúng cái thứ tự đó: <code>setTimeout(f, n)</code> nghĩa là "không sớm hơn n"; việc con luôn được vét trước việc lớn; và <b>màn hình chỉ đổi ở chặng cuối</b>, nên bất cứ thứ gì giữ chặng 1 hay 2 đều làm trang đứng hình.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Đơn luồng sao vẫn chạy được nhiều việc cùng lúc?</h3>
+      <p>Vì phần chờ <b>không do JavaScript gánh</b>. <code>setTimeout</code> và lời gọi máy chủ là Web API của trình duyệt, nằm ngoài luồng JS, đếm giờ song song thoải mái. JavaScript chỉ tham gia hai khoảnh khắc: lúc <em>đặt lịch</em> và lúc <em>chạy hàm gọi lại</em>. Giữa hai khoảnh khắc đó nó rảnh rang làm việc khác.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>await</code> có chặn luồng không?</h3>
+      <p><b>Không.</b> Nó cắt hàm làm đôi: phần trước chạy đồng bộ ngay tại chỗ, phần sau thành một việc con xếp hàng, còn hàm gọi thì đi tiếp bình thường. Nói được rằng <code>async function</code> luôn chạy <em>đồng bộ</em> cho tới cái <code>await</code> đầu tiên là chi tiết ăn điểm — nhiều người tưởng cả hàm bị đẩy sang bất đồng bộ.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Nhả luồng bằng <code>await Promise.resolve()</code> được không?</h3>
+      <p><b>Không</b>, và đây là bẫy tinh vi nhất. Nó chỉ đẩy code sang hàng <em>việc con</em>, mà hàng đó được vét cạn <b>ngay trong cùng một lượt</b> — chặng vẽ vẫn không tới. Muốn thật sự nhả cho trình duyệt vẽ thì phải rơi xuống việc lớn: <code>setTimeout</code>, <code>MessageChannel</code>, hoặc <code>scheduler.yield()</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Vòng lặp đổi DOM 100 lần thì trình duyệt vẽ mấy lần?</h3>
+      <p><b>Một lần</b> — nếu vòng lặp không đọc kích thước. Cả 100 lần ghi diễn ra ở chặng 1, chặng vẽ chỉ tới sau khi hàm kết thúc, nên người dùng thấy đúng một cú nhảy. Vế thứ hai mới là chỗ loại người: nếu trong vòng lặp có <b>đọc</b> <code>offsetHeight</code> hay <code>getBoundingClientRect</code>, trình duyệt buộc phải dựng bố cục ngay để trả lời — thành <b>100 lần dựng bố cục</b> ép buộc. Cách chữa là tách hẳn: đọc hết một lượt, rồi ghi hết một lượt.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "Vòng lặp sự kiện chạy code bất đồng bộ trên một luồng khác." Không có luồng nào khác cả — <b>mọi</b> dòng JavaScript của bạn, kể cả trong hàm gọi lại, đều chạy trên đúng một luồng ấy, trên đúng cái ngăn xếp ấy. Thứ chạy song song là <em>đồng hồ và mạng của trình duyệt</em>, không phải code của bạn. Nhầm chỗ này là nhầm gốc: nó dẫn tới niềm tin rằng một vòng lặp nặng "chỉ chậm phần của nó", trong khi thực tế nó đóng băng toàn bộ trang.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>event loop</td><td>Vòng lặp sự kiện — vòng chạy mãi qua bốn chặng: lấy việc lớn, vét việc con, chạy rAF, vẽ.</td></tr>
+      <tr><td>call stack</td><td>Ngăn xếp lời gọi — chồng các hàm đang chạy dở; ai lên sau thì xuống trước.</td></tr>
+      <tr><td>single-threaded</td><td>Đơn luồng — chỉ một dòng thi hành, một thời điểm làm một việc.</td></tr>
+      <tr><td>synchronous</td><td>Đồng bộ — chạy ngay tại chỗ, xong rồi mới sang dòng kế.</td></tr>
+      <tr><td>asynchronous</td><td>Bất đồng bộ — đặt lịch rồi đi làm việc khác, kết quả tới lúc nào đó về sau.</td></tr>
+      <tr><td>Web API</td><td>Bộ công cụ do trình duyệt cung cấp và tự chạy bên ngoài luồng JavaScript.</td></tr>
+      <tr><td>callback</td><td>Hàm gọi lại — hàm bạn đưa cho bên khác giữ để chạy hộ khi tới lúc.</td></tr>
+      <tr><td>callback queue</td><td>Hàng đợi hàm gọi lại — nơi các việc đã xong xếp hàng chờ lên ngăn xếp.</td></tr>
+      <tr><td>macrotask</td><td>Việc lớn — <code>setTimeout</code>, sự kiện DOM, mạng; mỗi lượt chỉ lấy một cái.</td></tr>
+      <tr><td>microtask</td><td>Việc con — <code>Promise.then</code>, phần sau <code>await</code>; được vét sạch trước mọi việc lớn.</td></tr>
+      <tr><td>queueMicrotask</td><td>Hàm đẩy thẳng một việc vào hàng việc con.</td></tr>
+      <tr><td>Promise</td><td>"Lời hứa" — vật đại diện cho một kết quả sẽ có về sau.</td></tr>
+      <tr><td>await</td><td>Con dao cắt một <code>async function</code> làm đôi: phần sau nó trở thành một việc con.</td></tr>
+      <tr><td>requestAnimationFrame</td><td>Đăng ký một hàm chạy ngay trước lượt vẽ kế tiếp; tab bị ẩn thì ngừng hẳn.</td></tr>
+      <tr><td>requestIdleCallback</td><td>Đăng ký việc không gấp, chỉ chạy khi khung hình còn dư thời gian.</td></tr>
+      <tr><td>reflow / layout</td><td>Dựng bố cục — tính lại vị trí và kích thước mọi phần tử trên trang.</td></tr>
+      <tr><td>repaint</td><td>Vẽ lại — tô màu pixel lên màn hình sau khi bố cục đã xong.</td></tr>
+      <tr><td>frame</td><td>Khung hình — một nhịp vẽ màn hình, khoảng 16ms ở 60Hz.</td></tr>
+      <tr><td>clamping</td><td>Kẹp sàn — trình duyệt ép hẹn giờ lồng nhau tối thiểu 4ms từ tầng thứ năm.</td></tr>
+      <tr><td>throttling</td><td>Bóp nhịp — tab chạy nền bị giới hạn hẹn giờ xuống một lần mỗi giây.</td></tr>
+      <tr><td>starvation</td><td>Bỏ đói — một loại việc chiếm hết lượt khiến loại kia không bao giờ tới phiên.</td></tr>
+      <tr><td>blocking</td><td>Chặn — giữ ngăn xếp lâu khiến trang không cuộn, không bấm, không vẽ lại được.</td></tr>
+      <tr><td>race condition</td><td>Tranh chấp dữ liệu — hai luồng cùng sửa một chỗ nên kết quả tuỳ ai nhanh hơn.</td></tr>
+      <tr><td>deadlock</td><td>Kẹt khoá — hai bên cùng chờ nhau nên không bên nào đi tiếp được.</td></tr>
+      <tr><td>Web Worker</td><td>Luồng phụ chạy song song thật sự, tách khỏi giao diện.</td></tr>
+      <tr><td>process.nextTick</td><td>Hàng ưu tiên riêng của Node, được vét trước cả hàng việc con của Promise.</td></tr>
+      <tr><td>setImmediate</td><td>Hàm của Node, chạy ở pha <em>check</em> — ngay sau pha chờ vào/ra.</td></tr>
+      <tr><td>stack trace</td><td>Dấu vết lỗi — danh sách các lời gọi hàm dẫn tới chỗ lỗi.</td></tr>
+      <tr><td>jQuery (<code>$</code>)</td><td>Thư viện JavaScript đời cũ; <code>$.on</code> là cách nó đăng ký bộ nghe sự kiện.</td></tr>
+    </tbody>
+  </table></div>
+</section>

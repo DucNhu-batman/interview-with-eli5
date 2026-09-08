@@ -11,13 +11,13 @@ lede: bind không gọi hàm. Nó đóng một cái hàm MỚI, đã khoá sẵn
   <p><code>bind</code> giống việc bạn dán nhãn “chỉ dùng cho TV phòng khách” lên một chiếc điều khiển <em>mới</em>: từ giờ bấm ở đâu cũng chỉ điều khiển đúng cái TV đó. Chiếc điều khiển cũ vẫn còn nguyên, không bị đổi.</p>
 <pre><code><span class="kw">const</span> hamMoi = hamCu.bind(thisArg, doiSo1, doiSo2);</code></pre>
   <div class="callout">
-    <p><strong>Ba điều phải nhớ:</strong> (1) <code>bind</code> <em>không</em> gọi hàm — nó trả về hàm mới; (2) hàm mới có <code>this</code> bị khoá vĩnh viễn; (3) các đối số truyền cho <code>bind</code> được nhét sẵn vào <em>đầu</em> danh sách đối số.</p>
+    <p><strong>Ba điều phải nhớ:</strong> (1) <code>bind</code> <em>không</em> gọi hàm — nó trả về hàm mới; (2) hàm mới có <code>this</code> bị khoá vĩnh viễn; (3) các đối số (argument — giá trị truyền vào hàm) truyền cho <code>bind</code> được nhét sẵn vào <em>đầu</em> danh sách đối số.</p>
   </div>
 </section>
 
 <section class="col">
   <div class="sec-head"><p class="eyebrow">Công dụng 1</p><h2>Cứu this bị mất</h2></div>
-  <p>Đây là 90% lý do người ta dùng <code>bind</code>. Khi tách một method ra khỏi đối tượng — gán vào biến, truyền làm callback — dấu chấm biến mất, và <code>this</code> mất theo.</p>
+  <p>Đây là 90% lý do người ta dùng <code>bind</code>. Khi tách một method ra khỏi đối tượng — gán vào biến, truyền làm callback (hàm gọi lại — hàm đưa cho bên khác giữ để chạy hộ) — dấu chấm biến mất, và <code>this</code> mất theo.</p>
 <pre><code><span class="kw">class</span> GioHang {
   items = [];
   them(sp) { <span class="kw">this</span>.items.push(sp); }
@@ -52,7 +52,7 @@ logLoi(<span class="str">'không gọi được API'</span>);   <span class="out
     <div class="panel pro">
       <h3><span class="dot">+</span>Mặt lợi</h3>
       <ul>
-        <li><b>Khoá <code>this</code> một lần, yên tâm mãi.</b> Hàm đã bind thì truyền đi bao nhiêu tầng cũng không mất ngữ cảnh.</li>
+        <li><b>Khoá <code>this</code> một lần, yên tâm mãi.</b> Hàm đã bind thì truyền đi bao nhiêu tầng cũng không mất <span class="gl" data-gl="context" tabindex="0">ngữ cảnh</span>.</li>
         <li><b>Không đụng vào hàm gốc.</b> <code>bind</code> tạo bản mới, hàm cũ vẫn dùng bình thường cho đối tượng khác.</li>
         <li><b>Tạo hàm chuyên biệt gọn gàng.</b> Partial application giúp bớt lặp lại đối số cố định.</li>
         <li><b>Chạy được ở mọi trình duyệt.</b> Có từ ES5 (2009), không cần công cụ biên dịch.</li>
@@ -71,9 +71,9 @@ nut.removeEventListener(<span class="str">'click'</span>, onClick);   <span clas
       <ul>
         <li><b>Mỗi lần gọi là một hàm mới.</b> <code>f.bind(o) !== f.bind(o)</code> — hai lần bind cho hai hàm khác nhau.</li>
         <li><b>Gỡ sự kiện thất bại.</b> <code>removeEventListener('click', f.bind(o))</code> không gỡ được gì cả, vì đó là một hàm khác với hàm đã đăng ký.</li>
-        <li><b>Bind trong template/render là lãng phí.</b> Mỗi lần vẽ lại sinh một hàm mới, phá vỡ tối ưu so sánh tham chiếu (Angular <code>OnPush</code>, React <code>memo</code>).</li>
+        <li><b>Bind trong template (khuôn giao diện) / render (dựng lại giao diện) là lãng phí.</b> Mỗi lần <span class="gl" data-gl="render" tabindex="0">vẽ lại</span> sinh một hàm mới, phá vỡ tối ưu so sánh <span class="gl" data-gl="reference" tabindex="0">tham chiếu</span> (Angular <code>OnPush</code>, React <code>memo</code> — hai cơ chế bỏ qua việc vẽ lại khi dữ liệu vào không đổi).</li>
         <li><b>Không bind lại được.</b> Bind chồng lần hai không có tác dụng (chi tiết ở phần 2).</li>
-        <li><b>Khó debug.</b> Trong stack trace (dấu vết lỗi) hàm hiện tên <code>bound xyz</code>, khó lần về nơi tạo ra nó.</li>
+        <li><b>Khó <span class="gl" data-gl="debug" tabindex="0">gỡ lỗi</span>.</b> Trong stack trace (dấu vết lỗi) hàm hiện tên <code>bound xyz</code>, khó lần về nơi tạo ra nó.</li>
       </ul>
       <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
 <pre><code>nut.addEventListener(<span class="str">'click'</span>, gio.them.bind(gio));
@@ -86,7 +86,42 @@ console.log(gio.them.bind(gio) === gio.them.bind(gio));   <span class="out">// f
     </div>
   </div>
   <div class="callout good col">
-    <p><strong>Khi nào chọn gì:</strong> trong class hiện đại, ưu tiên <em>class field mũi tên</em> (<code>them = (sp) =&gt; { ... }</code>) — mỗi instance chỉ tạo hàm một lần và <code>this</code> luôn đúng. Chỉ dùng <code>bind</code> khi cần gắn <code>this</code> cho một hàm bạn không sở hữu, hoặc để khoá đối số. Và <strong>luôn bind một lần rồi cất vào biến</strong> nếu sau này còn cần gỡ sự kiện.</p>
+    <p><strong>Khi nào chọn gì:</strong> trong class hiện đại, ưu tiên <em>class field (thuộc tính khai thẳng trong thân class) mũi tên</em> (<code>them = (sp) =&gt; { ... }</code>) — mỗi instance (thể hiện — một đối tượng cụ thể tạo ra từ class) chỉ tạo hàm một lần và <code>this</code> luôn đúng. Chỉ dùng <code>bind</code> khi cần gắn <code>this</code> cho một hàm bạn không sở hữu, hoặc để khoá đối số. Và <strong>luôn bind một lần rồi cất vào biến</strong> nếu sau này còn cần gỡ sự kiện.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> <code>bind</code> <b>không gọi hàm</b> — nó đóng ra một hàm mới đã khoá cứng <code>this</code>, và khoá sẵn vài đối số đầu nếu muốn. Hai công dụng thật: cứu <code>this</code> khi tách method khỏi đối tượng, và <span class="gl" data-gl="partial application" tabindex="0">điền trước đối số</span> để tạo hàm chuyên biệt. Cái bẫy đi kèm cũng chỉ một: <b>mỗi lần <code>bind</code> là một hàm mới</b>, nên bind trong render hay bind ngay trong lời gọi <code>removeEventListener</code> là hỏng.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3><code>bind</code> khác <code>call</code>/<code>apply</code> chỗ nào?</h3>
+      <p><code>call</code>/<code>apply</code> <b>gọi ngay</b> rồi trả về kết quả của hàm; <code>bind</code> <b>không gọi</b>, nó trả về một hàm mới để bạn gọi sau. Nói thêm được vế này thì đủ sâu: <code>bind</code> khoá vĩnh viễn — sau đó <code>call</code> lên hàm đã bind cũng không đổi được <code>this</code> nữa.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>removeEventListener('click', f.bind(o))</code> gỡ được không?</h3>
+      <p><b>Không gỡ được gì cả</b>, và cũng không có lỗi nào báo. Vì <code>f.bind(o)</code> ở dòng gỡ là một hàm <em>khác</em> với hàm đã đăng ký — <code>f.bind(o) === f.bind(o)</code> là <code>false</code>. Cách đúng: bind một lần, cất vào biến, dùng chính biến đó cho cả đăng ký lẫn gỡ. Đây là nguồn rò rỉ bộ nhớ kinh điển ở màn hình bật/tắt liên tục.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Dùng <code>bind</code> khoá đối số thứ hai, để trống thứ nhất được không?</h3>
+      <p><b>Không</b> — <code>bind</code> chỉ điền từ trái sang, không có chỗ trống. Người trả lời chắc tay sẽ nói luôn cách thay: bọc bằng arrow <code>(a) =&gt; nhan(a, 2)</code>. Nhắc thêm được rằng tham số đầu của <code>bind</code> luôn là <code>thisArg</code> — muốn khoá đối số mà không cần <code>this</code> thì truyền <code>null</code> vào đó — là trọn ý.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Bind trong constructor hay class field mũi tên?</h3>
+      <p>Bẫy nằm ở chỗ nhiều người nghĩ class field "nhẹ hơn". Thực ra <b>cả hai đều tạo một hàm cho mỗi instance</b> — không cái nào nằm trên <code>prototype</code>, nên chi phí bộ nhớ như nhau. Khác biệt thật: class field ngắn hơn và không quên được, nhưng đổi lại <b>lớp con không override được</b> và <b>không gọi được <code>super</code></b>. Muốn giữ method trên <code>prototype</code> thì buộc phải bind.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "Cứ <code>bind(this)</code> ngay trong template cho tiện." Nó chạy đúng, nên rất khó thấy sai — cho tới lúc đo hiệu năng. Mỗi lần vẽ lại là một hàm mới, nên <code>@Input</code> của component con <em>lúc nào cũng</em> khác lần trước, <code>OnPush</code> và <code>memo</code> mất tác dụng hoàn toàn, và đống hàm cũ thành rác cho bộ thu gom. Bind thuộc về nơi khởi tạo, không thuộc về chỗ vẽ.</p>
   </div>
 </section>
 
@@ -99,9 +134,14 @@ console.log(gio.them.bind(gio) === gio.them.bind(gio));   <span class="out">// f
       <tr><td>bound function</td><td>Hàm đã bị bind — bản sao đã khoá <code>this</code>.</td></tr>
       <tr><td>partial application</td><td>Áp dụng từng phần — điền trước một số đối số để tạo hàm chuyên biệt.</td></tr>
       <tr><td>callback</td><td>Hàm gọi lại — hàm giao cho bên khác chạy hộ về sau.</td></tr>
+      <tr><td>argument</td><td>Đối số — giá trị thật sự truyền vào hàm lúc gọi.</td></tr>
+      <tr><td>thisArg</td><td>Tham số đầu tiên của <code>bind/call/apply</code> — đối tượng sẽ đóng vai <code>this</code>.</td></tr>
       <tr><td>event listener</td><td>Bộ lắng nghe sự kiện, đăng ký bằng <code>addEventListener</code>.</td></tr>
       <tr><td>class field</td><td>Thuộc tính khai trực tiếp trong thân class.</td></tr>
       <tr><td>stack trace</td><td>Dấu vết lỗi — danh sách các hàm dẫn tới chỗ lỗi.</td></tr>
+      <tr><td>instance</td><td>Thể hiện — một đối tượng cụ thể tạo ra từ class.</td></tr>
+      <tr><td>render</td><td>Dựng giao diện — lượt vẽ lại màn hình từ dữ liệu hiện có.</td></tr>
+      <tr><td>context</td><td>Ngữ cảnh — đối tượng mà hàm đang phục vụ, chính là <code>this</code>.</td></tr>
       <tr><td>OnPush</td><td>Chiến lược phát hiện thay đổi của Angular dựa trên so sánh tham chiếu.</td></tr>
     </tbody>
   </table></div>

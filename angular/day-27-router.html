@@ -261,26 +261,116 @@ pre .gl::after,pre .gl::before{display:none}
 <header class="hero col">
 <p class="eyebrow">Angular · Day 27</p>
 <h1>Day 27 — Angular Router</h1>
-<p class="lede">Biến thanh địa chỉ thành bảng điều khiển của ứng dụng: URL nào thì vẽ component nào, và làm sao truyền dữ liệu qua đường dẫn.</p>
+<p class="lede">Biến thanh địa chỉ thành bảng điều khiển của ứng dụng: URL nào vẽ component nào, cách truyền dữ liệu, và cái bẫy lạm dụng lazy loading xé vụn trải nghiệm người dùng.</p>
 </header>
 <section class="col">
   <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Một bảng tra: URL vào, component ra</h2></div>
-  <p>Router (bộ định tuyến) giữ một danh sách route (tuyến): mỗi mục nói "đường dẫn này thì vẽ component kia vào <code>&lt;router-outlet&gt;</code>". Người dùng bấm link, URL đổi, router tra bảng rồi thay component — không tải lại trang.</p>
+  <p><strong><span class="gl" data-gl="bộ định tuyến" tabindex="0">Router</span></strong> giữ một danh sách <strong><span class="gl" data-gl="tuyến đường dẫn" tabindex="0">route</span></strong>: mỗi mục nói "đường dẫn này thì vẽ <strong><span class="gl" data-gl="thành phần giao diện" tabindex="0">component</span></strong> kia vào <code>&lt;router-outlet&gt;</code> (<span class="gl" data-gl="router-outlet" tabindex="0">ô cắm chứa thành phần giao diện</span>)". Khi người dùng bấm liên kết, <strong><span class="gl" data-gl="địa chỉ mạng dẫn tới tài nguyên" tabindex="0">URL</span></strong> đổi, router tra bảng rồi thay component — hoàn toàn ở phía máy khách, không tải lại trang.</p>
 <pre><code>export <span class="kw">const</span> routes: Routes = [
   { path: <span class="str">''</span>, redirectTo: <span class="str">'kho'</span>, pathMatch: <span class="str">'full'</span> },
   { path: <span class="str">'kho'</span>, component: DsKhoComponent },
-  { path: <span class="str">'kho/:id'</span>, component: ChiTietKhoComponent },   <span class="cm">// tham số đường dẫn</span>
+  { path: <span class="str">'kho/:id'</span>, component: ChiTietKhoComponent },   <span class="cm">// path param (tham số đường dẫn)</span>
   { path: <span class="str">'**'</span>, component: KhongTimThayComponent },      <span class="cm">// phải để cuối cùng</span>
 ];
 
 &lt;a [routerLink]="['/kho', kho.id]" [queryParams]="{ tab: 'chung' }"&gt;Xem&lt;/a&gt;
 &lt;a routerLink="/kho" routerLinkActive="dang-chon"&gt;Danh sách&lt;/a&gt;</code></pre>
-  <p>Đọc tham số ở phía component:</p>
+  <p>Đọc tham số ở phía component bằng <strong><span class="gl" data-gl="tín hiệu phản ứng dữ liệu" tabindex="0">Signal</span></strong> hoặc <strong><span class="gl" data-gl="đối tượng mô tả route đang hoạt động" tabindex="0">ActivatedRoute</span></strong>:</p>
 <pre><code><span class="kw">private</span> route = inject(ActivatedRoute);
 <span class="kw">readonly</span> id = toSignal(<span class="kw">this</span>.route.paramMap.pipe(map((p) =&gt; p.get(<span class="str">'id'</span>))));</code></pre>
   <div class="callout">
-    <p><strong>Tham số đường dẫn hay query param?</strong> Cái <em>xác định</em> tài nguyên (id bản ghi) đi vào đường dẫn. Cái <em>tuỳ chọn</em> (trang, từ khoá, tab đang mở) đi vào query param — nhờ vậy người dùng chia sẻ link là giữ nguyên bộ lọc.</p>
+    <p><strong>Tham số đường dẫn hay query param?</strong> Cái <em>xác định danh tính</em> tài nguyên (như ID bản ghi: <code>/kho/12</code>) đi vào <strong><span class="gl" data-gl="path param" tabindex="0">tham số đường dẫn</span></strong>. Cái <em>tuỳ chọn hiển thị</em> (trang, từ khoá lọc, tab đang mở: <code>?tab=ton&amp;trang=2</code>) đi vào <strong><span class="gl" data-gl="query param" tabindex="0">tham số truy vấn</span></strong> — nhờ vậy người dùng gửi link qua tin nhắn là đồng nghiệp mở ra đúng y hệt bộ lọc đó.</p>
   </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế &amp; Cạm bẫy</p><h2>Cái bẫy lạm dụng Lazy Module và Lazy Router: "Bệnh nghiện băm nhỏ"</h2></div>
+  <p class="col">Khi người dùng nhấp vào một liên kết trên ứng dụng <strong><span class="gl" data-gl="Single Page Application — ứng dụng một trang" tabindex="0">SPA</span></strong>, Angular Router phải thực hiện chuỗi 5 bước: <em>(1) Khớp URL</em> &rarr; <em>(2) Chạy Guard kiểm tra quyền</em> &rarr; <em>(3) Nạp mã nguồn</em> &rarr; <em>(4) Khởi tạo bộ tiêm phụ thuộc</em> &rarr; <em>(5) Vẽ component ra <span class="gl" data-gl="Document Object Model — cây phần tử giao diện thật" tabindex="0">DOM</span></em>.</p>
+  
+  <p class="col">Trong bước 3, <strong><span class="gl" data-gl="lazy loading" tabindex="0">tải lười</span></strong> (tải trễ theo nhu cầu) cho phép tách mã thành các <strong><span class="gl" data-gl="mảnh gói mã nguồn độc lập" tabindex="0">chunk</span></strong> qua <code>loadChildren</code> hoặc <code>loadComponent</code>. Tuy nhiên, rất nhiều lập trình viên mắc phải <strong>"bệnh nghiện băm nhỏ"</strong>: chia mọi route con, mọi tab, mọi modal lặt vặt thành lazy chunk riêng với kỳ vọng ứng dụng sẽ "siêu nhanh". Thực tế, điều này tạo ra 4 thảm hoạ nghiêm trọng:</p>
+
+  <ol class="steps col">
+    <li><strong>Hiệu ứng <span class="gl" data-gl="network waterfall" tabindex="0">thác đổ mạng</span> và đơ giao diện:</strong> Mỗi lần bấm tab hay chuyển bước trong quy trình, trình duyệt lại phải mở kết nối mạng tải về một file <code>chunk-xyz.js</code> vài <strong>kilobyte</strong>. Dù file rất nhỏ, nhưng trên mạng 3G/4G chập chờn, <strong><span class="gl" data-gl="network latency" tabindex="0">độ trễ mạng</span></strong> khiến người dùng phải nhìn màn hình trắng hoặc biểu tượng xoay chờ (spinner) từ 300ms đến 1.5 giây. Cảm giác mượt mà của SPA bị phá huỷ hoàn toàn!</li>
+    <li><strong>Vỡ vụn cây <span class="gl" data-gl="Dependency Injection — cơ chế tiêm phụ thuộc" tabindex="0">DI</span> &amp; Mất tính <span class="gl" data-gl="chỉ có duy nhất một thực thể" tabindex="0">Singleton</span>:</strong> Với <strong><span class="gl" data-gl="mô-đun tải trễ theo NgModule" tabindex="0">lazy module</span></strong> hoặc route có khai báo <code>providers</code>, Angular tạo ra một <strong><span class="gl" data-gl="bộ tiêm phụ thuộc cấp môi trường" tabindex="0">EnvironmentInjector</span></strong> con riêng biệt. Nếu bạn sơ suất khai báo lại service trong lazy module thay vì dùng <code>providedIn: 'root'</code>, Angular sẽ tạo ra một <strong><span class="gl" data-gl="instance" tabindex="0">thực thể mới</span></strong>, đánh mất tính <span class="gl" data-gl="singleton" tabindex="0">đơn thực thể</span>. Dữ liệu vừa cập nhật ở màn hình cha sang màn hình con biến mất bí ẩn.</li>
+    <li><strong>Lỗi sập ứng dụng khi <span class="gl" data-gl="triển khai mã nguồn lên máy chủ" tabindex="0">Deploy</span> (ChunkLoadError):</strong> Khi đội ngũ phát hành phiên bản mới, các file JS cũ có mã băm (hash) bị xoá khỏi máy chủ. Người dùng đang mở sẵn tab cũ, khi bấm sang một route lười sẽ gặp ngay lỗi <code>ChunkLoadError: Loading chunk failed</code>, khiến màn hình đơ cứng nếu không có cơ chế bắt lỗi tự động tải lại trang.</li>
+    <li><strong>Overhead đóng gói &amp; Tải mạng phản tác dụng:</strong> Thuật toán nén <strong>Gzip / Brotli</strong> hoạt động cực kỳ kém trên các file quá nhỏ (vài KB). Tải 40 chunk nhỏ xíu chịu thêm chi phí tiêu đề HTTP và phân tích cú pháp JavaScript nhiều lần, tổng thời gian tải thực tế còn chậm hơn tải 2 chunk vừa phải.</li>
+  </ol>
+
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 760 380" role="img" aria-label="Sơ đồ so sánh hai luồng điều hướng Router: Phía trên là lạm dụng Lazy Route vụn vặt gây hiệu ứng thác đổ mạng, xoay spinner và lỗi ChunkLoadError. Phía dưới là kiến trúc chuẩn Senior chia thô theo Feature Boundary kết hợp Preloading giúp chuyển trang tức thì 0 mili-giây.">
+        <defs>
+          <marker id="arr-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <!-- Luồng 1: Lạm dụng Lazy vụn vặt -->
+        <rect x="20" y="20" width="720" height="155" rx="14" fill="var(--surface)" stroke="var(--bad)" stroke-width="1.5"></rect>
+        <rect x="36" y="34" width="230" height="26" rx="6" fill="var(--bad-soft)"></rect>
+        <text x="46" y="52" font-size="11" font-weight="700" fill="var(--bad)" font-family="monospace">✗ LẠM DỤNG LAZY (TỪNG ROUTE VỤN VẶT)</text>
+
+        <!-- Hộp 1.1 -->
+        <rect x="36" y="72" width="130" height="52" rx="8" fill="var(--surface-2)" stroke="var(--line)"></rect>
+        <text x="101" y="94" font-size="11" font-weight="700" text-anchor="middle" fill="currentColor">Bấm Tab A</text>
+        <text x="101" y="112" font-size="9" text-anchor="middle" fill="var(--muted)">/kho/chung</text>
+
+        <!-- Mũi tên 1.1 -> 1.2 -->
+        <path d="M166 98 L200 98" fill="none" stroke="var(--bad)" stroke-width="1.6" marker-end="url(#arr-r)"></path>
+
+        <!-- Hộp 1.2 -->
+        <rect x="206" y="72" width="145" height="52" rx="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-dasharray="3 3"></rect>
+        <text x="278" y="93" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--bad)">Kéo chunk-a.js</text>
+        <text x="278" y="111" font-size="9" text-anchor="middle" fill="var(--bad)">Chờ mạng 350ms (Spinner)</text>
+
+        <!-- Mũi tên 1.2 -> 1.3 -->
+        <path d="M351 98 L385 98" fill="none" stroke="var(--bad)" stroke-width="1.6" marker-end="url(#arr-r)"></path>
+
+        <!-- Hộp 1.3 -->
+        <rect x="391" y="72" width="130" height="52" rx="8" fill="var(--surface-2)" stroke="var(--line)"></rect>
+        <text x="456" y="94" font-size="11" font-weight="700" text-anchor="middle" fill="currentColor">Bấm Tab B</text>
+        <text x="456" y="112" font-size="9" text-anchor="middle" fill="var(--muted)">/kho/lich-su</text>
+
+        <!-- Mũi tên 1.3 -> 1.4 -->
+        <path d="M521 98 L555 98" fill="none" stroke="var(--bad)" stroke-width="1.6" marker-end="url(#arr-r)"></path>
+
+        <!-- Hộp 1.4 -->
+        <rect x="561" y="72" width="160" height="52" rx="8" fill="var(--bad-soft)" stroke="var(--bad)" stroke-dasharray="3 3"></rect>
+        <text x="641" y="93" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--bad)">Kéo chunk-b.js</text>
+        <text x="641" y="111" font-size="9" text-anchor="middle" fill="var(--bad)">Khựng 400ms · Lỗi nếu redeploy</text>
+
+        <text x="36" y="152" font-size="10" fill="var(--bad)">Hậu quả: Hiệu ứng thác đổ mạng (Waterfall), trải nghiệm gián đoạn, DI con sinh nhiều instance service.</text>
+
+        <!-- Luồng 2: Chuẩn Senior -->
+        <rect x="20" y="195" width="720" height="165" rx="14" fill="var(--surface)" stroke="var(--good)" stroke-width="1.5"></rect>
+        <rect x="36" y="209" width="285" height="26" rx="6" fill="var(--good-soft)"></rect>
+        <text x="46" y="227" font-size="11" font-weight="700" fill="var(--good)" font-family="monospace">✓ KIẾN TRÚC SENIOR (COARSE-GRAINED + PRELOAD)</text>
+
+        <!-- Hộp 2.1 -->
+        <rect x="36" y="247" width="175" height="58" rx="8" fill="var(--surface-2)" stroke="var(--line)"></rect>
+        <text x="123" y="269" font-size="11" font-weight="700" text-anchor="middle" fill="currentColor">Vào Feature Kho</text>
+        <text x="123" y="287" font-size="9.5" text-anchor="middle" fill="var(--muted)">1 gói kho.js (gồm mọi tab)</text>
+
+        <!-- Mũi tên 2.1 -> 2.2 -->
+        <path d="M211 276 L245 276" fill="none" stroke="var(--good)" stroke-width="1.6" marker-end="url(#arr-r)"></path>
+
+        <!-- Hộp 2.2 -->
+        <rect x="251" y="247" width="210" height="58" rx="8" fill="var(--good-soft)" stroke="var(--good)"></rect>
+        <text x="356" y="269" font-size="11" font-weight="700" text-anchor="middle" fill="var(--good)">withPreloading ngầm</text>
+        <text x="356" y="287" font-size="9.5" text-anchor="middle" fill="var(--good)">Tải sẵn feature Báo cáo lúc rảnh</text>
+
+        <!-- Mũi tên 2.2 -> 2.3 -->
+        <path d="M461 276 L495 276" fill="none" stroke="var(--good)" stroke-width="1.6" marker-end="url(#arr-r)"></path>
+
+        <!-- Hộp 2.3 -->
+        <rect x="501" y="247" width="220" height="58" rx="8" fill="var(--surface-2)" stroke="var(--good)"></rect>
+        <text x="611" y="269" font-size="11" font-weight="700" text-anchor="middle" fill="currentColor">Chuyển màn hình: 0ms</text>
+        <text x="611" y="287" font-size="9.5" text-anchor="middle" fill="var(--good)">Tức thì, mượt mà, giữ nguyên State</text>
+
+        <text x="36" y="338" font-size="10" fill="var(--good)">Lợi ích: Tối ưu đồng thời thời gian tải đầu (FCP) lẫn độ mượt phản hồi khi bấm (INP), miễn nhiễm lỗi deploy.</text>
+      </svg>
+    </div>
+  </figure>
 </section>
 
 <section>
@@ -289,34 +379,103 @@ pre .gl::after,pre .gl::before{display:none}
     <div class="panel pro">
       <h3><span class="dot">+</span>Mặt lợi</h3>
       <ul>
-        <li><b>URL trở thành trạng thái chia sẻ được:</b> gửi link cho đồng nghiệp là họ thấy đúng màn hình đó.</li>
-        <li><b>Nút Back/Forward của trình duyệt hoạt động đúng</b> mà không phải viết gì thêm.</li>
-        <li><b>Chuyển màn mượt,</b> giữ nguyên state chung và không tải lại toàn bộ ứng dụng.</li>
-        <li><b>Là điểm móc cho lazy loading, guard, resolver</b> — mọi thứ về sau đều gắn vào bảng route.</li>
+        <li><b>URL thành trạng thái chia sẻ được:</b> gửi liên kết chứa query param là người khác mở đúng dữ liệu đã lọc.</li>
+        <li><b>Điều hướng tiến/lùi (Back/Forward) tự nhiên:</b> lịch sử trình duyệt hoạt động chuẩn chỉnh mà không cần can thiệp tay.</li>
+        <li><b>Chuyển màn hình không tải lại trang:</b> giữ nguyên bộ nhớ chung, không chớp giật giao diện.</li>
+        <li><b>Điểm neo cho kiến trúc tối ưu:</b> gắn kết nhịp nhàng với Guard bảo mật, Resolver nạp dữ liệu và tải lười đúng chỗ.</li>
+        <li><b>Phân tách gói theo vai trò người dùng:</b> khu vực quản trị (Admin) không bao giờ bị tải về máy của khách vãng lai.</li>
       </ul>
       <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
-<pre><code>&lt;a [routerLink]="['/kho', kho.id]" [queryParams]="{ tab: 'ton' }"&gt;Xem&lt;/a&gt;
-<span class="cm">// URL: /kho/12?tab=ton — gửi cho đồng nghiệp là họ mở đúng màn đó,</span>
-<span class="cm">// và nút Back của trình duyệt hoạt động đúng mà không viết thêm dòng nào.</span></code></pre></div>
+<pre><code><span class="cm">// URL có chiều sâu, chia sẻ ngay cho đồng nghiệp:</span>
+&lt;a [routerLink]="['/kho', kho.id]" [queryParams]="{ tab: 'ton' }"&gt;Xem&lt;/a&gt;
+<span class="cm">// Kết quả: /kho/12?tab=ton — đồng nghiệp bấm vào thấy ngay tab tồn kho,</span>
+<span class="cm">// nút Back/Forward trên chuột và bàn phím hoạt động hoàn hảo.</span></code></pre></div>
     </div>
     <div class="panel con">
       <h3><span class="dot">−</span>Mặt hại</h3>
       <ul>
-        <li><b>Thứ tự route quan trọng.</b> Đặt <code>'**'</code> nhầm chỗ là nuốt hết mọi đường dẫn phía sau.</li>
-        <li><b>Component không tự dựng lại</b> khi chỉ đổi tham số trên cùng một route — phải lắng nghe <code>paramMap</code>.</li>
-        <li><b>Đường dẫn là chuỗi,</b> gõ sai không ai báo cho tới lúc chạy.</li>
-        <li><b>Deep link cần máy chủ cấu hình đúng,</b> nếu không F5 giữa chừng sẽ ra 404.</li>
+        <li><b>Thảm hoạ khi lạm dụng tải lười:</b> xé vụn từng tab gây khựng mạng (waterfall) và xoay spinner liên tục.</li>
+        <li><b>Nguy cơ sập ứng dụng khi Deploy:</b> băm quá nhiều chunk làm tăng vọt rủi ro lỗi <code>ChunkLoadError</code> khi máy chủ lên bản mới.</li>
+        <li><b>Bẫy đa thực thể Service (Multi-instance):</b> lazy module sinh ra injector con, dễ vô tình tạo thêm bản sao service làm sai lệch dữ liệu.</li>
+        <li><b>Component không tự khởi tạo lại:</b> khi chỉ đổi param trên cùng một route (như <code>/kho/1</code> sang <code>/kho/2</code>), <code>ngOnInit</code> không chạy lại.</li>
+        <li><b>Thứ tự khai báo nghiêm ngặt:</b> đặt nhầm route wildcard (<code>'**'</code>) lên đầu là nuốt chửng toàn bộ các đường dẫn hợp lệ phía sau.</li>
       </ul>
       <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
-<pre><code><span class="kw">const</span> routes = [
-  { path: <span class="str">'**'</span>, component: KhongTimThay },   <span class="cm">// ✗ đặt ĐẦU danh sách</span>
-  { path: <span class="str">'kho'</span>, component: DsKho },        <span class="cm">// không bao giờ tới được</span>
-];
+<pre><code><span class="cm">// ✗ Bệnh nghiện băm nhỏ: tách từng tab con thành lazy route riêng</span>
+{
+  path: <span class="str">'kho/:id'</span>,
+  component: ChiTietKhoComponent,
+  children: [
+    { path: <span class="str">'thong-tin'</span>, loadComponent: () =&gt; import(<span class="str">'./tab-info'</span>)... }, <span class="cm">// ✗ chunk 4KB</span>
+    { path: <span class="str">'ton-kho'</span>, loadComponent: () =&gt; import(<span class="str">'./tab-stock'</span>)... },  <span class="cm">// ✗ chunk 5KB</span>
+  ]
+}
+<span class="cm">// Kết quả: người dùng click qua lại giữa 2 tab liên tục bị khựng để tải JS!</span>
 
-<span class="cm">// Và component không tự dựng lại khi chỉ đổi tham số:</span>
-<span class="cm">// /kho/1 → /kho/2 : ngOnInit KHÔNG chạy lại, màn hình vẫn hiện kho 1</span>
-<span class="cm">// chữa: lắng nghe route.paramMap thay vì đọc snapshot một lần</span></code></pre></div>
+<span class="cm">// ✗ Bẫy không dựng lại component khi đổi ID:</span>
+<span class="cm">// /kho/1 -&gt; /kho/2: ngOnInit KHÔNG chạy lại!</span>
+<span class="cm">// Chữa: Dùng input() mới hoặc toSignal(route.paramMap)</span></code></pre></div>
     </div>
+  </div>
+
+  <div class="callout good col">
+    <p><strong>Quy tắc sống chung an toàn (Góc nhìn Kiến trúc sư):</strong></p>
+    <ul style="margin:8px 0 0;padding-left:20px;line-height:1.65">
+      <li><strong>Chia thô theo biên giới nghiệp vụ (Coarse-grained Boundaries):</strong> Chỉ áp dụng lazy loading ở cấp <em>Feature / Domain lớn</em> hoặc <em>phân quyền tài khoản</em> (ví dụ: Auth, Dashboard, Admin, Báo cáo lớn). Không bao giờ lazy load các màn hình nằm chung một luồng thao tác bắt buộc (luồng tạo đơn hàng, các bước wizard, các tab chi tiết).</li>
+      <li><strong>Bật tải trước ngầm (Preloading Strategy):</strong> Sau khi màn hình đầu tiên hiện lên, để Angular âm thầm tải sẵn các gói còn lại vào bộ nhớ đệm (cache) bằng <code>PreloadAllModules</code> hoặc chiến lược tải theo liên kết hiển thị trong khung nhìn.</li>
+      <li><strong>Dùng <code>@defer</code> thay vì băm nhỏ Router:</strong> Nếu trong trang có một biểu đồ nặng hay khung bình luận cần hoãn tải, hãy dùng <strong>Deferrable Views</strong> (<code>@defer (on viewport)</code>) ở cấp <strong>template</strong> (mẫu giao diện), đừng ép router phải gánh việc băm nhỏ này!</li>
+    </ul>
+<pre><code><span class="cm">// app.config.ts — Cấu hình định tuyến chuẩn mực</span>
+export <span class="kw">const</span> appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter(
+      routes,
+      withComponentInputBinding(),             <span class="cm">// param tự chảy vào input()</span>
+      withPreloading(PreloadAllModules)         <span class="cm">// tải ngầm các feature còn lại lúc rảnh</span>
+    ),
+  ],
+};</code></pre>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Góc nhìn Senior: Tối ưu FCP hay huỷ hoại INP?</h2></div>
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> "Angular Router là cơ chế định tuyến phía máy khách ánh xạ URL sang cây component mà không tải lại trang. Rất nhiều bạn lầm tưởng cứ chia nhỏ thành thật nhiều lazy module hay lazy route thì web càng nhanh. Thực tế, lazy loading chỉ tối ưu cho chỉ số <strong><span class="gl" data-gl="First Contentful Paint — thời gian hiển thị nội dung đầu tiên" tabindex="0">FCP</span></strong>. Nếu lạm dụng băm nhỏ từng route con hay từng tab, bạn đang đánh đổi chỉ số <strong><span class="gl" data-gl="Interaction to Next Paint — độ trễ phản hồi tương tác" tabindex="0">INP</span></strong> và phá nát trải nghiệm người dùng vì hiệu ứng thác đổ mạng (waterfall) cùng nguy cơ lỗi <code>ChunkLoadError</code> khi triển khai mã nguồn mới. Lời giải chuẩn của một Senior là: chỉ lazy load ở biên giới nghiệp vụ lớn, kết hợp bật <code>withPreloading</code> để tải ngầm lúc rảnh rỗi, và dùng <code>@defer</code> ở cấp template cho các thành phần con."</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Có nên cấu hình lazy load cho tất cả các route trong hệ thống không?</h3>
+      <p>Nhà tuyển dụng muốn xem bạn có tư duy đánh đổi (trade-off) thực chiến hay chỉ học vẹt lý thuyết trên mạng.</p>
+      <p><strong>Cách trả lời ăn điểm:</strong> Tuyệt đối không! Hãy phân biệt giữa Initial Load (lần mở đầu tiên) và Runtime User Experience (trải nghiệm khi đang thao tác). Với các route nằm trong luồng nghiệp vụ cốt lõi mà người dùng chắc chắn sẽ đi qua (ví dụ: giỏ hàng &rarr; điền địa chỉ &rarr; thanh toán), việc lazy load từng bước sẽ biến trải nghiệm thành chuỗi giật cục chờ mạng tải file JS. Hãy gộp chúng chung một gói feature và chỉ tách lazy load cho những phân vùng riêng biệt như bảng điều khiển Admin, trang thống kê nặng, hoặc các màn hình hiếm khi mở tới.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Phân loại Senior</span>
+      <h3>Sự khác biệt về Dependency Injection giữa Eager Route và Lazy Route / Lazy Module là gì?</h3>
+      <p>Kiểm tra độ am hiểu sâu sắc về kiến trúc cây tiêm phụ thuộc (DI Hierarchy) trong Angular.</p>
+      <p><strong>Cách trả lời ăn điểm:</strong> Tuyến thông thường (Eager route) chia sẻ chung cây tiêm phụ thuộc gốc (Root EnvironmentInjector). Khi tải lười một NgModule (Lazy Module) hoặc khai báo mảng <code>providers: [...]</code> ngay trên định nghĩa route, Angular bắt buộc phải tạo ra một EnvironmentInjector con độc lập. Nếu service không dùng cú pháp <code>@Injectable({ providedIn: 'root' })</code> mà lại khai báo trong mảng <code>providers</code> của lazy route, Angular sẽ tạo ra một bản thể (instance) service hoàn toàn mới, làm gãy vỡ tính duy nhất (singleton) và gây sai lệch trạng thái dữ liệu dùng chung.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag bad">Sự cố thực tế</span>
+      <h3>Ứng dụng SPA gặp lỗi ChunkLoadError khi người dùng thao tác sau khi hệ thống vừa deploy bản mới. Xử lý thế nào?</h3>
+      <p>Một tình huống kinh điển ở mọi dự án Angular quy mô lớn khi tách nhiều lazy chunk.</p>
+      <p><strong>Cách trả lời ăn điểm:</strong> Khi deploy bản mới, các file JS cũ trên máy chủ bị xoá hoặc đổi mã băm. Nếu người dùng đang mở tab từ phiên cũ và click vào một lazy route chưa tải, trình duyệt sẽ nhận mã lỗi 404 và văng ra <code>ChunkLoadError</code>. Giải pháp: Lắng nghe sự kiện <code>Router.events</code> lọc lấy sự kiện <code>NavigationError</code>. Kiểm tra thông điệp lỗi nếu chứa chuỗi liên quan đến chunk thất bại, ta tiến hành ép trình duyệt tải lại trang (<code>window.location.reload()</code>) để nạp file <code>index.html</code> và các chunk mới nhất. Lưu ý phải gắn cờ vào <code>sessionStorage</code> để chặn vòng lặp tải lại trang vô tận nếu máy chủ thực sự gặp sự cố.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Kiến trúc v17+</span>
+      <h3>Khi nào nên dùng Lazy Route (loadComponent) và khi nào nên dùng Deferrable Views (@defer)?</h3>
+      <p>Đánh giá khả năng làm chủ các tính năng hiện đại nhất của Angular để tối ưu mã nguồn.</p>
+      <p><strong>Cách trả lời ăn điểm:</strong> Dùng <strong>Lazy Route</strong> khi ranh giới chia cắt gắn liền với <em>địa chỉ URL</em> và <em>quyền truy cập</em> (ví dụ: chuyển từ trang Dashboard sang trang Cài đặt). Dùng <strong>Deferrable Views (<code>@defer</code>)</strong> khi muốn trì hoãn tải các thành phần giao diện <em>nằm bên trong cùng một màn hình</em> (ví dụ: đồ thị thống kê nằm cuộn bên dưới nếp gấp, hộp bình luận, modal popup chỉ mở khi bấm nút). Đừng bao giờ tạo ra các route ảo chỉ để phục vụ mục đích lười tải một thành phần giao diện nhỏ.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Câu trả lời non tay cần tránh:</strong> "Cứ tách càng nhiều lazy module và lazy component thì điểm Google Lighthouse càng cao, trang web càng tối ưu." &mdash; Senior hiểu rằng điểm số bundle ban đầu chỉ là một phần câu chuyện. Lạm dụng lazy loading là bạn đang vứt bỏ chỉ số INP, tạo ra trải nghiệm người dùng đứt quãng, tăng nguy cơ lỗi mạng và gây phức tạp hoá cấu trúc phụ thuộc của dự án một cách vô ích.</p>
   </div>
 </section>
 
@@ -325,18 +484,31 @@ pre .gl::after,pre .gl::before{display:none}
   <div class="tbl-scroll"><table>
     <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
     <tbody>
-      <tr><td>router</td><td>Bộ định tuyến — ánh xạ URL sang component.</td></tr>
-      <tr><td>route</td><td>Tuyến — một mục trong bảng định tuyến.</td></tr>
-      <tr><td>router-outlet</td><td>Ô chứa component của route hiện tại.</td></tr>
-      <tr><td>path param</td><td>Tham số nằm trong đường dẫn, ví dụ <code>/kho/12</code>.</td></tr>
-      <tr><td>query param</td><td>Tham số sau dấu <code>?</code>, ví dụ <code>?trang=2</code>.</td></tr>
-      <tr><td>ActivatedRoute</td><td>Đối tượng mô tả route đang hoạt động.</td></tr>
-      <tr><td>deep link</td><td>Link trỏ thẳng vào một màn hình bên trong ứng dụng.</td></tr>
+      <tr><td>router</td><td>Bộ định tuyến — cơ chế phân tích URL để quyết định vẽ giao diện nào.</td></tr>
+      <tr><td>route</td><td>Tuyến đường dẫn — một mục cấu hình trong bảng định tuyến.</td></tr>
+      <tr><td>router-outlet</td><td>Ô cắm chứa thành phần giao diện — vị trí nơi component của route hiện tại được gắn vào.</td></tr>
+      <tr><td>path param</td><td>Tham số đường dẫn — phần định danh dữ liệu nằm trực tiếp trong URL (ví dụ: <code>/kho/12</code>).</td></tr>
+      <tr><td>query param</td><td>Tham số truy vấn — phần tuỳ chọn nằm sau dấu hỏi chấm (ví dụ: <code>?tab=ton&amp;trang=2</code>).</td></tr>
+      <tr><td>ActivatedRoute</td><td>Đối tượng chứa thông tin và trạng thái của tuyến đường đang hiển thị.</td></tr>
+      <tr><td>deep link</td><td>Liên kết sâu — đường dẫn trực tiếp mở đúng màn hình và trạng thái bên trong ứng dụng.</td></tr>
+      <tr><td>lazy loading</td><td>Tải lười / tải trễ — kỹ thuật chỉ tải mã nguồn khi người dùng thật sự cần tới.</td></tr>
+      <tr><td>lazy module</td><td>Mô-đun tải trễ — khối chức năng NgModule được tách riêng và chỉ tải khi truy cập route.</td></tr>
+      <tr><td>chunk / bundle</td><td>Mảnh gói / gói mã nguồn — tệp JavaScript được bộ đóng gói cắt ra sau khi biên dịch.</td></tr>
+      <tr><td>initial bundle</td><td>Gói mã nguồn tải ban đầu — dung lượng JS bắt buộc phải tải ngay khi mở app lần đầu.</td></tr>
+      <tr><td>network waterfall</td><td>Hiệu ứng thác đổ mạng — các yêu cầu tải tài nguyên bị phụ thuộc, nối đuôi nhau gây trễ.</td></tr>
+      <tr><td>latency</td><td>Độ trễ mạng — khoảng thời gian tín hiệu truyền từ máy khách tới máy chủ và ngược lại.</td></tr>
+      <tr><td>EnvironmentInjector</td><td>Bộ tiêm phụ thuộc cấp môi trường — nơi quản trị vòng đời và thực thể của các dịch vụ.</td></tr>
+      <tr><td>singleton</td><td>Mẫu đơn thực thể — đảm bảo một dịch vụ chỉ tồn tại duy nhất một bản thể trong suốt ứng dụng.</td></tr>
+      <tr><td>preloading</td><td>Chiến lược tải trước ngầm — tự động nạp các gói mã nguồn phụ khi trình duyệt rảnh rỗi.</td></tr>
+      <tr><td>ChunkLoadError</td><td>Lỗi không thể tải mảnh mã nguồn — thường phát sinh khi phiên bản trên máy chủ vừa cập nhật.</td></tr>
+      <tr><td>FCP (First Contentful Paint)</td><td>Thời gian hiển thị phần tử nội dung đầu tiên lên màn hình của người dùng.</td></tr>
+      <tr><td>INP (Interaction to Next Paint)</td><td>Chỉ số đo lường độ trễ phản hồi của giao diện khi người dùng tương tác bấm nút hay gõ phím.</td></tr>
+      <tr><td>deferrable views (@defer)</td><td>Cơ chế trì hoãn kết xuất giao diện ở cấp mẫu (template) trong Angular hiện đại.</td></tr>
     </tbody>
   </table></div>
 </section>
 <nav class="pager"><a class="prev" href="day-26-rxjs-subject.html"><span class="dir">← Bài trước</span><span class="nm">Day 26 — Subject và Multicasting</span></a><a class="next" href="day-28-router-feature-modules.html"><span class="dir">Bài tiếp →</span><span class="nm">Day 28 — Feature routes, route con và service theo route</span></a></nav>
-<footer class="page-foot col"><p>Sổ tay eli5 · Angular · trang 27/55</p></footer>
+<footer class="page-foot col"><p>Sổ tay eli5 · Angular · trang 27/56</p></footer>
 </div>
 </body>
 </html>

@@ -265,18 +265,18 @@ pre .gl::after,pre .gl::before{display:none}
 </header>
 <section class="col">
   <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Đại từ "tôi" của hàm</h2></div>
-  <p>Trong tiếng Việt, chữ “tôi” trỏ vào ai là tuỳ người đang nói. <code>this</code> đúng như vậy: nó không cố định, mà được xác định lại <strong>mỗi lần hàm được gọi</strong>, dựa trên <em>cách gọi</em>.</p>
+  <p>Trong tiếng Việt, chữ “tôi” trỏ vào ai là tuỳ người đang nói. <code>this</code> đúng như vậy: nó không cố định, mà được xác định lại <strong>mỗi lần hàm được gọi</strong>, dựa trên <em><span class="gl" data-gl="call site" tabindex="0">cách gọi</span></em>.</p>
   <p>Vậy nên nhìn vào chỗ hàm được <em>viết</em> sẽ không đoán được <code>this</code>. Phải nhìn vào chỗ hàm được <em>gọi</em>. Đây là điểm khác biệt lớn nhất so với biến thường (vốn theo lexical scope — phạm vi tĩnh).</p>
 </section>
 
 <section class="col">
   <div class="sec-head"><p class="eyebrow">Cơ chế</p><h2>Năm luật, xét từ trên xuống</h2></div>
   <ol class="steps">
-    <li><span><b>Arrow function</b> (hàm mũi tên) — không có <code>this</code> của riêng nó, mượn luôn <code>this</code> của nơi bao ngoài lúc viết code. Luật này đè lên tất cả các luật dưới.</span></li>
+    <li><span><b>Arrow function</b> (hàm mũi tên) — không có <code>this</code> của riêng nó, mượn luôn <code>this</code> của <span class="gl" data-gl="enclosing scope" tabindex="0">nơi bao ngoài</span> lúc viết code. Luật này đè lên tất cả các luật dưới.</span></li>
     <li><span><b>Gọi bằng <code>new</code></b> — <code>this</code> là object vừa được tạo ra.</span></li>
     <li><span><b>Gọi qua <code>call</code> / <code>apply</code> / <code>bind</code></b> — <code>this</code> là thứ bạn chỉ định.</span></li>
     <li><span><b>Gọi như method của object</b> — <code>a.b()</code> thì <code>this</code> là <code>a</code>. Chỉ tính dấu chấm <em>cuối cùng</em>.</span></li>
-    <li><span><b>Gọi trần</b> — <code>f()</code>: <code>this</code> là <code>undefined</code> ở strict mode, là <code>globalThis</code>/<code>window</code> ở sloppy mode.</span></li>
+    <li><span><b>Gọi trần</b> — <code>f()</code>: <code>this</code> là <code>undefined</code> ở strict mode (chế độ nghiêm ngặt — bật bằng <code>'use strict'</code>, và mọi ES module đều mặc định bật), là <code>globalThis</code>/<code>window</code> (đối tượng toàn cục — gốc chứa mọi thứ của môi trường) ở sloppy mode (chế độ dễ dãi — mặc định của script kiểu cũ).</span></li>
   </ol>
 <pre><code><span class="kw">const</span> may = {
   ten: <span class="str">'Máy in A'</span>,
@@ -292,7 +292,7 @@ tach();                       <span class="cm">// TypeError / undefined — lu�
 
 tach.call(may);               <span class="cm">// 'Máy in A' — luật 3</span></code></pre>
   <div class="callout bad">
-    <p><strong>Cạm bẫy số một:</strong> truyền method đi làm callback (hàm gọi lại) là <em>tách</em> nó khỏi object — <code>setTimeout(may.inThuong, 100)</code> hay <code>ds.map(o.xuLy)</code> đều mất <code>this</code>. Cách chữa: <code>may.inThuong.bind(may)</code>, hoặc bọc lại <code>() =&gt; may.inThuong()</code>, hoặc khai method bằng class field mũi tên.</p>
+    <p><strong>Cạm bẫy số một:</strong> truyền method đi làm callback (hàm gọi lại) là <em>tách</em> nó khỏi object — <code>setTimeout(may.inThuong, 100)</code> hay <code>ds.map(o.xuLy)</code> đều mất <code>this</code>. Cách chữa: <code>may.inThuong.bind(may)</code>, hoặc bọc lại <code>() =&gt; may.inThuong()</code>, hoặc khai method (phương thức — hàm gắn trên một đối tượng) bằng class field (thuộc tính khai thẳng trong thân class) mũi tên.</p>
   </div>
 </section>
 
@@ -308,8 +308,8 @@ tach.call(may);               <span class="cm">// 'Máy in A' — luật 3</span
       <tr><td>ham.bind(x)()</td><td><code>x</code>, khoá vĩnh viễn</td></tr>
       <tr><td>() =&gt; ...</td><td><code>this</code> của nơi bao ngoài lúc viết</td></tr>
       <tr><td>Trong class method</td><td>Instance (thể hiện) đang gọi</td></tr>
-      <tr><td>btn.addEventListener('click', f)</td><td>Chính phần tử DOM (nếu <code>f</code> không phải arrow)</td></tr>
-      <tr><td>Trong ES module, cấp cao nhất</td><td><code>undefined</code></td></tr>
+      <tr><td>btn.addEventListener('click', f)</td><td>Chính <span class="gl" data-gl="element" tabindex="0">phần tử</span> DOM (cây đối tượng biểu diễn trang web) — nếu <code>f</code> không phải arrow</td></tr>
+      <tr><td>Trong ES module (file JS dùng <code>import</code>/<code>export</code>), cấp cao nhất</td><td><code>undefined</code></td></tr>
     </tbody>
   </table></div>
 </section>
@@ -321,9 +321,9 @@ tach.call(may);               <span class="cm">// 'Máy in A' — luật 3</span
       <h3><span class="dot">+</span>Mặt lợi</h3>
       <ul>
         <li><b>Một hàm dùng cho nhiều đối tượng.</b> Method viết một lần trên prototype (nguyên mẫu), dùng chung cho hàng nghìn instance — tiết kiệm bộ nhớ.</li>
-        <li><b>Nền tảng của lập trình hướng đối tượng trong JS.</b> <code>class</code>, kế thừa, mixin đều dựa vào <code>this</code> động.</li>
+        <li><b>Nền tảng của <span class="gl" data-gl="object-oriented programming (OOP)" tabindex="0">lập trình hướng đối tượng</span> trong JS.</b> <code>class</code>, <span class="gl" data-gl="inheritance" tabindex="0">kế thừa</span>, mixin (trộn — nhét sẵn một bộ method vào nhiều lớp khác nhau) đều dựa vào <code>this</code> động.</li>
         <li><b>Cho phép "mượn" method.</b> Kết hợp với <code>call/apply</code>, một hàm có thể phục vụ đối tượng nó chưa từng biết.</li>
-        <li><b>Arrow function giải quyết gọn phần khó.</b> Trong callback, arrow giữ nguyên <code>this</code> của component — rất hợp với Angular/React.</li>
+        <li><b>Arrow function giải quyết gọn phần khó.</b> Trong callback, arrow giữ nguyên <code>this</code> của component (thành phần giao diện) — rất hợp với Angular/React.</li>
       </ul>
       <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
 <pre><code><span class="kw">const</span> chung = { in() { console.log(<span class="kw">this</span>.ten); } };
@@ -335,9 +335,9 @@ a.in(); b.in();          <span class="out">// Kho A / Kho B — một hàm phụ
       <h3><span class="dot">−</span>Mặt hại</h3>
       <ul>
         <li><b>Khó đoán khi đọc.</b> Phải tìm ra chỗ <em>gọi</em> mới biết <code>this</code> là gì — ngược với mọi thứ khác trong JavaScript.</li>
-        <li><b>Rất dễ mất ngữ cảnh.</b> Tách method ra biến, truyền làm callback, destructuring (bóc tách) — đều làm mất <code>this</code> một cách âm thầm.</li>
+        <li><b>Rất dễ mất <span class="gl" data-gl="context" tabindex="0">ngữ cảnh</span>.</b> Tách method ra biến, truyền làm callback, destructuring (bóc tách) — đều làm mất <code>this</code> một cách âm thầm.</li>
         <li><b>Arrow không dùng được ở mọi chỗ.</b> Không làm method của <code>prototype</code>, không làm constructor, không nhận <code>this</code> của phần tử DOM trong event handler.</li>
-        <li><b>Sửa bằng <code>bind</code> lại sinh vấn đề khác.</b> Mỗi lần <code>bind</code> là một hàm mới, phá vỡ so sánh tham chiếu (xem bài bind phần 2).</li>
+        <li><b>Sửa bằng <code>bind</code> lại sinh vấn đề khác.</b> Mỗi lần <code>bind</code> là một hàm mới, phá vỡ so sánh <span class="gl" data-gl="reference" tabindex="0">tham chiếu</span> (xem bài bind phần 2).</li>
         <li><b>Khác nhau giữa hai chế độ.</b> Cùng một hàm cho <code>this</code> khác nhau ở strict và sloppy mode.</li>
       </ul>
       <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
@@ -360,6 +360,41 @@ may.in();                       <span class="out">// undefined — arrow không 
 </section>
 
 <section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> <code>this</code> không do chỗ <em>viết</em> hàm quyết định mà do chỗ <em>gọi</em>. Xét năm luật từ trên xuống: arrow mượn <code>this</code> của nơi bao ngoài → <code>new</code> cho object mới → <code>call/apply/bind</code> cho thứ mình chỉ định → có dấu chấm thì lấy vế trái dấu chấm cuối → gọi trần thì <code>undefined</code> ở strict mode. Hệ quả thực tế duy nhất cần nhớ: <b>mất dấu chấm là mất <code>this</code></b>, nên truyền method đi làm callback luôn phải bọc lại.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3>Arrow function khác hàm thường chỗ nào về <code>this</code>?</h3>
+      <p>Đừng nói "arrow tự bind <code>this</code>" — nói <b>arrow không có <code>this</code> của riêng nó</b>. Gặp <code>this</code>, nó tra ngược lên phạm vi bao ngoài <em>lúc viết code</em>, đúng như tra một biến thường. Vế sau mới ăn điểm: vì thế <code>call</code>, <code>apply</code>, <code>bind</code> <b>vô hiệu</b> với arrow — và im lặng, không báo lỗi gì.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>const f = obj.method; f()</code> in ra gì?</h3>
+      <p><code>undefined</code>, rồi thường là <code>TypeError</code>. Lý do phải nói được: <code>obj.method</code> chỉ lấy <em>giá trị hàm</em> ra, <code>this</code> không dính theo hàm — nó được quyết định tại thời điểm gọi, mà lúc gọi thì không còn dấu chấm nào. Cùng một cơ chế với <code>ds.forEach(obj.xuLy)</code> và <code>setTimeout(obj.chay, 0)</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Trong callback của <code>setTimeout</code>, <code>this</code> là gì?</h3>
+      <p>Không phải <code>undefined</code> như luật "gọi trần" gợi ý, vì hàm do <em>môi trường</em> gọi chứ không phải code của bạn: trên trình duyệt là <code>window</code> (kể cả ở strict mode), trong Node là đối tượng <code>Timeout</code>. Nói được rằng <b>chủ thể gọi quyết định</b>, chứ không phải chỗ đặt hàm, là đã đúng trọng tâm cả bài.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Class field mũi tên sửa được lỗi <code>this</code>, cái giá là gì?</h3>
+      <p>Nó chạy khi khởi tạo, nên arrow chộp đúng <code>this</code> của instance — mỗi instance <b>một hàm riêng</b>. Cái giá: hàm không còn nằm trên <code>prototype</code> nên không dùng chung được bộ nhớ, lớp con <b>không override được</b> qua prototype và <b>không gọi được <code>super</code></b>, và test khó thay thế hơn. Với vài chục instance thì không sao; với danh sách hàng nghìn dòng thì phải cân nhắc.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "Arrow function bind <code>this</code> vào component." Đó là mô tả <em>kết quả</em> trong một tình huống, không phải cơ chế — và nó sai ngay khi đổi chỗ đặt hàm: một arrow viết ở cấp cao nhất của ES module cho <code>this</code> là <code>undefined</code>, không phải <code>window</code>, cũng chẳng phải component nào. Arrow <b>không bind gì cả</b>; nó chỉ đơn giản là không có <code>this</code>, nên phép tra chạy tiếp ra ngoài.</p>
+  </div>
+</section>
+
+<section>
   <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
   <div class="tbl-scroll"><table>
     <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
@@ -371,14 +406,20 @@ may.in();                       <span class="out">// undefined — arrow không 
       <tr><td>constructor</td><td>Hàm khởi tạo, chạy khi dùng <code>new</code>.</td></tr>
       <tr><td>callback</td><td>Hàm gọi lại — hàm đưa cho bên khác giữ để chạy hộ.</td></tr>
       <tr><td>arrow function</td><td>Hàm mũi tên — không có <code>this</code> riêng.</td></tr>
+      <tr><td>strict mode</td><td>Chế độ nghiêm ngặt — biến nhiều lỗi im lặng thành lỗi thật; ES module luôn bật sẵn.</td></tr>
+      <tr><td>sloppy mode</td><td>Chế độ dễ dãi — mặc định của script kiểu cũ, nơi <code>this</code> trần thành <code>window</code>.</td></tr>
+      <tr><td>globalThis</td><td>Đối tượng toàn cục — <code>window</code> trên trình duyệt, <code>global</code> trong Node.</td></tr>
       <tr><td>event handler</td><td>Hàm xử lý sự kiện (click, input…).</td></tr>
       <tr><td>destructuring</td><td>Bóc tách — lấy thuộc tính ra biến rời, làm mất liên kết với object.</td></tr>
+      <tr><td>DOM</td><td>Cây đối tượng biểu diễn trang web; mỗi thẻ HTML là một nút trong cây đó.</td></tr>
+      <tr><td>call site</td><td>Chỗ gọi — vị trí hàm được gọi, thứ quyết định <code>this</code>.</td></tr>
+      <tr><td>mixin</td><td>Trộn — nhét sẵn một bộ method dùng chung vào nhiều lớp khác nhau.</td></tr>
       <tr><td>class field</td><td>Thuộc tính khai thẳng trong thân class, thường dùng với arrow để khoá <code>this</code>.</td></tr>
     </tbody>
   </table></div>
 </section>
 <nav class="pager"><a class="prev" href="loose-vs-strict-equality.html"><span class="dir">← Bài trước</span><span class="nm">== và === — so sánh lỏng và so sánh nghiêm</span></a><a class="next" href="call-apply.html"><span class="dir">Bài tiếp →</span><span class="nm">Fn.call() và Fn.apply()</span></a></nav>
-<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 8/13</p></footer>
+<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 8/18</p></footer>
 </div>
 </body>
 </html>

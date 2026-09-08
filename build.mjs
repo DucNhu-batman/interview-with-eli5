@@ -28,7 +28,7 @@ const FONTS =
 const JS_ORDER = [
   'scope', 'hoisting', 'use-strict', 'primitive-vs-reference', 'pass-by-value-vs-reference',
   'immutable-vs-mutable', 'loose-vs-strict-equality', 'this-keyword', 'call-apply', 'bind-part-1', 'bind-part-2', 'closure-var-settimeout',
-  'null-vs-undefined',
+  'null-vs-undefined', 'event-loop', 'browser-storage', 'nullish-logical-operators', 'service-worker', 'async-javascript',
 ];
 // Track rxjs cũng khai tay thứ tự bài (tên file không mang số thứ tự).
 const RXJS_ORDER = [
@@ -42,6 +42,7 @@ const RXJS_ORDER = [
   'subject-va-bien-the',
   'share-vs-sharereplay',
   'behaviorsubject-vs-replaysubject',
+  'promise-vs-observable',
 ];
 // Track angular đánh số sẵn trong tên file (day-01-…) nên chỉ cần sort; nhóm suy ra từ số ngày.
 const NG_GROUPS = [
@@ -50,7 +51,7 @@ const NG_GROUPS = [
   [19, 26, 'Lập trình phản ứng & RxJS', 'Observable và bộ toán tử dùng hằng ngày trong Angular.'],
   [27, 32, 'Định tuyến hệ thống — Angular Router', 'Route, lazy loading, guard và resolver.'],
   [33, 37, 'Làm việc với biểu mẫu — Forms', 'Template-driven, reactive form và async validator.'],
-  [38, 55, 'Chủ đề nâng cao & thực hành', 'Dynamic component, micro frontend, CDK, directive nâng cao, change detection, render hook, zoneless, rò rỉ bộ nhớ, kiểu dữ liệu TypeScript.'],
+  [38, 56, 'Chủ đề nâng cao & thực hành', 'Dynamic component, micro frontend, CDK, directive nâng cao, change detection, render hook, zoneless, rò rỉ bộ nhớ, kiểu dữ liệu TypeScript, tối ưu hiệu năng toàn diện.'],
 ];
 // Trang đứng riêng trong angular/: tự dựng, KHÔNG sinh từ _content/, chỉ được liệt kê ở mục lục.
 const NG_EXTRA = [
@@ -71,8 +72,8 @@ const TRACKS = {
   },
   angular: {
     label: 'Angular',
-    title: 'Sổ tay Angular 55 ngày',
-    lede: 'Lộ trình 55 bài từ dựng môi trường tới rò rỉ bộ nhớ — mỗi bài một trang, luôn kèm phần được gì / mất gì.',
+    title: 'Sổ tay Angular 56 ngày',
+    lede: 'Lộ trình 56 bài từ dựng môi trường tới tối ưu hiệu năng toàn diện — mỗi bài một trang, luôn kèm phần được gì / mất gì.',
   },
   rxjs: {
     label: 'RxJS',
@@ -312,7 +313,7 @@ const home = page({
     '<a href="js/index.html"><span class="cnt">' + nJs + ' bài</span><h2>JavaScript</h2>' +
     '<p>Scope, hoisting, strict mode, tham trị – tham chiếu, bất biến, == và ===, this, bind/call, closure.</p></a>\n' +
     '<a href="angular/index.html"><span class="cnt">' + nNg + ' bài</span><h2>Angular</h2>' +
-    '<p>Lộ trình 55 ngày: directive, DI, RxJS, router, form, dynamic component, render hook.</p></a>\n' +
+    '<p>Lộ trình 56 ngày: directive, DI, RxJS, router, form, dynamic component, render hook, tối ưu hiệu năng.</p></a>\n' +
     '<a href="rxjs/index.html"><span class="cnt">' + nRx + ' bài</span><h2>RxJS</h2>' +
     '<p>Đi sâu từng nhóm toán tử: biến đổi, lọc, kết hợp, xử lý lỗi — chọn cái nào và hỏng ở đâu.</p></a>\n' +
     '</div></section>',

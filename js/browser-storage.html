@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="vi" data-track="js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Năm cái kho của trình duyệt — cái nào đựng gì</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Sổ tay eli5 — hệ token dùng chung cho mọi trang. Không sửa trong file .html đã build:
+   sửa ở đây rồi chạy `node docs/eli5/build.mjs`. */
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EDF0F8; --ink:#161A2B; --muted:#5C6379;
+  --line:#DCE1EE; --accent:#C87518; --accent-soft:#FBEFDF;
+  --good:#12816F; --good-soft:#DFF1ED; --bad:#B92F55; --bad-soft:#FBE6EC;
+  --code-bg:#171A28; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(22,26,43,.06), 0 12px 28px -18px rgba(22,26,43,.35);
+}
+:root[data-track="angular"]{ --accent:#5548C8; --accent-soft:#E9E7FB; }
+:root[data-track="rxjs"]{ --accent:#C2185B; --accent-soft:#FBE3EC; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+    --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+    --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+    --code-bg:#0B0E19; --code-ink:#E7EAF4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+  }
+  :root:not([data-theme="light"])[data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+  :root:not([data-theme="light"])[data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+}
+:root[data-theme="dark"]{
+  --bg:#101322; --surface:#191D2E; --surface-2:#212639; --ink:#ECEFF8; --muted:#A2A9C0;
+  --line:#2C3348; --accent:#F0A63F; --accent-soft:#3A2C15;
+  --good:#41C3AC; --good-soft:#123029; --bad:#F58BA6; --bad-soft:#3A1622;
+  --code-bg:#0B0E19; --code-ink:#E7EAF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 30px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="dark"][data-track="angular"]{ --accent:#A79EFF; --accent-soft:#252347; }
+:root[data-theme="dark"][data-track="rxjs"]{ --accent:#FF8FB8; --accent-soft:#3B1B29; }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.72;
+  font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 90px}
+.col{max-width:66ch}
+h1,h2,h3{font-family:"Baloo 2","Be Vietnam Pro",system-ui,sans-serif;font-weight:800;
+  line-height:1.16;text-wrap:balance;margin:0}
+h1{font-size:clamp(1.95rem,5.4vw,3.05rem);letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,3.4vw,1.95rem);letter-spacing:-.01em}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0 0 1rem}
+a{color:var(--accent);text-underline-offset:3px}
+strong{font-weight:600}
+code,pre,.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);border-radius:5px;padding:.12em .38em}
+/* Trong khối code, <code> KHÔNG được có nền sáng riêng: nền phải trùng nền đen của <pre>,
+   chỉ chữ mới đổi màu. Thiếu reset này thì mỗi dòng code bị tô một vệt trắng. */
+pre code,pre .mono{background:none;border-radius:0;padding:0;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+.crumb{display:flex;gap:8px;align-items:center;padding:22px 0 0;font-family:"JetBrains Mono",monospace;
+  font-size:.76rem;letter-spacing:.06em;color:var(--muted);flex-wrap:wrap}
+.crumb a{color:var(--muted);text-decoration:none}
+.crumb a:hover{color:var(--accent)}
+.crumb .now{color:var(--accent)}
+
+header.hero{padding:44px 0 6px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:.73rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--accent);margin:0 0 12px}
+.lede{font-size:1.12rem;color:var(--muted);font-weight:300;max-width:58ch;margin-top:16px}
+
+section{padding-top:52px}
+.sec-head{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:14px;padding:18px 20px;
+  overflow-x:auto;font-size:.88rem;line-height:1.65;margin:0 0 18px;box-shadow:var(--shadow)}
+pre .cm{color:#8A93AD}
+pre .kw{color:#F0A63F}
+pre .out{color:#41C3AC}
+pre .str{color:#9FD5A0}
+pre b{color:#FFFFFF;font-weight:700}
+
+.board{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+  box-shadow:var(--shadow);margin:0 0 18px}
+.callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 14px 14px 0;
+  padding:16px 20px;margin:22px 0}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout p:last-child{margin-bottom:0}
+.board p:last-child{margin-bottom:0}
+
+.pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:0 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px 20px}
+.panel h3{display:flex;align-items:center;gap:9px;margin-bottom:10px;font-size:1rem}
+.panel .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:.8rem;font-weight:700;font-family:"JetBrains Mono",monospace}
+.panel.pro{border-top:3px solid var(--good)}
+.panel.pro .dot{background:var(--good-soft);color:var(--good)}
+.panel.con{border-top:3px solid var(--bad)}
+.panel.con .dot{background:var(--bad-soft);color:var(--bad)}
+.panel ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px}
+.panel li{font-size:.96rem;line-height:1.6;padding-left:20px;position:relative;color:var(--ink)}
+.panel li::before{position:absolute;left:0;top:0;font-family:"JetBrains Mono",monospace;font-weight:700}
+.panel.pro li::before{content:"+";color:var(--good)}
+.panel.con li::before{content:"\2212";color:var(--bad)}
+.panel li b{font-weight:600}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;
+  display:flex;flex-direction:column}
+.card h3{margin-bottom:6px}
+.card p{font-size:.95rem;color:var(--muted);margin-bottom:12px}
+.card pre{margin:auto 0 0;font-size:.8rem;padding:13px 15px}
+.tag{align-self:flex-start;font-family:"JetBrains Mono",monospace;font-size:.67rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;background:var(--good-soft);color:var(--good);
+  font-weight:700;margin-bottom:10px}
+.tag.warn{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;counter-reset:s}
+/* Marker đánh số phải nằm NGOÀI luồng chữ. Dùng display:flex ở đây là sai: mỗi thẻ inline
+   trong <li> (<code>, <strong>, <em>) trở thành một flex item riêng nên câu chữ bị xé thành
+   từng cột hẹp. Đặt tuyệt đối để <li> vẫn là block bình thường. */
+.steps li{counter-increment:s;position:relative;padding-left:43px;min-height:29px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:3px;width:29px;height:29px;border-radius:9px;
+  background:var(--surface-2);color:var(--accent);font-family:"JetBrains Mono",monospace;font-weight:700;
+  font-size:.82rem;display:grid;place-items:center}
+
+/* MỌI <table> phải nằm trong .tbl-scroll — bảng có min-width nên không bọc là trang bị
+   kéo ngang. Xem quy tắc "Bảng" trong skill eli5-page. */
+.tbl-scroll{overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--line);
+  border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;min-width:560px}
+th,td{text-align:left;padding:12px 17px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:.69rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;background:var(--surface-2);border-bottom:2px solid var(--line)}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 55%, transparent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap;font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--accent)}
+table.plain td:first-child{white-space:normal;font-family:inherit;font-size:inherit;color:inherit}
+td .yes{color:var(--good);font-weight:700}
+td .no{color:var(--bad);font-weight:700}
+
+figure{margin:26px 0 32px}
+.fig-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:18px 16px;box-shadow:var(--shadow)}
+svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+figcaption{margin-top:11px;font-size:.9rem;color:var(--muted);max-width:62ch}
+
+.pager{display:flex;gap:14px;justify-content:space-between;margin-top:56px;flex-wrap:wrap}
+.pager a{flex:1 1 240px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pager a:hover{border-color:var(--accent)}
+.pager .dir{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.pager .nm{font-weight:600;font-size:.96rem;line-height:1.4}
+.pager a.next{text-align:right;align-items:flex-end}
+
+footer.page-foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:.86rem}
+
+.grp{padding-top:44px}
+.grp h2{font-size:1.3rem;margin-bottom:4px}
+.grp .grp-note{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+.idx{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;list-style:none;
+  padding:0;margin:0}
+.idx a{display:flex;flex-direction:column;gap:5px;height:100%;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:15px 17px;text-decoration:none;color:var(--ink)}
+.idx a:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.idx .n{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;color:var(--accent);
+  text-transform:uppercase}
+.idx .t{font-weight:600;line-height:1.4}
+.idx .d{font-size:.88rem;color:var(--muted);line-height:1.55}
+.track-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.track-cards a{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px;
+  text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.track-cards a:hover{border-color:var(--accent)}
+.track-cards h2{font-size:1.5rem}
+.track-cards p{color:var(--muted);font-size:.95rem;margin:0}
+.track-cards .cnt{font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+
+/* Bảng kết quả console (dùng ở bài closure) */
+.out-label{font-family:"JetBrains Mono",monospace;font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.out-row{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap}
+.out-num{font-family:"Baloo 2",sans-serif;font-weight:800;font-size:clamp(3rem,11vw,5.2rem);
+  line-height:1;color:var(--accent)}
+.strike{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px;
+  font-family:"Baloo 2",sans-serif;font-weight:600;font-size:1.5rem}
+
+/* Ví dụ minh hoạ đặt trong panel ưu/nhược điểm */
+.panel .ex{margin-top:16px;border-top:1px dashed var(--line);padding-top:13px}
+.panel .ex-h{font-family:"JetBrains Mono",monospace;font-size:.65rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
+.panel .ex pre{margin:0;font-size:.79rem;padding:12px 14px;line-height:1.6}
+.panel.pro .ex-h{color:var(--good)}
+.panel.con .ex-h{color:var(--bad)}
+
+/* Ô tìm bài viết + danh sách gợi ý (chỉ dùng ở trang mục lục gốc) */
+.search{position:relative;max-width:640px;padding-top:34px}
+.search-lbl{display:block;font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+.search-box{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;box-shadow:var(--shadow)}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box svg{width:18px;height:18px;flex:0 0 auto;margin:0;color:var(--muted)}
+.search-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--ink);
+  font:inherit;font-size:1rem;padding:13px 0}
+.search-box input::placeholder{color:var(--muted);opacity:.9}
+.search-clear{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.25rem;
+  line-height:1;padding:2px 4px;border-radius:6px}
+.search-clear:hover{color:var(--ink)}
+.search-kbd{flex:0 0 auto;font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--muted);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px}
+@media (max-width:520px){ .search-kbd{display:none} }
+
+.sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:8px 0 0;padding:6px;list-style:none;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  max-height:min(58vh,420px);overflow-y:auto}
+.sug a{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:10px;
+  text-decoration:none;color:var(--ink)}
+.sug li.on a,.sug a:hover,.sug a:focus-visible{background:var(--surface-2)}
+.sug .n{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent)}
+.sug .t{font-weight:600;font-size:.95rem;line-height:1.45}
+.sug mark{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:4px;padding:0 2px}
+.search-empty{margin:10px 0 0;font-size:.92rem;color:var(--muted)}
+
+/* Chú giải hover — .gl bọc thuật ngữ, data-gl chứa NỬA CÒN LẠI của nghĩa:
+   chữ hiện là tiếng Việt thì data-gl là từ tiếng Anh, và ngược lại. */
+.gl{position:relative;border-bottom:1px dashed var(--accent);cursor:help;color:inherit;
+  text-decoration:none}
+.gl::after{content:attr(data-gl);position:absolute;left:50%;bottom:calc(100% + 11px);
+  transform:translateX(-50%) translateY(4px);z-index:40;width:max-content;
+  max-width:min(300px,72vw);background:var(--ink);color:var(--bg);border-radius:12px;
+  box-shadow:var(--shadow);padding:9px 13px;font-size:.82rem;font-weight:400;
+  line-height:1.55;letter-spacing:0;text-align:left;white-space:normal;
+  font-family:"Be Vietnam Pro",system-ui,sans-serif;text-transform:none;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) translateY(4px);z-index:41;border:5px solid transparent;
+  border-top-color:var(--ink);opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .14s ease,transform .14s ease}
+.gl:hover::after,.gl:hover::before,.gl:focus::after,.gl:focus::before,
+.gl:focus-visible::after,.gl:focus-visible::before{
+  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.gl:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+pre .gl{border-bottom:0}
+pre .gl::after,pre .gl::before{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb"><a href="../../index.html">eli5</a><span>/</span><a href="index.html">JavaScript</a><span>/</span><span class="now">Kho lưu trữ</span></nav>
+<header class="hero col">
+<p class="eyebrow">JavaScript · Bài 15</p>
+<h1>Năm cái kho của trình duyệt — cái nào đựng gì</h1>
+<p class="lede">Cookie, localStorage, sessionStorage, IndexedDB, Cache Storage — năm cái kho nằm cùng một chỗ nhưng khác nhau về dung lượng, tuổi thọ, phạm vi, và quan trọng nhất: có tự đi theo mỗi lời gọi lên máy chủ hay không. Chọn nhầm kho thì hoặc chậm cả trang, hoặc lộ phiên đăng nhập.</p>
+</header>
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Năm cái ngăn kéo, mỗi ngăn một tính nết</h2></div>
+  <p>Trình duyệt cho trang web của bạn mượn chỗ để cất dữ liệu ngay trên máy người dùng. Nhưng nó không cho một cái kho — nó cho <b>năm</b> cái, và chúng khác nhau nhiều hơn người ta tưởng.</p>
+  <p>Trước khi so dung lượng, hãy hỏi đúng ba câu này, vì chúng quyết định gần hết mọi thứ:</p>
+  <ol class="steps">
+    <li><b>Nó có tự đi theo lời gọi lên máy chủ không?</b> Chỉ <strong>cookie</strong> (bánh quy — mẩu dữ liệu nhỏ trình duyệt tự đính kèm vào yêu cầu gửi đi) làm việc đó. Bốn cái còn lại nằm im trên máy, muốn gửi thì code phải tự tay đọc rồi đính vào.</li>
+    <li><b>Nó sống được bao lâu, và ai thấy được nó?</b> Có cái chết theo tab, có cái sống tới khi người dùng xoá thủ công.</li>
+    <li><b>Đọc nó có <span class="gl" data-gl="blocking" tabindex="0">chặn</span> luồng chính không?</b> Hai cái kho quen thuộc nhất lại đúng là hai cái <strong>synchronous</strong> (đồng bộ — chạy ngay tại chỗ, mọi việc khác phải đứng chờ).</li>
+  </ol>
+  <div class="callout">
+    <p><strong>Câu chốt cả bài:</strong> đừng chọn kho theo <em>dung lượng</em>, hãy chọn theo <em>ai cần đọc nó</em>. Máy chủ cần đọc mỗi lần → cookie. Chỉ trình duyệt cần, và cần nhớ lâu → <code>localStorage</code>. Chỉ tab này cần → <code>sessionStorage</code>. Nhiều và có cấu trúc → <code>IndexedDB</code>. Là file tải về của chính ứng dụng → <code>Cache Storage</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 1</p><h2>Khác biệt lớn nhất: cái nào đi theo mỗi lời gọi</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 320" role="img" aria-label="Bên trái là khối trình duyệt chứa bốn loại kho. Chỉ có cookie được nối bằng mũi tên đi sang khối máy chủ bên phải, kèm chú thích tự động đính kèm vào mọi yêu cầu. Ba loại còn lại là localStorage, sessionStorage, IndexedDB và Cache Storage đều bị đánh dấu chéo, nghĩa là chúng nằm lại trên máy và không tự gửi đi đâu.">
+        <defs>
+          <marker id="bs-ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <polygon points="0,0 10,5 0,10" fill="var(--accent)"></polygon>
+          </marker>
+        </defs>
+
+        <text x="20" y="26" font-size="12" font-weight="700" font-family="monospace" fill="currentColor">TRÌNH DUYỆT — máy của người dùng</text>
+        <rect x="20" y="38" width="340" height="252" rx="14" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+
+        <rect x="34" y="56" width="312" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.8"></rect>
+        <text x="48" y="76" font-size="11.5" font-weight="700" font-family="monospace" fill="currentColor">Cookie</text>
+        <text x="48" y="92" font-size="10" font-family="monospace" fill="var(--muted)">~4KB · có hạn dùng · máy chủ đặt được</text>
+
+        <rect x="34" y="114" width="312" height="46" rx="9" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="48" y="134" font-size="11.5" font-weight="700" font-family="monospace" fill="currentColor">localStorage</text>
+        <text x="48" y="150" font-size="10" font-family="monospace" fill="var(--muted)">~5MB · sống mãi · mọi tab dùng chung</text>
+
+        <rect x="34" y="172" width="312" height="46" rx="9" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="48" y="192" font-size="11.5" font-weight="700" font-family="monospace" fill="currentColor">sessionStorage</text>
+        <text x="48" y="208" font-size="10" font-family="monospace" fill="var(--muted)">~5MB · chết theo tab · riêng từng tab</text>
+
+        <rect x="34" y="230" width="312" height="46" rx="9" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="48" y="250" font-size="11.5" font-weight="700" font-family="monospace" fill="currentColor">IndexedDB · Cache Storage</text>
+        <text x="48" y="266" font-size="10" font-family="monospace" fill="var(--muted)">hàng trăm MB · bất đồng bộ · object thật</text>
+
+        <line x1="362" y1="79" x2="556" y2="79" stroke="var(--accent)" stroke-width="2.4" marker-end="url(#bs-ac)"></line>
+        <text x="459" y="68" font-size="10.5" text-anchor="middle" font-family="monospace" fill="var(--accent)">tự động đính kèm</text>
+
+        <rect x="566" y="54" width="134" height="52" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.8"></rect>
+        <text x="633" y="85" font-size="12" text-anchor="middle" font-weight="700" font-family="monospace" fill="currentColor">MÁY CHỦ</text>
+
+        <g stroke="var(--bad)" stroke-width="2" fill="none">
+          <circle cx="392" cy="137" r="11"></circle><path d="M386 131 L398 143 M398 131 L386 143"></path>
+          <circle cx="392" cy="195" r="11"></circle><path d="M386 189 L398 201 M398 189 L386 201"></path>
+          <circle cx="392" cy="253" r="11"></circle><path d="M386 247 L398 259 M398 247 L386 259"></path>
+        </g>
+
+        <text x="416" y="134" font-size="11" font-family="monospace" fill="currentColor">Ba loại này KHÔNG tự gửi đi đâu.</text>
+        <text x="416" y="152" font-size="11" font-family="monospace" fill="var(--muted)">Muốn đưa lên máy chủ thì code</text>
+        <text x="416" y="170" font-size="11" font-family="monospace" fill="var(--muted)">phải tự đọc rồi đính vào yêu cầu.</text>
+
+        <text x="416" y="212" font-size="11" font-family="monospace" fill="var(--bad)">Mặt trái của cookie:</text>
+        <text x="416" y="230" font-size="11" font-family="monospace" fill="var(--muted)">2KB × 60 yêu cầu mỗi trang</text>
+        <text x="416" y="248" font-size="11" font-family="monospace" fill="var(--muted)">= 120KB gửi lên mỗi lượt tải,</text>
+        <text x="416" y="266" font-size="11" font-family="monospace" fill="var(--muted)">kể cả khi chỉ đang tải ảnh và font.</text>
+      </svg>
+    </div>
+    <figcaption>Cookie là loại duy nhất tự lên đường. Đó vừa là công dụng lớn nhất của nó, vừa là cái giá đắt nhất — nó đi kèm <em>mọi</em> <span class="gl" data-gl="request" tabindex="0">yêu cầu</span> cùng tên miền, kể cả những yêu cầu chẳng cần biết bạn là ai.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế 2</p><h2>Chỗ nhầm nhiều nhất: <span class="gl" data-gl="scope" tabindex="0">phạm vi</span> của tab</h2></div>
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 720 280" role="img" aria-label="Hai tab cùng một trang web. Mỗi tab có một kho sessionStorage riêng và hai kho này không nhìn thấy nhau. Bên dưới, cả hai tab cùng nối vào một kho localStorage dùng chung duy nhất.">
+        <rect x="40" y="26" width="260" height="46" rx="10" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="170" y="54" font-size="11.5" text-anchor="middle" font-weight="700" font-family="monospace" fill="currentColor">Tab 1 — shop.vn</text>
+        <rect x="420" y="26" width="260" height="46" rx="10" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.2"></rect>
+        <text x="550" y="54" font-size="11.5" text-anchor="middle" font-weight="700" font-family="monospace" fill="currentColor">Tab 2 — shop.vn</text>
+
+        <line x1="170" y1="72" x2="170" y2="102" stroke="currentColor" stroke-width="1.6"></line>
+        <line x1="550" y1="72" x2="550" y2="102" stroke="currentColor" stroke-width="1.6"></line>
+
+        <rect x="40" y="102" width="260" height="50" rx="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"></rect>
+        <text x="170" y="122" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">sessionStorage</text>
+        <text x="170" y="139" font-size="10" text-anchor="middle" font-family="monospace" fill="var(--muted)">của riêng tab 1</text>
+        <rect x="420" y="102" width="260" height="50" rx="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.4"></rect>
+        <text x="550" y="122" font-size="11" text-anchor="middle" font-family="monospace" fill="currentColor">sessionStorage</text>
+        <text x="550" y="139" font-size="10" text-anchor="middle" font-family="monospace" fill="var(--muted)">của riêng tab 2</text>
+
+        <g stroke="var(--bad)" stroke-width="2" fill="none">
+          <circle cx="360" cy="127" r="12"></circle><path d="M353 120 L367 134 M367 120 L353 134"></path>
+        </g>
+        <text x="360" y="160" font-size="10" text-anchor="middle" font-family="monospace" fill="var(--bad)">không thấy nhau</text>
+
+        <path d="M 40 49 C 14 49 14 232 176 232" fill="none" stroke="var(--accent)" stroke-width="1.8"></path>
+        <path d="M 680 49 C 706 49 706 232 544 232" fill="none" stroke="var(--accent)" stroke-width="1.8"></path>
+
+        <rect x="180" y="206" width="360" height="52" rx="11" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.8"></rect>
+        <text x="360" y="227" font-size="11.5" text-anchor="middle" font-weight="700" font-family="monospace" fill="currentColor">localStorage — MỘT kho dùng chung</text>
+        <text x="360" y="245" font-size="10" text-anchor="middle" font-family="monospace" fill="var(--muted)">ghi ở tab 1 → tab 2 nhận sự kiện storage</text>
+
+        <text x="20" y="196" font-size="10.5" font-family="monospace" fill="var(--muted)">cùng một origin</text>
+      </svg>
+    </div>
+    <figcaption>Cùng một trang web mở hai tab: <code>sessionStorage</code> là hai kho hoàn toàn tách biệt, còn <code>localStorage</code> chỉ có một. Đây là chỗ sinh ra bug "sao giỏ hàng của tab kia lại nhảy sang tab này".</figcaption>
+  </figure>
+  <div class="col">
+    <p>Hai chi tiết nhỏ mà rất hay bị hỏi vặn:</p>
+    <ul>
+      <li><b><code>sessionStorage</code> được <em>chép</em> sang khi nhân bản tab.</b> Bấm "Duplicate tab" thì tab mới bắt đầu với một bản sao dữ liệu — sau đó hai bên đi hai đường, sửa bên này không ảnh hưởng bên kia.</li>
+      <li><b>Sự kiện <code>storage</code> chỉ bắn sang <em>tab khác</em>.</b> Tab vừa ghi thì không nhận được sự kiện của chính mình — nên đừng dùng nó để tự đồng bộ trạng thái trong cùng một tab, sẽ không bao giờ chạy.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Bảng tra</p><h2>Năm cái kho, đặt cạnh nhau</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Kho</th><th>Dung lượng</th><th>Sống tới khi nào</th><th>Ai thấy</th><th>Tự gửi lên máy chủ</th><th>Chặn luồng</th><th>Kiểu dữ liệu</th></tr></thead>
+    <tbody>
+      <tr><td>Cookie</td><td>~4KB mỗi cái</td><td>Tới hạn <code>Expires</code>/<code>Max-Age</code></td><td>Mọi tab cùng tên miền</td><td><span class="yes">Có</span> — mọi yêu cầu</td><td><span class="yes">Có</span></td><td>Chuỗi</td></tr>
+      <tr><td>localStorage</td><td>~5MB mỗi origin</td><td>Mãi mãi, tới khi bị xoá</td><td>Mọi tab cùng origin</td><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td>Chuỗi</td></tr>
+      <tr><td>sessionStorage</td><td>~5MB mỗi origin</td><td>Đóng tab là mất</td><td><b>Chỉ tab đó</b></td><td><span class="no">Không</span></td><td><span class="yes">Có</span></td><td>Chuỗi</td></tr>
+      <tr><td>IndexedDB</td><td>Theo hạn mức đĩa — thường hàng trăm MB trở lên</td><td>Mãi mãi, tới khi bị xoá hoặc bị dọn</td><td>Mọi tab cùng origin</td><td><span class="no">Không</span></td><td><span class="no">Không</span></td><td>Object thật: <code>Date</code>, <code>Blob</code>, <code>Map</code>, <code>Set</code>…</td></tr>
+      <tr><td>Cache Storage</td><td>Chung hạn mức với IndexedDB</td><td>Mãi mãi, tới khi bị xoá hoặc bị dọn</td><td>Mọi tab cùng origin</td><td><span class="no">Không</span></td><td><span class="no">Không</span></td><td>Cặp yêu cầu – phản hồi HTTP</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout col">
+    <p><strong>Ba con số này chỉ là "cỡ khoảng", đừng học thuộc.</strong> Mỗi trình duyệt một khác, và ở chế độ ẩn danh thì hạn mức nhỏ hơn hẳn rồi bị xoá sạch khi đóng cửa sổ. Điều đáng nhớ hơn con số: <b>IndexedDB và Cache Storage có thể bị trình duyệt <span class="gl" data-gl="eviction" tabindex="0">dọn</span></b> khi máy hết chỗ, trừ khi bạn xin giữ bằng <code>navigator.storage.persist()</code>. Không kho nào ở đây là nơi cất dữ liệu <em>duy nhất</em> — máy chủ mới là bản gốc.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Ví dụ từng loại</p><h2>Mỗi kho một việc nó làm giỏi nhất</h2></div>
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Cookie</span>
+      <h3><span class="gl" data-gl="session" tabindex="0">Phiên đăng nhập</span></h3>
+      <p>Việc <em>duy nhất</em> cookie làm mà không kho nào thay được: máy chủ cần biết bạn là ai ở <b>mọi</b> yêu cầu. Đặt cờ <code>HttpOnly</code> thì JavaScript không đọc được — kể cả mã độc chèn vào trang cũng chịu.</p>
+<pre><code><span class="cm">// Máy chủ đặt, trình duyệt tự đính kèm về sau</span>
+Set-Cookie: sid=abc123;
+  <b>HttpOnly</b>;   <span class="cm">// JS không đọc được</span>
+  <b>Secure</b>;     <span class="cm">// chỉ đi qua HTTPS</span>
+  <b>SameSite</b>=Lax;  <span class="cm">// chặn gửi chéo trang</span>
+  Max-Age=604800;
+
+<span class="cm">// Phía JS: đọc không ra, và đó là điều tốt</span>
+document.cookie;   <span class="out">// '' — không thấy sid</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag">localStorage</span>
+      <h3>Tuỳ chọn của người dùng</h3>
+      <p>Dữ liệu nhỏ, máy chủ không cần biết, nhưng phải còn đó sau khi tắt máy: chế độ tối, ngôn ngữ, bộ lọc bảng lần trước. Nhớ rằng nó <b>chỉ chứa chuỗi</b> — object phải tự chuyển qua lại.</p>
+<pre><code>localStorage.setItem(<span class="str">'theme'</span>, <span class="str">'dark'</span>);
+localStorage.getItem(<span class="str">'theme'</span>);   <span class="out">// 'dark'</span>
+
+<span class="cm">// Object phải tự đóng gói</span>
+localStorage.setItem(<span class="str">'boLoc'</span>,
+  JSON.stringify({ trang: <span class="kw">2</span>, sap: <span class="str">'ten'</span> }));
+
+<span class="cm">// ✗ Bẫy: Date đi qua JSON thành chuỗi</span>
+JSON.parse(JSON.stringify({ d: <span class="kw">new</span> Date() }));
+<span class="out">// { d: '2026-09-07T…' } — không còn là Date</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag">sessionStorage</span>
+      <h3>Nháp của một luồng thao tác</h3>
+      <p>Form nhiều bước, hoặc trang so sánh sản phẩm. Mở hai tab để đối chiếu hai đơn hàng thì <b>hai tab không giẫm lên nhau</b> — và đóng tab là dọn sạch, không để lại rác.</p>
+<pre><code><span class="cm">// Bước 2 của form 4 bước</span>
+sessionStorage.setItem(<span class="str">'nhap'</span>,
+  JSON.stringify(form.value));
+
+<span class="cm">// Quay lại sau khi lỡ bấm F5 — vẫn còn</span>
+<span class="kw">const</span> nhap = sessionStorage.getItem(<span class="str">'nhap'</span>);
+<span class="kw">if</span> (nhap) form.patchValue(JSON.parse(nhap));
+
+<span class="cm">// Đóng tab → mất sạch, đúng như mong muốn</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag warn">IndexedDB</span>
+      <h3>Dữ liệu nhiều và có cấu trúc</h3>
+      <p>Danh sách vạn dòng để tra khi mất mạng, ảnh đã tải, hàng đợi thao tác chờ gửi lại. Nó <b>bất đồng bộ</b> nên không làm đứng trang, và giữ nguyên được <code>Date</code>, <code>Blob</code>, <code>Map</code> mà không cần <code>JSON</code>.</p>
+<pre><code><span class="cm">// API gốc rất dài dòng — thực tế nên dùng</span>
+<span class="cm">// một thư viện bọc (idb, Dexie…)</span>
+<span class="kw">const</span> db = <span class="kw">await</span> openDB(<span class="str">'kho'</span>, <span class="kw">1</span>, {
+  upgrade(db) { db.createObjectStore(<span class="str">'sp'</span>, { keyPath: <span class="str">'id'</span> }); },
+});
+
+<span class="kw">await</span> db.put(<span class="str">'sp'</span>, { id: <span class="kw">7</span>, ten: <span class="str">'Bàn'</span>, taoLuc: <span class="kw">new</span> Date() });
+<span class="kw">const</span> sp = <span class="kw">await</span> db.get(<span class="str">'sp'</span>, <span class="kw">7</span>);
+sp.taoLuc <span class="kw">instanceof</span> Date;   <span class="out">// true — vẫn là Date thật</span></code></pre>
+    </div>
+    <div class="card">
+      <span class="tag warn">Cache Storage</span>
+      <h3>File của chính ứng dụng, để chạy khi mất mạng</h3>
+      <p>Không phải chỗ cất dữ liệu nghiệp vụ — nó cất <b>cặp yêu cầu và phản hồi</b>. Đây là kho mà <strong>Service Worker</strong> (đoạn mã chạy nền, đứng giữa trang và mạng) dùng để trả file khi không có mạng.</p>
+<pre><code><span class="cm">// Trong Service Worker</span>
+<span class="kw">const</span> cache = <span class="kw">await</span> caches.open(<span class="str">'app-v3'</span>);
+<span class="kw">await</span> cache.addAll([<span class="str">'/'</span>, <span class="str">'/main.js'</span>, <span class="str">'/style.css'</span>]);
+
+self.addEventListener(<span class="str">'fetch'</span>, (e) =&gt; {
+  e.respondWith(
+    caches.match(e.request)          <span class="cm">// có sẵn thì trả ngay</span>
+      .then((r) =&gt; r ?? fetch(e.request))
+  );
+});</code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của việc cất dữ liệu ở trình duyệt</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Đọc gần như tức thì.</b> Không có vòng mạng nào cả, nên giao diện dựng được ngay khung sườn trước khi dữ liệu thật về.</li>
+        <li><b>Giảm tải cho máy chủ.</b> Tuỳ chọn giao diện, nháp form, danh mục ít đổi — không việc gì phải hỏi lại mỗi lần.</li>
+        <li><b>Chạy được khi mất mạng.</b> Cặp <code>IndexedDB</code> + <code>Cache Storage</code> là nền của mọi ứng dụng dùng được ngoại tuyến.</li>
+        <li><b>Giữ được ngữ cảnh khi tải lại trang.</b> Lỡ bấm F5 giữa form mười bước thì không mất công gõ lại.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt lợi</p>
+<pre><code><span class="cm">// Dựng giao diện bằng dữ liệu cũ trước,</span>
+<span class="cm">// rồi âm thầm làm mới sau — trang không bị trắng</span>
+<span class="kw">const</span> cu = localStorage.getItem(<span class="str">'danhMuc'</span>);
+<span class="kw">if</span> (cu) hien(JSON.parse(cu));
+
+fetch(<span class="str">'/api/danh-muc'</span>).then(<span class="kw">async</span> (r) =&gt; {
+  <span class="kw">const</span> moi = <span class="kw">await</span> r.json();
+  localStorage.setItem(<span class="str">'danhMuc'</span>, JSON.stringify(moi));
+  hien(moi);
+});</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Người dùng sửa được hết.</b> Mở tab Application trong công cụ nhà phát triển là gõ lại được bất cứ giá trị nào — nên không bao giờ tin dữ liệu đọc lên.</li>
+        <li><b><code>localStorage</code> chặn <span class="gl" data-gl="main thread" tabindex="0">luồng chính</span>.</b> Nó đồng bộ, nên đọc/ghi vài MB lúc khởi động là đóng băng trang đúng khoảng thời gian đó.</li>
+        <li><b>Chỉ chứa chuỗi.</b> Qua <code>JSON</code> là mất <code>Date</code>, <code>Map</code>, <code>undefined</code>, và <code>NaN</code> hoá <code>null</code>.</li>
+        <li><b>Có thể biến mất bất cứ lúc nào.</b> Xoá dữ liệu duyệt web, chế độ ẩn danh, máy hết đĩa — kho bị dọn mà không báo trước.</li>
+        <li><b>Cookie làm mọi yêu cầu nặng thêm.</b> Nó đi kèm cả những lời gọi tải ảnh và font, thứ chẳng cần biết bạn là ai.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mặt hại</p>
+<pre><code><span class="cm">// ✗ đồng bộ: 3MB JSON làm đứng trang ~200ms</span>
+<span class="kw">const</span> ds = JSON.parse(localStorage.getItem(<span class="str">'ds'</span>));
+<span class="cm">// suốt 200ms đó: không cuộn, không bấm, không vẽ</span>
+
+<span class="cm">// ✗ mất kiểu dữ liệu</span>
+localStorage.setItem(<span class="str">'x'</span>, JSON.stringify({
+  ngay: <span class="kw">new</span> Date(), diem: NaN, ghiChu: <span class="kw">undefined</span>,
+}));
+JSON.parse(localStorage.getItem(<span class="str">'x'</span>));
+<span class="out">// { ngay: '2026-…' (chuỗi), diem: null }  — ghiChu biến mất</span></code></pre></div>
+    </div>
+  </div>
+  <div class="callout good col">
+    <p><strong>Cách chọn cho gọn:</strong> hỏi <em>"máy chủ có cần đọc nó ở mọi yêu cầu không?"</em> — có thì cookie, và luôn kèm <code>HttpOnly</code> nếu đó là thứ nhạy cảm. Không thì hỏi tiếp <em>"tab khác có cần thấy không?"</em> — không thì <code>sessionStorage</code>, có thì <code>localStorage</code>. Khi dữ liệu vượt quá vài trăm KB hoặc cần giữ đúng kiểu, chuyển sang <code>IndexedDB</code> — đừng cố nhét mảng vạn dòng vào <code>localStorage</code>. Và bất kể chọn kho nào, code đọc lên phải <b>chịu được trường hợp không có gì cả</b>: người dùng có toàn quyền xoá sạch bất cứ lúc nào.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Trả lời thế nào cho gọn</h2></div>
+
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> Chia theo <em>ai cần đọc</em> chứ đừng chia theo dung lượng. <b>Cookie</b> là loại duy nhất tự đính kèm vào mọi yêu cầu, nên nó dành cho thứ máy chủ cần biết ở mọi lần gọi — và vì thế nó phải nhỏ. <b>localStorage</b> và <b>sessionStorage</b> cùng một API, khác nhau ở phạm vi và tuổi thọ: một cái chung mọi tab và sống mãi, một cái riêng từng tab và chết theo tab; cả hai <b>đồng bộ</b> và chỉ chứa chuỗi. <b>IndexedDB</b> cho dữ liệu nhiều, có cấu trúc, bất đồng bộ, giữ nguyên kiểu. <b>Cache Storage</b> không cất dữ liệu nghiệp vụ mà cất cặp yêu cầu – phản hồi cho Service Worker.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Hay bị hỏi</span>
+      <h3><code>localStorage</code> khác <code>sessionStorage</code> chỗ nào?</h3>
+      <p>Cùng một API, khác <b>phạm vi</b> và <b>tuổi thọ</b>: <code>localStorage</code> dùng chung cho mọi tab cùng origin và sống tới khi bị xoá; <code>sessionStorage</code> riêng từng tab và mất khi đóng tab. Hai chi tiết ghi điểm: nhân bản tab thì <code>sessionStorage</code> được <b>chép sang</b> tab mới; và sự kiện <code>storage</code> của <code>localStorage</code> chỉ bắn sang <b>tab khác</b>, tab vừa ghi không nhận được.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3>Lưu token đăng nhập ở đâu?</h3>
+      <p>Câu trả lời quen tay — <code>localStorage</code> — chính là bẫy. Bất kỳ mã độc nào chèn được vào trang (<strong>XSS</strong> — chèn mã lạ vào trang của bạn) cũng đọc được nó bằng đúng một dòng. Chỗ đúng là cookie có <code>HttpOnly</code>: JavaScript không đọc nổi nên XSS lấy không được. Nói thêm được rằng đổi lại phải lo <strong>CSRF</strong> (lừa trình duyệt gửi yêu cầu thay người dùng) bằng <code>SameSite</code>, là đã thấy được cả hai mặt.</p>
+    </div>
+    <div class="card">
+      <span class="tag warn">Câu hỏi bẫy</span>
+      <h3><code>localStorage</code> đồng bộ hay bất đồng bộ?</h3>
+      <p><b>Đồng bộ</b> — và đây là lý do thật để tránh nó khi dữ liệu lớn. Mỗi lần đọc/ghi là giữ luôn <span class="gl" data-gl="call stack" tabindex="0">ngăn xếp lời gọi</span>, nên không cuộn được, không bấm được, không vẽ lại được trong suốt khoảng đó. Đọc 3MB JSON lúc khởi động là đóng băng trang vài trăm mili-giây. <code>IndexedDB</code> bất đồng bộ nên không có vấn đề này.</p>
+    </div>
+    <div class="card">
+      <span class="tag bad">Câu hỏi loại ứng viên</span>
+      <h3>Cookie chỉ 2KB thì hại gì?</h3>
+      <p>Hại ở chỗ nhân lên. Nó đi kèm <b>mọi</b> yêu cầu cùng tên miền — ảnh, CSS, font, lời gọi API — nên một trang 60 yêu cầu là <b>120KB gửi lên</b> mỗi lượt tải. Vế then chốt: đường <em>gửi lên</em> của người dùng thường hẹp hơn đường tải xuống nhiều lần, nên chỗ này đắt hơn cảm giác. Cách chữa của các đội lớn là đặt tài nguyên tĩnh ở một tên miền riêng không có cookie.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Trả lời sai kinh điển:</strong> "<code>localStorage</code> an toàn vì dữ liệu nằm trên máy người dùng." Sai <em>ngược</em>. Nằm trên máy người dùng nghĩa là người dùng — và mọi đoạn mã chạy trên trang, kể cả mã của thư viện bên thứ ba — đều đọc và sửa được thoải mái. Không có gì bí mật ở đó, cũng không có gì đáng tin ở đó: dữ liệu đọc lên từ trình duyệt phải được kiểm tra lại y như dữ liệu do người lạ gửi tới.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>cookie</td><td>Mẩu dữ liệu nhỏ trình duyệt tự đính kèm vào mọi yêu cầu gửi tới cùng tên miền.</td></tr>
+      <tr><td>HttpOnly</td><td>Cờ khiến JavaScript không đọc được cookie đó — chỉ máy chủ thấy.</td></tr>
+      <tr><td>Secure</td><td>Cờ chỉ cho cookie đi qua kết nối HTTPS đã mã hoá.</td></tr>
+      <tr><td>SameSite</td><td>Cờ quy định cookie có được gửi kèm khi yêu cầu xuất phát từ trang khác hay không.</td></tr>
+      <tr><td>localStorage</td><td>Kho khoá–giá trị dạng chuỗi, dùng chung mọi tab cùng origin, sống tới khi bị xoá.</td></tr>
+      <tr><td>sessionStorage</td><td>Như trên nhưng riêng từng tab, và mất khi đóng tab.</td></tr>
+      <tr><td>IndexedDB</td><td>Cơ sở dữ liệu trong trình duyệt: bất đồng bộ, dung lượng lớn, giữ nguyên kiểu dữ liệu.</td></tr>
+      <tr><td>Cache Storage</td><td>Kho cất các cặp yêu cầu – phản hồi HTTP, dùng cho chế độ ngoại tuyến.</td></tr>
+      <tr><td>Service Worker</td><td>Đoạn mã chạy nền, đứng giữa trang và mạng, quyết định trả dữ liệu từ kho hay đi lấy mới.</td></tr>
+      <tr><td>origin</td><td>Bộ ba giao thức + tên miền + cổng; hai trang khác origin không thấy kho của nhau.</td></tr>
+      <tr><td>quota (hạn mức)</td><td>Trần dung lượng trình duyệt cấp cho một origin, tính theo đĩa còn trống.</td></tr>
+      <tr><td>eviction (dọn kho)</td><td>Việc trình duyệt tự xoá dữ liệu khi máy hết chỗ.</td></tr>
+      <tr><td>persist()</td><td>Lời xin trình duyệt đừng dọn kho của mình khi thiếu chỗ.</td></tr>
+      <tr><td>synchronous (đồng bộ)</td><td>Chạy ngay tại chỗ; mọi việc khác phải đứng chờ cho tới khi xong.</td></tr>
+      <tr><td>blocking (chặn)</td><td>Giữ luồng chính lâu khiến trang không cuộn, không bấm, không vẽ lại được.</td></tr>
+      <tr><td>storage event</td><td>Sự kiện báo kho vừa đổi — chỉ bắn sang các tab <em>khác</em> cùng origin.</td></tr>
+      <tr><td>structured clone</td><td>Cách sao chép giữ nguyên <code>Date</code>, <code>Blob</code>, <code>Map</code>, <code>Set</code> — thứ <code>JSON</code> làm mất.</td></tr>
+      <tr><td>XSS</td><td>Chèn mã lạ vào trang của bạn; mã đó chạy với đầy đủ quyền như mã của bạn.</td></tr>
+      <tr><td>CSRF</td><td>Lừa trình duyệt gửi một yêu cầu thay mặt người dùng đang đăng nhập.</td></tr>
+      <tr><td>chế độ ẩn danh</td><td>Cửa sổ riêng tư: hạn mức nhỏ hơn và mọi kho bị xoá khi đóng.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+<nav class="pager"><a class="prev" href="event-loop.html"><span class="dir">← Bài trước</span><span class="nm">Event loop — một người làm việc, bốn cái hộp, và chỗ màn hình được vẽ</span></a><a class="next" href="nullish-logical-operators.html"><span class="dir">Bài tiếp →</span><span class="nm">|| và ?? và &amp;&amp; — ba cái cổng hỏi ba câu khác nhau</span></a></nav>
+<footer class="page-foot col"><p>Sổ tay eli5 · JavaScript · trang 15/18</p></footer>
+</div>
+</body>
+</html>
