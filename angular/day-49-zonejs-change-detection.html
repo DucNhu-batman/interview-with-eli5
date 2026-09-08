@@ -261,7 +261,7 @@ pre .gl::after,pre .gl::before{display:none}
 <header class="hero col">
 <p class="eyebrow">Angular · Day 49</p>
 <h1>Day 49 — Zone.js: một việc xong là quét cả cây</h1>
-<p class="lede">Angular không tự biết dữ liệu vừa đổi. Zone.js "vá" đè lên mọi API bất đồng bộ của trình duyệt để báo cho nó biết — và mỗi lần báo là một lần quét toàn bộ cây component. eventCoalescing can thiệp đúng vào chỗ đếm số lần báo đó.</p>
+<p class="lede">Angular không tự biết dữ liệu vừa đổi. Zone.js "vá" đè lên mọi API bất đồng bộ để báo thức, còn ChangeDetectionStrategy (Default vs OnPush) và eventCoalescing là các chốt chặn kiểm soát số lần và phạm vi quét của toàn cây component.</p>
 </header>
 <section class="col">
   <div class="sec-head"><p class="eyebrow">Vấn đề</p><h2>Angular không có mắt</h2></div>
@@ -400,7 +400,60 @@ window.setTimeout = <span class="kw">function</span> (viec, tre) {       <span c
     <p>Ở mỗi node, Angular đọc lại từng biểu thức trong template (khuôn giao diện) và so với giá trị lần trước. Nghĩa là <code>{{ tinhTong() }}</code> viết trong template sẽ <b>chạy lại mỗi lần quét</b>, không phải mỗi lần dữ liệu đổi.</p>
   </div>
   <div class="callout">
-    <p><strong>“Toàn cây” không có nghĩa là “vẽ lại toàn bộ màn hình”.</strong> Angular chỉ ghi vào DOM (cây phần tử HTML thật) ở đúng chỗ có giá trị khác đi. Và component đặt <code>changeDetection: OnPush</code> sẽ bị bỏ qua cả <span class="gl" data-gl="subtree" tabindex="0">nhánh</span> nếu không có input mới, không có sự kiện, không có signal nào đổi — đó là lý do dự án này để OnPush ở mọi component.</p>
+    <p><strong>“Toàn cây” không có nghĩa là “vẽ lại toàn bộ màn hình”.</strong> Angular chỉ ghi vào DOM (cây phần tử HTML thật) ở đúng chỗ có giá trị khác đi. Nhưng việc tính toán lại mọi biểu thức trên hàng trăm component vẫn ngốn sạch CPU. Để ngăn chặn việc quét mù quáng này, Angular cung cấp <strong>ChangeDetectionStrategy</strong>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Chiến lược cốt lõi</p><h2>ChangeDetectionStrategy: Vũ khí tỉa nhánh Default vs OnPush</h2></div>
+  <p class="col">Trong Angular, mỗi component mang một bản "hợp đồng" quy định cách thức nó tham gia vào chu kỳ <span class="gl" data-gl="change detection" tabindex="0">dò thay đổi</span>. Hợp đồng đó được thiết lập qua thuộc tính <code>changeDetection</code> trong decorator <code>@Component</code> với kiểu liệt kê <strong><span class="gl" data-gl="chiến lược dò thay đổi" tabindex="0">ChangeDetectionStrategy</span></strong>.</p>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag warn">Mặc định</span>
+      <h3>ChangeDetectionStrategy.Default</h3>
+      <p><strong>Cơ chế "Kiểm tra mù quáng":</strong> Cứ khi nào Zone.js báo có sự kiện xong, Angular sẽ bước vào component này để tính lại <em>toàn bộ</em> biểu thức trong template, so sánh giá trị cũ và mới. Bất kể dữ liệu đầu vào có đổi hay không, mọi hàm đặt trong template (như <code>{{ tinhGia() }}</code>) đều bị gọi lại liên miên.</p>
+<pre><code>@Component({
+  <span class="cm">// Không khai báo gì thì Angular tự lấy Default</span>
+  changeDetection: ChangeDetectionStrategy.Default,
+})</code></pre>
+    </div>
+
+    <div class="card">
+      <span class="tag">Khuyên dùng</span>
+      <h3>ChangeDetectionStrategy.OnPush</h3>
+      <p><strong>Cơ chế "Chỉ quét khi có lý do":</strong> Báo cho Angular biết component này là một khối thuần khiết (pure). Angular sẽ <strong>bỏ qua hoàn toàn</strong> việc kiểm tra component này và toàn bộ các nhánh con bên dưới nó trong đợt quét, trừ khi nó nhận được một trong 5 "tín hiệu đánh thức" bên dưới.</p>
+<pre><code>@Component({
+  <span class="cm">// Bật OnPush: tỉa bỏ toàn bộ nhánh không liên quan</span>
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})</code></pre>
+    </div>
+  </div>
+
+  <div class="sec-head col" style="margin-top:28px"><p class="eyebrow">Điều kiện đánh thức</p><h3>5 chìa khoá để Angular kiểm tra component OnPush</h3></div>
+  <p class="col">Một component đặt <code>OnPush</code> sẽ biến thành một "hòn đảo tĩnh lặng". Nó chỉ được Angular gõ cửa rà soát lại khi thoả mãn ít nhất một trong 5 điều kiện sau:</p>
+
+  <ol class="steps col">
+    <li><strong><code>@Input()</code> thay đổi tham chiếu (Reference Change):</strong> Angular dùng phép so sánh tuyệt đối <code>===</code> trên địa chỉ ô nhớ. Nếu bạn sửa trực tiếp thuộc tính bên trong đối tượng (<span class="gl" data-gl="mutation" tabindex="0">mutate</span>) như <code>user.name = 'Mới'</code> hoặc đẩy phần tử vào mảng <code>items.push('x')</code>, địa chỉ ô nhớ giữ nguyên &rarr; <code>OnPush</code> coi như không có gì đổi và lờ đi! Muốn cập nhật, bạn bắt buộc phải tạo tham chiếu mới: <code>this.user = { ...this.user, name: 'Mới' }</code>.</li>
+    <li><strong>Sự kiện DOM bắt nguồn từ chính component hoặc con của nó:</strong> Người dùng bấm nút <code>(click)</code>, nhập dữ liệu <code>(input)</code>... được khai báo trong template của chính component đó. Khi sự kiện này kết thúc, component đó được đánh dấu bẩn. <em>(Lưu ý: Sự kiện xảy ra ở một component khác bên ngoài sẽ không đánh thức component này)</em>.</li>
+    <li><strong>Luồng Observable thông qua <code>async</code> pipe phát ra giá trị mới:</strong> Ống nối <code>{{ data$ | async }}</code> tự động gọi hàm <code>ChangeDetectorRef.markForCheck()</code> mỗi khi luồng phát ra dữ liệu mới.</li>
+    <li><strong>Signal được đọc trong template cập nhật giá trị:</strong> Trong Angular hiện đại, khi một <span class="gl" data-gl="tín hiệu phản ứng" tabindex="0">signal</span> đổi giá trị, Angular tự động ghi nhận và đánh dấu component đó cần được làm mới trong nhịp quét kế tiếp.</li>
+    <li><strong>Gọi thủ công <code>ChangeDetectorRef.markForCheck()</code>:</strong> Dùng khi bạn nhận dữ liệu bất đồng bộ từ các kênh bên ngoài sự quản lý của Angular (như kết nối WebSocket, callback của thư viện bên thứ ba, hoặc mã chạy ngoài Zone).</li>
+  </ol>
+
+  <div class="tbl-scroll" style="margin-top:20px"><table>
+    <thead><tr><th>Tiêu chí so sánh</th><th>ChangeDetectionStrategy.Default</th><th>ChangeDetectionStrategy.OnPush</th></tr></thead>
+    <tbody>
+      <tr><td>Tần suất kiểm tra</td><td>Chạy ở <strong>mọi</strong> lượt <code>tick()</code> của ứng dụng</td><td>Chỉ chạy khi có 1 trong 5 điều kiện đánh thức</td></tr>
+      <tr><td>Phạm vi duyệt cây</td><td>Đi từ gốc xuống toàn bộ ngọn lá ($O(N)$)</td><td>Tỉa bỏ các nhánh không đổi ($O(\log N)$ hoặc $O(1)$)</td></tr>
+      <tr><td>Cách so sánh dữ liệu</td><td>Kiểm tra từng giá trị hiển thị trên template</td><td>So sánh <span class="gl" data-gl="object reference" tabindex="0">tham chiếu</span> (<code>===</code>) ở <code>@Input()</code></td></tr>
+      <tr><td>Kỷ luật mã nguồn</td><td>Tự do, có thể sửa đổi dữ liệu tại chỗ (mutate)</td><td>Bắt buộc tuân thủ <span class="gl" data-gl="immutability" tabindex="0">tính bất biến</span> (tạo object/array mới)</td></tr>
+      <tr><td>Tác động hiệu năng</td><td>Dễ làm lag và tụt khung hình khi app lớn</td><td>Cực kỳ nhanh, giữ ứng dụng mượt mà 60 FPS</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout good col">
+    <p><strong>Kinh nghiệm thực chiến:</strong> Luôn đặt <code>ChangeDetectionStrategy.OnPush</code> làm mặc định cho 100% component mới. Hãy coi việc component không tự cập nhật là "hồi chuông cảnh báo" nhắc nhở bạn vừa vô tình sửa dữ liệu tại chỗ (mutate state) thay vì tạo bản sao bất biến mới.</p>
   </div>
 </section>
 
@@ -588,6 +641,10 @@ expect(el.textContent).toBe(<span class="str">'2'</span>);   <span class="cm">//
       <tr><td>onMicrotaskEmpty</td><td>Tín hiệu Zone bắn ra khi hàng đợi việc con đã cạn.</td></tr>
       <tr><td>ApplicationRef.tick()</td><td>Lệnh của Angular: quét kiểm tra thay đổi từ gốc cây xuống.</td></tr>
       <tr><td>change detection</td><td>Dò tìm thay đổi — so giá trị binding cũ và mới để quyết định vẽ lại.</td></tr>
+      <tr><td>ChangeDetectionStrategy</td><td>Chiến lược dò thay đổi — kiểu liệt kê (enum) quy định component được kiểm tra theo chế độ Default hay OnPush.</td></tr>
+      <tr><td>ChangeDetectionStrategy.Default</td><td>Chiến lược mặc định — kiểm tra lại toàn bộ biểu thức template ở mọi chu kỳ quét.</td></tr>
+      <tr><td>ChangeDetectionStrategy.OnPush</td><td>Chiến lược OnPush — chỉ kiểm tra khi input đổi tham chiếu, có sự kiện từ template, async pipe, signal hoặc markForCheck().</td></tr>
+      <tr><td>immutability</td><td>Tính bất biến — nguyên tắc không sửa trực tiếp dữ liệu cũ mà luôn tạo đối tượng hoặc mảng mới.</td></tr>
       <tr><td>binding</td><td>Mối nối giữa dữ liệu trong lớp TypeScript và chỗ hiển thị trong template.</td></tr>
       <tr><td>template</td><td>Khuôn giao diện HTML của một component.</td></tr>
       <tr><td>component tree</td><td>Cây component — các component lồng nhau từ gốc xuống.</td></tr>
