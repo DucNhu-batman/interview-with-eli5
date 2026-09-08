@@ -81,6 +81,10 @@ Mỗi `<section>` bắt đầu bằng `<div class="sec-head"><p class="eyebrow">
      + **Thuật ngữ đang viết bằng tiếng Việt** (ví dụ: "tải lười", "tiêm phụ thuộc", "đơn thực thể", "phát hiện thay đổi"...): thuộc tính `data-gl` bắt buộc phải là thuật ngữ tiếng Anh gốc (ví dụ: `<span class="gl" data-gl="lazy loading" tabindex="0">tải lười</span>`, `<span class="gl" data-gl="dependency injection" tabindex="0">tiêm phụ thuộc</span>`, `<span class="gl" data-gl="singleton" tabindex="0">đơn thực thể</span>`).
      + Luôn có `tabindex="0"` để hỗ trợ người dùng dùng phím Tab/focus và thiết bị trợ năng xem được tooltip.
      + Tuyệt đối **không** dùng `.gl` bên trong các khối `<pre><code>`.
+* **Quy tắc Kiểm soát Ẩn dụ & Trực diện hoá trong Sơ đồ / Tóm tắt:**
+   - **Phạm vi ẩn dụ:** Hình tượng đời thường (ví dụ: chiếc chuông, bác bảo vệ, nhà hàng...) chỉ dùng ở phần mở đầu *Là gì* hoặc khối `.callout` để gợi mở trực giác ban đầu.
+   - **Trực diện trong Sơ đồ (SVG), Thẻ (.card) & Bảng:** Tuyệt đối **không dùng từ ẩn dụ đứng độc lập** (như *"rung chuông"*, *"gõ cửa"*, *"bôi bẩn"*...) trong sơ đồ kỹ thuật, thẻ tóm tắt hay câu trả lời phỏng vấn vì sẽ gây tối nghĩa hoặc bị hiểu nhầm là tên API thật. Bắt buộc phải thay bằng **hành vi kỹ thuật trực diện và hệ quả rõ ràng** (ví dụ: *"Cuộn/rê chuột không kích hoạt dò thay đổi"*, *"Bỏ qua duyệt nhánh cây"* thay vì *"chặn rung chuông"*).
+   - **Tính tự thân (Self-contained):** Mỗi bài viết và sơ đồ phải tự sáng nghĩa độc lập, không bắt người đọc phải tự liên tưởng ẩn dụ từ một bài viết khác trước đó.
 * **Không hardcode màu sắc:** Toàn bộ màu dùng CSS variable trong `_assets/eli5.css` (`var(--accent)`, `var(--surface)`, `var(--muted)`...). Hình SVG dùng `fill="currentColor"` hoặc `var(--surface-2)` để tương thích dark mode.
 * **Không chèn `<style>`, `<script>`, CDN hay ảnh ngoài** vào file fragment `_content/`.
 * **Khối Code `<pre><code>`:**

@@ -21,4 +21,5 @@ Xem chi tiết bộ quy tắc hoàn chỉnh tại [.agents/rules/eli5.md](file:/
    - Sử dụng `<span class="gl" data-gl="..." tabindex="0">` làm tooltip đối ứng:
      * Từ viết tắt / tiếng Anh (`FCP`, `DI`, `SPA`, `Router`...): `data-gl` chứa nghĩa/giải thích tiếng Việt.
      * Thuật ngữ đang là tiếng Việt (tải lười, tiêm phụ thuộc, đơn thực thể...): `data-gl` chứa từ tiếng Anh gốc tương ứng.
-5. **Build kiểm tra:** Luôn chạy `node build.mjs` sau khi thay đổi và kiểm tra số lượng bài output.
+5. **Kiểm soát ẩn dụ & Trực diện hoá trong sơ đồ:** Ẩn dụ chỉ dùng ở phần mở đầu/callout để gợi ý tưởng. Trong sơ đồ SVG, bảng biểu và thẻ phỏng vấn, bắt buộc dùng hành vi kỹ thuật trực diện (ví dụ: *"Cuộn/rê chuột không kích hoạt dò thay đổi"* thay vì dùng từ ẩn dụ đứng độc lập như *"chặn rung chuông"*).
+6. **Build kiểm tra:** Luôn chạy `node build.mjs` sau khi thay đổi và kiểm tra số lượng bài output.
