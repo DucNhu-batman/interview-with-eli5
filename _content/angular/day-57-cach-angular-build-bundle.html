@@ -1,0 +1,319 @@
+<!--meta
+title: Day 57 — Dưới nắp ca-pô khi gõ "ng build": Mã nguồn biến thành main.js như thế nào?
+eyebrow: Angular · Day 57
+short: Cơ chế Angular Build
+lede: Trình duyệt không biết TypeScript, decorator hay template Angular là gì. Toàn bộ hành trình từ file .ts thô qua compiler ngc, rung cây tỉa lá, esbuild đóng gói cho tới các file main.js, polyfills và lazy chunks trong thư mục dist/.
+-->
+
+<section class="col">
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Xưởng ép nước mía và đóng chai công nghiệp</h2></div>
+  <p>Trình duyệt web (như Chrome, Firefox, Safari) là một khách hàng cực kỳ "khó tính": nó hoàn toàn <strong>không hiểu</strong> cú pháp <strong><span class="gl" data-gl="ngôn ngữ lập trình mở rộng của JavaScript bổ sung kiểu dữ liệu tĩnh" tabindex="0">TypeScript</span></strong> (<code>.ts</code>), không biết <code>@Component</code>, <code>inject()</code> hay <code>signal()</code> là gì, và cũng không thể tự chạy các thẻ template lồng logic như <code>@if</code> hay <code>@for</code>.</p>
+
+  <p>Toàn bộ mã nguồn bạn viết giống như <strong>những cây mía thô</strong>: dài, nhiều lá thừa, cồng kềnh. Quá trình <strong><span class="gl" data-gl="quá trình biên dịch và đóng gói mã nguồn thành tệp chạy được" tabindex="0">build</span></strong> (đóng gói mã nguồn) chính là một dây chuyền công nghiệp hiện đại:</p>
+
+  <ol class="steps">
+    <li><strong>Máy ép bóc vỏ (<span class="gl" data-gl="Ahead-of-Time compiler — trình biên dịch trước thời gian chạy" tabindex="0">AOT Compiler</span> — <code>ngc</code>):</strong> Chuyển hoá toàn bộ cú pháp TypeScript và template HTML thành các câu lệnh <strong>JavaScript</strong> thuần tuý siêu nhanh điều khiển trực tiếp <strong><span class="gl" data-gl="Document Object Model — cây phần tử giao diện thật" tabindex="0">DOM</span></strong>.</li>
+    <li><strong>Rung cây rụng cành lá khô (<span class="gl" data-gl="kỹ thuật loại bỏ mã nguồn thừa không bao giờ được gọi đến" tabindex="0">Tree-shaking</span>):</strong> Soát lại toàn bộ ứng dụng và các thư viện phụ thuộc. Bất kỳ hàm, lớp, hay tính năng nào bạn <code>import</code> nhưng không dùng tới đều bị cắt bỏ thẳng tay.</li>
+    <li><strong>Đóng chai và hút chân không (<span class="gl" data-gl="công cụ gom các file nhỏ thành các gói mã nguồn lớn" tabindex="0">Bundler</span> &amp; <span class="gl" data-gl="kỹ thuật nén mã nguồn bằng cách xoá khoảng trắng và đổi tên biến siêu ngắn" tabindex="0">Minification</span>):</strong> Gom hàng trăm file mã nguồn rời rạc lại thành một vài gói <strong><span class="gl" data-gl="gói mã nguồn sau đóng gói" tabindex="0">bundle</span></strong>, rút gọn tên biến (như đổi <code>tongTienThanhToan</code> thành <code>a</code>), xoá sạch chú thích và khoảng trắng thừa.</li>
+    <li><strong>Dán tem mã vạch chống ôi thiu (<span class="gl" data-gl="kỹ thuật gắn mã băm vào tên file để tránh lưu bộ nhớ đệm cũ" tabindex="0">Content Hashing</span>):</strong> Đặt tên file kèm mã băm ngẫu nhiên theo nội dung (như <code>main-7A2B9C.js</code>) để trình duyệt lưu vào bộ nhớ đệm (cache) vĩnh viễn nhưng lập tức tải file mới mỗi khi bạn deploy bản cập nhật.</li>
+  </ol>
+
+  <div class="callout">
+    <p><strong>Bản chất cốt lõi:</strong> Lệnh <code>ng build</code> lấy vào hàng ngàn file <code>.ts</code>, <code>.html</code>, <code>.scss</code> lộn xộn của dự án và xuất xưởng ra một thư mục tĩnh <code>dist/</code> chứa duy nhất: <strong>1 file HTML vỏ rỗng</strong> (<code>index.html</code>), <strong>1 file chứa linh hồn ứng dụng</strong> (<code>main.js</code>), <strong>1 file hỗ trợ môi trường</strong> (<code>polyfills.js</code>), <strong>1 file kiểu dáng</strong> (<code>styles.css</code>) cùng các mảnh tải lười (<strong><span class="gl" data-gl="mảnh gói mã nguồn tải theo nhu cầu" tabindex="0">lazy chunks</span></strong>).</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Dây chuyền 4 bước: Từ phím gõ đến thư mục dist/</h2></div>
+  <p class="col">Dưới đây là sơ đồ chi tiết dòng chảy của mã nguồn từ lúc bạn gõ lệnh <code>ng build</code> cho tới khi các file thành phẩm được ghi ra ổ cứng.</p>
+
+  <figure>
+    <div class="fig-scroll">
+      <svg viewBox="0 0 760 380" role="img" aria-label="Sơ đồ 4 bước đóng gói Angular: Bước 1 Mã nguồn .ts, .html; Bước 2 AOT Compiler biến template thành Ivy bytecode; Bước 3 Bundler esbuild rung cây tỉa lá và nén mã; Bước 4 Xuất thư mục dist chứa index.html, main.js, polyfills.js và các lazy chunk.">
+        <defs>
+          <marker id="bld-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <!-- Bước 1: Mã nguồn đầu vào -->
+        <rect x="20" y="24" width="150" height="330" rx="14" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"></rect>
+        <rect x="30" y="38" width="130" height="30" rx="6" fill="var(--accent-soft)"></rect>
+        <text x="95" y="58" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent)" font-family="monospace">1. MÃ NGUỒN THÔ</text>
+
+        <rect x="30" y="82" width="130" height="50" rx="8" fill="var(--surface)"></rect>
+        <text x="95" y="103" font-size="11" font-weight="700" text-anchor="middle" fill="currentColor">*.component.ts</text>
+        <text x="95" y="120" font-size="9" text-anchor="middle" fill="var(--muted)">Logic TypeScript</text>
+
+        <rect x="30" y="142" width="130" height="50" rx="8" fill="var(--surface)"></rect>
+        <text x="95" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="currentColor">*.component.html</text>
+        <text x="95" y="180" font-size="9" text-anchor="middle" fill="var(--muted)">Template, @if, @for</text>
+
+        <rect x="30" y="202" width="130" height="50" rx="8" fill="var(--surface)"></rect>
+        <text x="95" y="223" font-size="11" font-weight="700" text-anchor="middle" fill="currentColor">*.scss / *.css</text>
+        <text x="95" y="240" font-size="9" text-anchor="middle" fill="var(--muted)">Định kiểu thành phần</text>
+
+        <rect x="30" y="262" width="130" height="50" rx="8" fill="var(--surface)"></rect>
+        <text x="95" y="283" font-size="11" font-weight="700" text-anchor="middle" fill="currentColor">node_modules/</text>
+        <text x="95" y="300" font-size="9" text-anchor="middle" fill="var(--muted)">Angular Core &amp; RxJS</text>
+
+        <!-- Mũi tên 1 -> 2 -->
+        <path d="M174 185 L196 185" fill="none" stroke="currentColor" stroke-width="1.6" marker-end="url(#bld-arr)" opacity=".6"></path>
+
+        <!-- Bước 2: AOT Compiler (ngc) -->
+        <rect x="202" y="24" width="165" height="330" rx="14" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"></rect>
+        <rect x="212" y="38" width="145" height="30" rx="6" fill="var(--accent-soft)"></rect>
+        <text x="284" y="58" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent)" font-family="monospace">2. AOT (ngc / Ivy)</text>
+
+        <rect x="212" y="82" width="145" height="74" rx="8" fill="var(--surface-2)"></rect>
+        <text x="222" y="104" font-size="10.5" font-weight="700" fill="currentColor">Biên dịch Template</text>
+        <text x="222" y="122" font-size="9" fill="var(--muted)">Chuyển HTML thành</text>
+        <text x="222" y="137" font-size="9" fill="var(--accent)" font-family="monospace">ɵɵelementStart()...</text>
+
+        <rect x="212" y="168" width="145" height="74" rx="8" fill="var(--surface-2)"></rect>
+        <text x="222" y="190" font-size="10.5" font-weight="700" fill="currentColor">Kiểm tra kiểu mẫu</text>
+        <text x="222" y="208" font-size="9" fill="var(--muted)">Bắt lỗi chính tả, sai kiểu</text>
+        <text x="222" y="223" font-size="9" fill="var(--good)">ngay khi build (0 crash)</text>
+
+        <rect x="212" y="254" width="145" height="60" rx="8" fill="var(--surface-2)"></rect>
+        <text x="222" y="276" font-size="10.5" font-weight="700" fill="currentColor">TypeScript &rarr; JS</text>
+        <text x="222" y="294" font-size="9" fill="var(--muted)">Hạ cấp cú pháp (target ES)</text>
+
+        <!-- Mũi tên 2 -> 3 -->
+        <path d="M371 185 L393 185" fill="none" stroke="currentColor" stroke-width="1.6" marker-end="url(#bld-arr)" opacity=".6"></path>
+
+        <!-- Bước 3: Bundler (esbuild) -->
+        <rect x="399" y="24" width="165" height="330" rx="14" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+        <rect x="409" y="38" width="145" height="30" rx="6" fill="var(--accent-soft)"></rect>
+        <text x="481" y="58" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent)" font-family="monospace">3. BUNDLER (esbuild)</text>
+
+        <rect x="409" y="82" width="145" height="70" rx="8" fill="var(--surface-2)"></rect>
+        <text x="419" y="104" font-size="10.5" font-weight="700" fill="currentColor">Tree-shaking</text>
+        <text x="419" y="122" font-size="9" fill="var(--muted)">Quét dependency graph</text>
+        <text x="419" y="137" font-size="9" fill="var(--bad)">Cắt bỏ code không dùng</text>
+
+        <rect x="409" y="164" width="145" height="74" rx="8" fill="var(--surface-2)"></rect>
+        <text x="419" y="186" font-size="10.5" font-weight="700" fill="currentColor">Code Splitting</text>
+        <text x="419" y="204" font-size="9" fill="var(--muted)">Tách lazy routes &amp;</text>
+        <text x="419" y="219" font-size="9" fill="var(--good)">khối @defer thành chunk</text>
+
+        <rect x="409" y="250" width="145" height="64" rx="8" fill="var(--surface-2)"></rect>
+        <text x="419" y="272" font-size="10.5" font-weight="700" fill="currentColor">Nén &amp; Đổi tên</text>
+        <text x="419" y="290" font-size="9" fill="var(--muted)">Minify, rút gọn tên biến</text>
+
+        <!-- Mũi tên 3 -> 4 -->
+        <path d="M568 185 L590 185" fill="none" stroke="currentColor" stroke-width="1.6" marker-end="url(#bld-arr)" opacity=".6"></path>
+
+        <!-- Bước 4: Thư mục dist/ -->
+        <rect x="596" y="24" width="145" height="330" rx="14" fill="var(--surface-2)" stroke="var(--good)" stroke-width="2"></rect>
+        <rect x="604" y="38" width="128" height="30" rx="6" fill="var(--good-soft)"></rect>
+        <text x="668" y="58" text-anchor="middle" font-size="11" font-weight="700" fill="var(--good)" font-family="monospace">4. THƯ MỤC dist/</text>
+
+        <rect x="604" y="82" width="128" height="42" rx="8" fill="var(--surface)" stroke="var(--line)"></rect>
+        <text x="668" y="101" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">index.html</text>
+        <text x="668" y="115" font-size="8.5" text-anchor="middle" fill="var(--muted)">Vỏ rỗng gắn &lt;script&gt;</text>
+
+        <rect x="604" y="132" width="128" height="52" rx="8" fill="var(--good-soft)" stroke="var(--good)"></rect>
+        <text x="668" y="152" font-size="10" font-weight="700" text-anchor="middle" fill="var(--good)">main-[hash].js</text>
+        <text x="668" y="167" font-size="8.5" text-anchor="middle" fill="var(--good)">Logic chính + Angular Core</text>
+
+        <rect x="604" y="192" width="128" height="42" rx="8" fill="var(--surface)" stroke="var(--line)"></rect>
+        <text x="668" y="211" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">polyfills-[hash].js</text>
+        <text x="668" y="225" font-size="8.5" text-anchor="middle" fill="var(--muted)">Zone.js &amp; bản vá API</text>
+
+        <rect x="604" y="242" width="128" height="52" rx="8" fill="var(--surface)" stroke="var(--line)"></rect>
+        <text x="668" y="262" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">chunk-[hash].js</text>
+        <text x="668" y="277" font-size="8.5" text-anchor="middle" fill="var(--muted)">Lazy route &amp; @defer</text>
+
+        <text x="668" y="325" font-size="9" text-anchor="middle" fill="var(--good)">Sẵn sàng tải lên CDN/Nginx</text>
+      </svg>
+    </div>
+  </figure>
+
+  <div class="sec-head col" style="margin-top:36px"><p class="eyebrow">Giải phẫu tệp</p><h3>Bên trong thư mục dist/ có những gì?</h3></div>
+  <p class="col">Khi bạn chạy lệnh <code>ng build</code> xong, hãy mở thư mục <code>dist/tên-app/browser/</code>. Bạn sẽ thấy 5 nhân vật chính sau đây:</p>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Trọng yếu</span>
+      <h3>1. main-[hash].js</h3>
+      <p><strong>Trái tim của ứng dụng:</strong> Chứa toàn bộ mã nguồn bạn viết (Component, Service, Signal), cộng với phần khung chạy thời gian thực của Angular (<span class="gl" data-gl="Angular runtime engine — bộ máy điều phối tiêm phụ thuộc và dò thay đổi" tabindex="0">Ivy runtime</span>, Dependency Injection, Change Detection). Nó là file lớn nhất và bắt buộc phải tải xong thì app mới hiện chữ đầu tiên.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag warn">Môi trường</span>
+      <h3>2. polyfills-[hash].js</h3>
+      <p><strong>Cầu nối tương thích trình duyệt:</strong> Chứa các đoạn mã vá lỗ hổng tính năng của trình duyệt. Trong ứng dụng dùng Zone.js, file này chứa chính mã nguồn của <code>zone.js</code>. Khi bạn bật chế độ <strong><span class="gl" data-gl="chế độ chạy Angular không cần nạp thư viện Zone.js" tabindex="0">Zoneless</span></strong> (Angular 18+), file này sẽ teo nhỏ đi đáng kể hoặc có thể bỏ hẳn.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Giao diện</span>
+      <h3>3. styles-[hash].css</h3>
+      <p><strong>Bộ áo kiểu dáng:</strong> Toàn bộ mã CSS/SCSS toàn cục (khai báo trong <code>styles.scss</code>) được gộp lại thành một file duy nhất, đã loại bỏ khoảng trắng và xuống dòng để đạt kích thước nhỏ nhất.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Tải theo nhu cầu</span>
+      <h3>4. chunk-[hash].js</h3>
+      <p><strong>Các mảnh xếp hình lười:</strong> Sinh ra khi bạn dùng <code>loadComponent</code>, <code>loadChildren</code> trong Router hoặc khối <code>@defer</code>. Trình duyệt không tải các file này lúc mở đầu, mà chỉ gửi request kéo về khi người dùng chuyển sang trang đó hoặc cuộn chuột tới nơi.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag bad">Soi lỗi</span>
+      <h3>5. *.js.map (Source Map)</h3>
+      <p><strong>Bản đồ toạ độ gỡ lỗi:</strong> File này ánh xạ từng ký tự đã bị băm nát trong <code>main.js</code> quay ngược trở lại dòng code <code>.ts</code> ban đầu. Khi bật F12 ở môi trường phát triển (dev), trình duyệt đọc file map này để bạn có thể đặt điểm dừng (breakpoint) trên file TypeScript thật sự.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Cửa ngõ</span>
+      <h3>6. index.html</h3>
+      <p><strong>Khung xương đón khách:</strong> Một file HTML tĩnh đơn sơ chứa thẻ <code>&lt;app-root&gt;&lt;/app-root&gt;</code>. Trong quá trình build, Angular CLI tự động chèn các thẻ <code>&lt;script src="main.js" type="module"&gt;</code> vào cuối thẻ <code>&lt;body&gt;</code>.</p>
+    </div>
+  </div>
+
+  <div class="sec-head col" style="margin-top:36px"><p class="eyebrow">Tại sao có mã băm</p><h3>Ý nghĩa của đoạn mã băm [hash] trên tên file</h3></div>
+  <p class="col">Tại sao tên file khi build ra luôn có dạng kỳ lạ như <code>main-8F3A1D.js</code> thay vì <code>main.js</code>? Đây là kỹ thuật <strong><span class="gl" data-gl="kỹ thuật làm mất hiệu lực bộ nhớ đệm cũ khi có phiên bản mới" tabindex="0">Cache Busting</span></strong>:</p>
+  <ul class="col" style="padding-left:20px;line-height:1.7">
+    <li>Trình duyệt người dùng rất lười: khi tải một file JS về, nó sẽ lưu vào bộ nhớ đệm (cache) trên máy khách để lần sau mở lại không tốn 3G/Wifi tải lại.</li>
+    <li>Nếu máy chủ đặt tên cố định là <code>main.js</code>, khi bạn sửa code và <span class="gl" data-gl="triển khai mã nguồn lên máy chủ" tabindex="0">deploy</span> bản mới, khách hàng bấm F5 vẫn mở ra bản cũ rích trong máy họ!</li>
+    <li>Nhờ <strong>mã băm nội dung</strong> (Content Hash): Mã băm được tính toán dựa trên chính từng ký tự trong file. <em>Code không đổi &rarr; mã băm giữ nguyên (khách dùng cache cũ siêu tốc); Code đổi 1 dấu chấm &rarr; mã băm đổi khác hoàn toàn (khách bắt buộc tải file mới)</em>. Bạn có thể tự tin cấu hình máy chủ Nginx/CDN cho phép lưu cache vĩnh viễn (<code>Cache-Control: max-age=31536000, immutable</code>).</li>
+  </ul>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của quy trình build hiện đại</h2></div>
+  <div class="pc">
+    <div class="panel pro">
+      <h3><span class="dot">+</span>Mặt lợi</h3>
+      <ul>
+        <li><b>Bắt lỗi kiểu dữ liệu ở template:</b> AOT compiler soi ra lỗi gọi sai tên biến hoặc sai kiểu ngay trong terminal, không để lỗi lọt ra môi trường thật.</li>
+        <li><b>Dung lượng nhỏ hơn tới 80%:</b> Tree-shaking kết hợp Minification cắt bỏ toàn bộ code rác, chỉ đóng gói những gì thật sự chạy.</li>
+        <li><b>Tốc độ mở trang cực nhanh:</b> Trình duyệt không tốn CPU biên dịch template lúc mở máy khách, tải JS về là render DOM được ngay.</li>
+        <li><b>Miễn nhiễm lỗi đè cache:</b> Mã băm [hash] giúp máy chủ tận dụng bộ nhớ đệm tối đa mà người dùng không bao giờ bị kẹt ở phiên bản cũ.</li>
+        <li><b>esbuild siêu tốc (Angular 17+):</b> Tốc độ build nhanh gấp 4 lần thế hệ Webpack cũ nhờ viết bằng ngôn ngữ Go và tận dụng đa nhân CPU.</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ mã Ivy sinh ra sau AOT</p>
+<pre><code><span class="cm">// Template bạn viết: &lt;h1&gt;Xin chào {{ ten() }}&lt;/h1&gt;</span>
+<span class="cm">// Sau khi AOT compile, biến thành các chỉ thị DOM thuần:</span>
+ɵɵelementStart(<span class="kw">0</span>, <span class="str">'h1'</span>);
+ɵɵtext(<span class="kw">1</span>);
+ɵɵelementEnd();
+<span class="cm">// Khi cập nhật dữ liệu:</span>
+ɵɵtextInterpolate1(<span class="str">'Xin chào '</span>, ctx.ten(), <span class="str">''</span>);</code></pre></div>
+    </div>
+    <div class="panel con">
+      <h3><span class="dot">−</span>Mặt hại</h3>
+      <ul>
+        <li><b>Nguy cơ lỗi tải mảnh (ChunkLoadError):</b> Khi bạn deploy bản mới, các file chunk cũ bị xoá khỏi CDN, người dùng đang mở app bấm route mới sẽ bị lỗi 404.</li>
+        <li><b>Rủi ro lộ bí mật mã nguồn:</b> Nếu vô tình bật Source Map (<code>*.js.map</code>) ở môi trường production, bất kỳ ai mở F12 cũng đọc được 100% code TypeScript gốc của bạn.</li>
+        <li><b>Tác dụng phụ cản trở Tree-shaking:</b> Nếu thư viện hoặc code của bạn có chứa <span class="gl" data-gl="đoạn mã tự thực thi gây ảnh hưởng ra phạm vi bên ngoài khi vừa được nạp" tabindex="0">side-effects</span>, bundler không dám xoá và khiến <code>main.js</code> phình to.</li>
+        <li><b>Bộ nhớ RAM lúc build:</b> Các dự án Enterprise khổng lồ hàng ngàn component đòi hỏi máy chủ CI/CD phải có dung lượng RAM lớn (thường cần <code>--max_old_space_size=8192</code>).</li>
+      </ul>
+      <div class="ex"><p class="ex-h">Ví dụ cạm bẫy lộ Source Map</p>
+<pre><code><span class="cm">// ✗ angular.json cấu hình lộ mã nguồn ra ngoài Internet:</span>
+<span class="str">"configurations"</span>: {
+  <span class="str">"production"</span>: {
+    <span class="str">"sourceMap"</span>: <span class="kw">true</span>  <span class="cm">// ✗ Người dùng F12 thấy sạch logic nghiệp vụ bí mật!</span>
+  }
+}
+<span class="cm">// Chữa: "sourceMap": { "scripts": false, "hidden": true }</span>
+<span class="cm">// (chỉ sinh map đẩy lên Sentry theo dõi lỗi ngầm, không lộ ra public)</span></code></pre></div>
+    </div>
+  </div>
+
+  <div class="callout good col">
+    <p><strong>Cấu hình chuẩn mực của một Senior trong <code>angular.json</code>:</strong></p>
+    <ul style="margin:8px 0 0;padding-left:20px;line-height:1.65">
+      <li><strong>Chuyển sang Application Builder:</strong> Dùng builder mới <code>@angular-devkit/build-angular:application</code> để tận dụng tốc độ của <code>esbuild</code> thay cho Webpack đời cũ.</li>
+      <li><strong>Kiểm soát ngân sách kích thước (Budgets):</strong> Đặt ngưỡng cảnh báo nếu <code>main.js</code> vượt quá 500KB và báo lỗi (error) nếu vượt quá 1MB để ngăn ngừa đồng nghiệp vô tình kéo thư viện nặng vào dự án.</li>
+      <li><strong>Bảo vệ Source Map:</strong> Tuyệt đối tắt <code>sourceMap: false</code> cho public web, hoặc dùng <code>hidden: true</code> nếu cần tích hợp hệ thống bắt lỗi tự động.</li>
+    </ul>
+<pre><code><span class="cm">// angular.json — Cấu hình xuất xưởng chuẩn cho Production</span>
+<span class="str">"architect"</span>: {
+  <span class="str">"build"</span>: {
+    <span class="str">"builder"</span>: <span class="str">"@angular-devkit/build-angular:application"</span>,
+    <span class="str">"options"</span>: {
+      <span class="str">"outputPath"</span>: <span class="str">"dist/my-app"</span>,
+      <span class="str">"browser"</span>: <span class="str">"src/main.ts"</span>
+    },
+    <span class="str">"configurations"</span>: {
+      <span class="str">"production"</span>: {
+        <span class="str">"optimization"</span>: <span class="kw">true</span>,
+        <span class="str">"sourceMap"</span>: <span class="kw">false</span>,
+        <span class="str">"budgets"</span>: [
+          { <span class="str">"type"</span>: <span class="str">"initial"</span>, <span class="str">"maximumWarning"</span>: <span class="str">"500kB"</span>, <span class="str">"maximumError"</span>: <span class="str">"1MB"</span> }
+        ]
+      }
+    }
+  }
+}</code></pre>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Góc nhìn Senior: Tường tận từng byte trong bundle</h2></div>
+  <div class="board col">
+    <p><strong>Trả lời 30 giây:</strong> "Quy trình build của Angular là chuỗi pipeline gồm hai giai đoạn chính: biên dịch và đóng gói. Đầu tiên, trình biên dịch AOT (ngc) phân tích cú pháp TypeScript và biên dịch toàn bộ template HTML thành các hàm chỉ thị Ivy bytecode thuần túy, đồng thời kiểm tra kiểu dữ liệu nghiêm ngặt. Tiếp theo, bộ đóng gói hiện đại (esbuild trong Application Builder) quét cây phụ thuộc, thực hiện Tree-shaking để vứt bỏ các đoạn mã thừa, băm nhỏ các route và khối <code>@defer</code> thành các lazy chunk độc lập, rút gọn tên biến (minification) và gắn mã băm nội dung (content hash) vào tên file để tối ưu bộ nhớ đệm HTTP. Kết quả cuối cùng trong thư mục <code>dist/</code> là <code>index.html</code>, <code>main.js</code>, <code>polyfills.js</code> và các file chunk đã sẵn sàng để phục vụ trên CDN."</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="tag">Câu hỏi kinh điển</span>
+      <h3>Biên dịch AOT (Ahead-of-Time) khác gì với JIT (Just-in-Time) và tại sao Angular bỏ JIT ở production?</h3>
+      <p>Kiểm tra xem ứng viên có hiểu tại sao Angular đời cũ bị chê nặng nề còn Angular hiện đại lại nhẹ và nhanh.</p>
+      <p><strong>Cách trả lời ăn điểm:</strong> Với JIT, mã TypeScript/HTML được tải nguyên vẹn về máy người dùng, và trình duyệt phải tự nạp cả bộ máy biên dịch Angular Compiler (nặng khoảng 1–2MB) để dịch template ngay trên máy khách lúc vừa mở web, khiến FCP cực kỳ chậm. Với AOT, toàn bộ việc dịch template sang lệnh JavaScript được thực hiện sẵn ngay trên máy của lập trình viên hoặc máy chủ CI/CD trước khi xuất xưởng. Nhờ đó, file tải về trình duyệt chỉ còn là mã JS thuần, không phải kèm compiler, kích thước bundle giảm một nửa và ứng dụng khởi chạy tức thì.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag warn">Cạm bẫy hiệu năng</span>
+      <h3>Tree-shaking hoạt động ra sao và làm sao để đảm bảo code của bạn không bị "miễn nhiễm" với Tree-shaking?</h3>
+      <p>Đánh giá kiến thức chuyên sâu về cơ chế hoạt động của trình đóng gói mã nguồn (Bundler).</p>
+      <p><strong>Cách trả lời ăn điểm:</strong> Tree-shaking dựa trên cú pháp tĩnh của chuẩn ES Modules (<code>import</code> và <code>export</code>). Bundler sẽ bắt đầu từ điểm vào (entry point) <code>main.ts</code> và duyệt theo đồ thị phụ thuộc; hàm nào không có cạnh nối tới sẽ bị loại bỏ. Tuy nhiên, nếu một file có chứa mã "tác dụng phụ" (side-effects — ví dụ: gán biến toàn cục <code>window.myVar = 1</code>, hay chạy lệnh ngay khi nạp file), bundler sẽ không dám xoá vì sợ làm vỡ logic ngầm. Để tối ưu: luôn viết các hàm thuần (pure functions), cấu hình <code>"sideEffects": false</code> trong <code>package.json</code> cho các thư viện nội bộ, và ưu tiên dùng <code>providedIn: 'root'</code> thay vì khai báo service trong module.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag bad">Bảo mật &amp; Vận hành</span>
+      <h3>Có nên đẩy file Source Map (.js.map) lên môi trường Production không?</h3>
+      <p>Một câu hỏi đo lường tư duy bảo mật và kiến thức vận hành hệ thống thực tế.</p>
+      <p><strong>Cách trả lời ăn điểm:</strong> Tuyệt đối không đẩy công khai file <code>.js.map</code> lên máy chủ web production cho người dùng cuối. Nếu có file map, bất kỳ ai mở DevTools cũng có thể đọc và tải toàn bộ mã nguồn TypeScript gốc, bao gồm cấu trúc thư mục, các quy tắc nghiệp vụ nội bộ và các endpoint bảo mật. Giải pháp chuẩn là tắt <code>sourceMap: false</code> cho web public, hoặc dùng chế độ <code>hidden</code>: tạo file source map nhưng không kèm link trỏ trong file JS, sau đó tải riêng các file map này lên hệ thống giám sát lỗi tập trung (như Sentry, Datadog) để giải mã dấu vết ngăn xếp lỗi (stack trace) khi có sự cố xảy ra.</p>
+    </div>
+
+    <div class="card">
+      <span class="tag">Kiến trúc v17+</span>
+      <h3>Sự khác biệt giữa Webpack Builder truyền thống và Application Builder (esbuild) là gì?</h3>
+      <p>Kiểm tra khả năng cập nhật các công nghệ tiên tiến nhất của hệ sinh thái Angular.</p>
+      <p><strong>Cách trả lời ăn điểm:</strong> Webpack builder cũ (<code>@angular-devkit/build-angular:browser</code>) chạy trên môi trường Node.js viết bằng JavaScript nên tốc độ xử lý tuần tự và khá chậm đối với dự án lớn. Từ Angular 17, Google giới thiệu <code>@angular-devkit/build-angular:application</code> sử dụng <strong>esbuild</strong> (viết bằng ngôn ngữ Go) kết hợp với <strong>Vite</strong> cho dev server. esbuild tận dụng tối đa kiến trúc đa nhân (multi-threading) của CPU hiện đại, giúp thời gian build production nhanh hơn 3–5 lần, thời gian khởi động dev server giảm từ hàng chục giây xuống gần như tức thì (dưới 2 giây), và hỗ trợ sẵn chuẩn nạp ESM hiện đại.</p>
+    </div>
+  </div>
+
+  <div class="callout bad col">
+    <p><strong>Quan niệm non tay cần tránh:</strong> "Mã nguồn TypeScript chạy trực tiếp trên trình duyệt giống như JavaScript." &mdash; Trình duyệt không bao giờ chạy được TypeScript hay template Angular. Hiểu rõ từng giai đoạn của pipeline build giúp bạn biết cách kiểm soát dung lượng file, không bao giờ để lọt lỗi bảo mật Source Map và biết chính xác tại sao file <code>main.js</code> của mình lại phình to.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head col"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ đã dùng</h2></div>
+  <div class="tbl-scroll"><table>
+    <thead><tr><th>Thuật ngữ</th><th>Nghĩa tiếng Việt</th></tr></thead>
+    <tbody>
+      <tr><td>build</td><td>Đóng gói mã nguồn — quy trình biên dịch, tối ưu và gom các file code thành bản chạy được.</td></tr>
+      <tr><td>AOT (Ahead-of-Time)</td><td>Biên dịch trước — dịch template và TypeScript sang JavaScript ngay trên máy dev/CI trước khi chạy.</td></tr>
+      <tr><td>JIT (Just-in-Time)</td><td>Biên dịch lúc chạy — tải nguyên mã thô và compiler về để dịch ngay trên trình duyệt của người dùng.</td></tr>
+      <tr><td>Ivy compiler (ngc)</td><td>Bộ biên dịch thế hệ mới của Angular, biến template thành các chỉ thị lệnh DOM siêu nhẹ.</td></tr>
+      <tr><td>bundler</td><td>Bộ gom gói — công cụ phân tích đồ thị phụ thuộc và ghép nối các file rời thành các gói bundle.</td></tr>
+      <tr><td>esbuild</td><td>Bộ đóng gói và biên dịch siêu tốc thế hệ mới viết bằng ngôn ngữ Go, dùng trong Angular 17+.</td></tr>
+      <tr><td>Webpack</td><td>Bộ đóng gói truyền thống chạy trên Node.js dùng trong các phiên bản Angular đời trước.</td></tr>
+      <tr><td>Tree-shaking</td><td>Rung cây rụng lá — kỹ thuật loại bỏ các đoạn mã và hàm thừa không bao giờ được gọi đến.</td></tr>
+      <tr><td>Minification / Mangling</td><td>Nén mã &amp; Đổi tên — xoá khoảng trắng, xuống dòng và rút ngắn tên biến thành 1-2 ký tự.</td></tr>
+      <tr><td>Dead Code Elimination</td><td>Xoá mã chết — loại bỏ các đoạn mã không thể vươn tới (ví dụ nhánh if không bao giờ thoả mãn).</td></tr>
+      <tr><td>main.[hash].js</td><td>Gói mã nguồn chính — chứa toàn bộ logic ứng dụng và phần runtime nền tảng của Angular.</td></tr>
+      <tr><td>polyfills.[hash].js</td><td>Gói mã tương thích — chứa các bản vá (polyfill) và Zone.js giúp chuẩn hoá môi trường trình duyệt.</td></tr>
+      <tr><td>lazy chunk</td><td>Mảnh mã tải lười — các file JS riêng biệt sinh ra từ route lười hoặc khối <code>@defer</code>.</td></tr>
+      <tr><td>Source Map (*.map)</td><td>Bản đồ mã nguồn — tệp ánh xạ từ mã đã nén quay ngược về file TypeScript ban đầu để gỡ lỗi.</td></tr>
+      <tr><td>Content Hash</td><td>Mã băm nội dung — chuỗi ký tự ngẫu nhiên gắn vào tên file đại diện cho nội dung bên trong file đó.</td></tr>
+      <tr><td>Cache Busting</td><td>Làm mất hiệu lực bộ nhớ đệm — kỹ thuật đổi tên file theo mã băm để ép trình duyệt nạp bản mới.</td></tr>
+      <tr><td>Side-effects</td><td>Tác dụng phụ — các đoạn mã tự thực thi gây ảnh hưởng ra bên ngoài khi vừa được nạp vào bộ nhớ.</td></tr>
+      <tr><td>Bytecode / Instructions</td><td>Chỉ thị lệnh nội bộ — các hàm như <code>ɵɵelementStart</code> do compiler sinh ra để trực tiếp tạo DOM.</td></tr>
+    </tbody>
+  </table></div>
+</section>

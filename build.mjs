@@ -51,7 +51,7 @@ const NG_GROUPS = [
   [19, 26, 'Lập trình phản ứng & RxJS', 'Observable và bộ toán tử dùng hằng ngày trong Angular.'],
   [27, 32, 'Định tuyến hệ thống — Angular Router', 'Route, lazy loading, guard và resolver.'],
   [33, 37, 'Làm việc với biểu mẫu — Forms', 'Template-driven, reactive form và async validator.'],
-  [38, 56, 'Chủ đề nâng cao & thực hành', 'Dynamic component, micro frontend, CDK, directive nâng cao, change detection, render hook, zoneless, rò rỉ bộ nhớ, kiểu dữ liệu TypeScript, tối ưu hiệu năng toàn diện.'],
+  [38, 60, 'Chủ đề nâng cao & thực hành', 'Dynamic component, micro frontend, CDK, directive nâng cao, change detection, render hook, zoneless, rò rỉ bộ nhớ, kiểu dữ liệu TypeScript, tối ưu hiệu năng toàn diện, cơ chế đóng gói build & bundle.'],
 ];
 // Trang đứng riêng trong angular/: tự dựng, KHÔNG sinh từ _content/, chỉ được liệt kê ở mục lục.
 const NG_EXTRA = [
