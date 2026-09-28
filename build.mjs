@@ -29,6 +29,7 @@ const JS_ORDER = [
   'scope', 'hoisting', 'use-strict', 'primitive-vs-reference', 'pass-by-value-vs-reference',
   'immutable-vs-mutable', 'loose-vs-strict-equality', 'this-keyword', 'call-apply', 'bind-part-1', 'bind-part-2', 'closure-var-settimeout',
   'null-vs-undefined', 'event-loop', 'browser-storage', 'nullish-logical-operators', 'service-worker', 'async-javascript',
+  'map-set-vs-array-object',
 ];
 // Track rxjs cũng khai tay thứ tự bài (tên file không mang số thứ tự).
 const RXJS_ORDER = [
@@ -72,8 +73,8 @@ const TRACKS = {
   },
   angular: {
     label: 'Angular',
-    title: 'Sổ tay Angular 56 ngày',
-    lede: 'Lộ trình 56 bài từ dựng môi trường tới tối ưu hiệu năng toàn diện — mỗi bài một trang, luôn kèm phần được gì / mất gì.',
+    title: 'Sổ tay Angular 58 ngày',
+    lede: 'Lộ trình 58 bài từ dựng môi trường tới tối ưu hiệu năng toàn diện, cơ chế build bundle và đường ống CI/CD & GitOps — mỗi bài một trang, luôn kèm phần được gì / mất gì.',
   },
   rxjs: {
     label: 'RxJS',
@@ -313,7 +314,7 @@ const home = page({
     '<a href="js/index.html"><span class="cnt">' + nJs + ' bài</span><h2>JavaScript</h2>' +
     '<p>Scope, hoisting, strict mode, tham trị – tham chiếu, bất biến, == và ===, this, bind/call, closure.</p></a>\n' +
     '<a href="angular/index.html"><span class="cnt">' + nNg + ' bài</span><h2>Angular</h2>' +
-    '<p>Lộ trình 56 ngày: directive, DI, RxJS, router, form, dynamic component, render hook, tối ưu hiệu năng.</p></a>\n' +
+    '<p>Lộ trình 58 ngày: directive, DI, RxJS, router, form, dynamic component, render hook, tối ưu hiệu năng, build bundle, CI/CD &amp; GitOps.</p></a>\n' +
     '<a href="rxjs/index.html"><span class="cnt">' + nRx + ' bài</span><h2>RxJS</h2>' +
     '<p>Đi sâu từng nhóm toán tử: biến đổi, lọc, kết hợp, xử lý lỗi — chọn cái nào và hỏng ở đâu.</p></a>\n' +
     '</div></section>',

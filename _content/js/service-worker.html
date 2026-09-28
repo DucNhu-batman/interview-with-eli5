@@ -299,3 +299,228 @@ self.<span class="kw">addEventListener</span>(<span class="str">'fetch'</span>, 
     </table>
   </div>
 </section>
+
+<!-- ═══════════════════════════════════════════════
+     PHẦN MỞ RỘNG — LÀM VIỆC VỚI FRONTEND
+════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head col">
+    <p class="eyebrow">Thực hành với Frontend</p>
+    <h2>Giao tiếp SW ↔ Trang Web &amp; Các case FE thực tế</h2>
+  </div>
+
+  <p>Service Worker không truy cập được <code>window</code> hay <code>document</code>, nhưng hai bên có thể nói chuyện qua <strong><span class="gl" data-gl="postMessage" tabindex="0">postMessage</span></strong> (gửi tin nhắn hai chiều). Đây là nền tảng cho tất cả các tình huống FE dưới đây.</p>
+
+  <figure>
+    <svg viewBox="0 0 720 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;font-family:inherit">
+      <defs>
+        <marker id="sw2-ar" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="var(--accent)"/>
+        </marker>
+        <marker id="sw2-rv" markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto">
+          <path d="M8,0 L8,6 L0,3 z" fill="var(--good)"/>
+        </marker>
+      </defs>
+      <!-- FE box -->
+      <rect x="10" y="30" width="200" height="130" rx="10" fill="var(--surface-2)" stroke="var(--muted)" stroke-width="1.5"/>
+      <text x="110" y="58" text-anchor="middle" font-size="12" font-weight="700" fill="var(--fg)">TRANG WEB (Main Thread)</text>
+      <text x="110" y="80" font-size="10" text-anchor="middle" fill="var(--muted)">window / document / React…</text>
+      <text x="110" y="100" font-size="10" text-anchor="middle" fill="var(--fg)">navigator.serviceWorker</text>
+      <text x="110" y="118" font-size="10" text-anchor="middle" fill="var(--fg)">.controller.postMessage()</text>
+      <text x="110" y="148" font-size="9" text-anchor="middle" fill="var(--muted)">Lắng nghe: navigator.serviceWorker</text>
+      <text x="110" y="162" font-size="9" text-anchor="middle" fill="var(--muted)">.addEventListener('message'…)</text>
+      <!-- Arrows -->
+      <line x1="210" y1="85" x2="395" y2="85" stroke="var(--accent)" stroke-width="2" marker-end="url(#sw2-ar)"/>
+      <text x="302" y="76" text-anchor="middle" font-size="9" fill="var(--accent)">FE → SW: postMessage()</text>
+      <line x1="395" y1="110" x2="210" y2="110" stroke="var(--good)" stroke-width="2" marker-end="url(#sw2-rv)"/>
+      <text x="302" y="130" text-anchor="middle" font-size="9" fill="var(--good)">SW → FE: client.postMessage()</text>
+      <!-- SW box -->
+      <rect x="400" y="30" width="220" height="130" rx="10" fill="var(--surface-2)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="510" y="58" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)">SERVICE WORKER</text>
+      <text x="510" y="80" font-size="10" text-anchor="middle" fill="var(--muted)">Worker Thread (không có DOM)</text>
+      <text x="510" y="100" font-size="10" text-anchor="middle" fill="var(--fg)">self.addEventListener('message'…)</text>
+      <text x="510" y="148" font-size="9" text-anchor="middle" fill="var(--muted)">Gửi lại: self.clients.matchAll()</text>
+      <text x="510" y="162" font-size="9" text-anchor="middle" fill="var(--muted)">.then(cs => cs.forEach(c.postMessage))</text>
+    </svg>
+    <figcaption>Giao tiếp hai chiều giữa trang web (Main Thread) và Service Worker qua postMessage</figcaption>
+  </figure>
+
+  <!-- Case 1: SW gửi progress về FE -->
+  <h3>Case 1 — SW báo tiến trình tải về / prefetch cho FE hiển thị</h3>
+  <div class="ex col">
+    <pre><code><span class="cm">// ── sw.js ─────────────────────────────────────────</span>
+self.<span class="kw">addEventListener</span>(<span class="str">'install'</span>, event =&gt; {
+  event.<span class="kw">waitUntil</span>(<span class="kw">precacheWithProgress</span>(STATIC_ASSETS));
+});
+
+<span class="kw">async function</span> precacheWithProgress(urls) {
+  <span class="kw">const</span> cache = <span class="kw">await</span> caches.<span class="kw">open</span>(CACHE_VERSION);
+  <span class="kw">let</span> done = <span class="num">0</span>;
+  <span class="kw">for</span> (<span class="kw">const</span> url <span class="kw">of</span> urls) {
+    <span class="kw">await</span> cache.<span class="kw">add</span>(url);
+    done++;
+    <span class="cm">// Báo tiến trình về cho tất cả tab đang mở</span>
+    <span class="kw">const</span> clients = <span class="kw">await</span> self.clients.<span class="kw">matchAll</span>();
+    clients.<span class="kw">forEach</span>(c =&gt; c.<span class="kw">postMessage</span>({
+      type: <span class="str">'CACHE_PROGRESS'</span>,
+      done,
+      total: urls.length,
+      percent: Math.<span class="kw">round</span>(done / urls.length * <span class="num">100</span>),
+    }));
+  }
+}
+
+<span class="cm">// ── main.js (React / Vanilla) ─────────────────────</span>
+navigator.serviceWorker.<span class="kw">addEventListener</span>(<span class="str">'message'</span>, e =&gt; {
+  <span class="kw">if</span> (e.data?.type === <span class="str">'CACHE_PROGRESS'</span>) {
+    <span class="cm">// Cập nhật progress bar trên UI</span>
+    setProgress(e.data.percent);   <span class="cm">// React state hook</span>
+    <span class="kw">if</span> (e.data.percent === <span class="num">100</span>) showToast(<span class="str">'App đã sẵn sàng offline!'</span>);
+  }
+});</code></pre>
+  </div>
+
+  <!-- Case 2: FE yêu cầu SW xoá cache cũ (manual clear) -->
+  <h3>Case 2 — FE yêu cầu SW xoá cache theo lệnh (nút "Xoá bộ nhớ đệm")</h3>
+  <div class="ex col">
+    <pre><code><span class="cm">// ── sw.js ─────────────────────────────────────────</span>
+self.<span class="kw">addEventListener</span>(<span class="str">'message'</span>, <span class="kw">async</span> event =&gt; {
+  <span class="kw">if</span> (event.data?.type === <span class="str">'CLEAR_CACHE'</span>) {
+    <span class="kw">const</span> keys = <span class="kw">await</span> caches.<span class="kw">keys</span>();
+    <span class="kw">await</span> Promise.<span class="kw">all</span>(keys.<span class="kw">map</span>(k =&gt; caches.<span class="kw">delete</span>(k)));
+    <span class="cm">// Báo lại cho FE: đã xoá xong</span>
+    event.source?.<span class="kw">postMessage</span>({ type: <span class="str">'CACHE_CLEARED'</span> });
+  }
+});
+
+<span class="cm">// ── settings-page.js ──────────────────────────────</span>
+<span class="kw">async function</span> handleClearCache() {
+  <span class="kw">const</span> sw = navigator.serviceWorker.controller;
+  <span class="kw">if</span> (!sw) { alert(<span class="str">'Không có SW đang chạy'</span>); <span class="kw">return</span>; }
+
+  <span class="cm">// Lắng nghe phản hồi một lần</span>
+  <span class="kw">const</span> done = <span class="kw">new</span> Promise(res =&gt;
+    navigator.serviceWorker.<span class="kw">addEventListener</span>(<span class="str">'message'</span>, e =&gt; {
+      <span class="kw">if</span> (e.data?.type === <span class="str">'CACHE_CLEARED'</span>) res();
+    }, { once: <span class="kw">true</span> })
+  );
+  sw.<span class="kw">postMessage</span>({ type: <span class="str">'CLEAR_CACHE'</span> });
+  <span class="kw">await</span> done;
+  showToast(<span class="str">'Đã xoá bộ nhớ đệm!'</span>);
+}</code></pre>
+  </div>
+
+  <!-- Case 3: Phát hiện offline/online từ FE + SW phối hợp -->
+  <h3>Case 3 — FE phát hiện offline/online, SW phục vụ trang fallback</h3>
+  <div class="ex col">
+    <pre><code><span class="cm">// ── sw.js: trả trang offline.html khi mất mạng ───</span>
+self.<span class="kw">addEventListener</span>(<span class="str">'fetch'</span>, event =&gt; {
+  <span class="kw">if</span> (event.request.<span class="kw">mode</span> === <span class="str">'navigate'</span>) {
+    event.<span class="kw">respondWith</span>(
+      <span class="kw">fetch</span>(event.request).<span class="kw">catch</span>(() =&gt;
+        caches.<span class="kw">match</span>(<span class="str">'/offline.html'</span>)   <span class="cm">// trang đã cache sẵn khi install</span>
+      )
+    );
+    <span class="kw">return</span>;
+  }
+});
+
+<span class="cm">// ── app.js: FE lắng nghe trình duyệt thay đổi mạng ─</span>
+window.<span class="kw">addEventListener</span>(<span class="str">'online'</span>,  () =&gt; setOnline(<span class="kw">true</span>));
+window.<span class="kw">addEventListener</span>(<span class="str">'offline'</span>, () =&gt; setOnline(<span class="kw">false</span>));
+
+<span class="cm">// React hook tiện dụng</span>
+<span class="kw">function</span> useOnlineStatus() {
+  <span class="kw">const</span> [online, setOnline] = useState(navigator.onLine);
+  useEffect(() =&gt; {
+    <span class="kw">const</span> on  = () =&gt; <span class="kw">setOnline</span>(<span class="kw">true</span>);
+    <span class="kw">const</span> off = () =&gt; <span class="kw">setOnline</span>(<span class="kw">false</span>);
+    window.<span class="kw">addEventListener</span>(<span class="str">'online'</span>,  on);
+    window.<span class="kw">addEventListener</span>(<span class="str">'offline'</span>, off);
+    <span class="kw">return</span> () =&gt; {
+      window.<span class="kw">removeEventListener</span>(<span class="str">'online'</span>,  on);
+      window.<span class="kw">removeEventListener</span>(<span class="str">'offline'</span>, off);
+    };
+  }, []);
+  <span class="kw">return</span> online;
+}</code></pre>
+  </div>
+
+  <!-- Case 4: Workbox (Angular / React PWA chuẩn) -->
+  <h3>Case 4 — Workbox: cách Angular/React PWA tích hợp SW trong thực tế</h3>
+  <p>Trong Angular (<code>@angular/pwa</code>) và Vite (<code>vite-plugin-pwa</code>), <span class="gl" data-gl="Workbox" tabindex="0">Workbox</span> (thư viện SW của Google) sinh file <code>sw.js</code> tự động. FE chỉ cần tích hợp module <code>SwUpdate</code> (Angular) hoặc <code>useRegisterSW</code> (Vite):</p>
+  <div class="ex col">
+    <pre><code><span class="cm">// ── Angular: phát hiện bản mới qua SwUpdate ───────</span>
+<span class="kw">import</span> { SwUpdate } <span class="kw">from</span> <span class="str">'@angular/service-worker'</span>;
+
+@Component({ <span class="cm">/* … */</span> })
+<span class="kw">export class</span> AppComponent {
+  <span class="kw">constructor</span>(updates: SwUpdate) {
+    updates.versionUpdates.<span class="kw">pipe</span>(
+      <span class="kw">filter</span>(e =&gt; e.type === <span class="str">'VERSION_READY'</span>)
+    ).<span class="kw">subscribe</span>(() =&gt; {
+      <span class="cm">// Hiện toast: "Có bản mới — Tải lại?"</span>
+      <span class="kw">if</span> (confirm(<span class="str">'Có bản cập nhật mới. Tải lại?'</span>))
+        document.location.<span class="kw">reload</span>();
+    });
+  }
+}
+
+<span class="cm">// ── Vite PWA (React / Vue): hook đơn giản ─────────</span>
+<span class="kw">import</span> { useRegisterSW } <span class="kw">from</span> <span class="str">'virtual:pwa-register/react'</span>;
+
+<span class="kw">function</span> App() {
+  <span class="kw">const</span> { needRefresh, updateServiceWorker } = <span class="kw">useRegisterSW</span>();
+  <span class="kw">return</span> needRefresh ? (
+    &lt;div className=<span class="str">"update-banner"</span>&gt;
+      Có bản mới!{<span class="str">' '</span>}
+      &lt;button onClick={() =&gt; <span class="kw">updateServiceWorker</span>(<span class="kw">true</span>)}&gt;Tải lại&lt;/button&gt;
+    &lt;/div&gt;
+  ) : <span class="kw">null</span>;
+}</code></pre>
+  </div>
+
+  <!-- Case 5: SW inject header / auth token vào request -->
+  <h3>Case 5 — SW tự động đính kèm Authorization header vào mọi API call</h3>
+  <div class="ex col">
+    <pre><code><span class="cm">// sw.js: đọc token từ IndexedDB, thêm header cho API calls</span>
+<span class="kw">import</span> { openDB } <span class="kw">from</span> <span class="str">'idb'</span>; <span class="cm">// hoặc dùng indexedDB thủ công</span>
+
+self.<span class="kw">addEventListener</span>(<span class="str">'fetch'</span>, event =&gt; {
+  <span class="kw">const</span> url = <span class="kw">new</span> URL(event.request.url);
+  <span class="kw">if</span> (!url.pathname.<span class="kw">startsWith</span>(<span class="str">'/api/'</span>)) <span class="kw">return</span>; <span class="cm">// chỉ chặn API</span>
+
+  event.<span class="kw">respondWith</span>(<span class="kw">addAuthHeader</span>(event.request));
+});
+
+<span class="kw">async function</span> addAuthHeader(req) {
+  <span class="kw">const</span> db    = <span class="kw">await</span> openDB(<span class="str">'auth-store'</span>, <span class="num">1</span>);
+  <span class="kw">const</span> token = <span class="kw">await</span> db.<span class="kw">get</span>(<span class="str">'tokens'</span>, <span class="str">'access'</span>);
+  <span class="kw">if</span> (!token) <span class="kw">return</span> <span class="kw">fetch</span>(req);   <span class="cm">// không có token → thả qua</span>
+
+  <span class="kw">const</span> authed = <span class="kw">new</span> Request(req, {
+    headers: { ...<span class="kw">Object</span>.fromEntries(req.headers), Authorization: <span class="str">`Bearer </span>${token}<span class="str">`</span> },
+  });
+  <span class="kw">return</span> <span class="kw">fetch</span>(authed);
+}
+
+<span class="cm">// ── main.js: lưu token vào IndexedDB khi login ────</span>
+<span class="kw">async function</span> saveToken(accessToken) {
+  <span class="kw">const</span> db = <span class="kw">await</span> openDB(<span class="str">'auth-store'</span>, <span class="num">1</span>, {
+    upgrade(db) { db.<span class="kw">createObjectStore</span>(<span class="str">'tokens'</span>); },
+  });
+  <span class="kw">await</span> db.<span class="kw">put</span>(<span class="str">'tokens'</span>, accessToken, <span class="str">'access'</span>);
+}</code></pre>
+  </div>
+
+  <div class="callout good col">
+    <strong>Tổng kết pattern FE ↔ SW:</strong>
+    <ul>
+      <li><strong>FE → SW:</strong> dùng <code>navigator.serviceWorker.controller.postMessage()</code></li>
+      <li><strong>SW → FE:</strong> dùng <code>self.clients.matchAll().then(cs =&gt; cs.forEach(c =&gt; c.postMessage()))</code></li>
+      <li><strong>FE lắng nghe SW:</strong> <code>navigator.serviceWorker.addEventListener('message', handler)</code></li>
+      <li><strong>SW không có localStorage:</strong> mọi dữ liệu cần lưu trong SW phải dùng <span class="gl" data-gl="IndexedDB" tabindex="0">IndexedDB</span> (bất đồng bộ, an toàn với worker thread).</li>
+      <li><strong>Workbox</strong> là lựa chọn chuẩn trong Angular PWA và Vite PWA — không cần viết sw.js tay.</li>
+    </ul>
+  </div>
+</section>

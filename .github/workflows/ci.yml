@@ -1,0 +1,37 @@
+name: CI — Gác cổng kiểm định Sổ tay eli5
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Hủy các lượt chạy trước nếu có commit mới được push liên tục vào cùng PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs: 
+  verify:       
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+
+    steps:
+      - name: 📥 Kéo mã nguồn (Checkout)
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Cài đặt Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 🔍 Chạy Quality Gate (Kiểm tra Metadata, Thứ tự & Tooltip)
+        run: npm test
+
+      - name: 🏗️ Đóng gói toàn bộ Sổ tay (Build HTML)
+        run: npm run build
+
+      - name: 🛡️ Phát hiện lệch pha (Build Drift Check)
+        run: npm run check:drift

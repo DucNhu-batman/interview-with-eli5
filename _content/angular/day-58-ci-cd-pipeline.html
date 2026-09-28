@@ -1,408 +1,367 @@
 <!--meta
-title: Day 58 — Đường ống CI/CD: Tự động hoá kiểm thử, build và xuất xưởng ứng dụng Frontend
+title: Day 58 — Đường ống CI/CD & GitOps: Tự động hoá kiểm định, đóng thùng container và xuất xưởng ứng dụng Angular
 eyebrow: Angular · Day 58
-short: CI/CD Pipeline Frontend
-lede: Từ một cú push code đến khi tính năng chạy trơn tru trên CDN toàn cầu: kiến trúc đường ống CI/CD hiện đại (GitHub Actions), các chốt chặn kiểm thử tự động, kỹ thuật đòn bẩy bộ nhớ đệm và chiến lược xuất xưởng không gián đoạn.
+short: CI/CD & GitOps Frontend
+lede: Từ một cú commit ở máy cá nhân đến khi tính năng chạy trơn tru trên cụm Kubernetes: gác cổng Husky + Biome tại chỗ, đóng gói Docker Multi-stage siêu nhẹ, cấu hình Nginx triệt tiêu ChunkLoadError và triển khai tự động theo chuẩn GitOps qua ArgoCD.
 -->
 
 <section class="col">
-  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Dây chuyền kiểm định và xuất xưởng ô tô tự động</h2></div>
-  <p>Hãy tưởng tượng bạn đang điều hành một xưởng sản xuất ô tô. Trong thời kỳ đồ đá của lập trình web, mỗi khi hoàn thành một tính năng mới, lập trình viên sẽ tự tay gõ lệnh đóng gói (<span class="gl" data-gl="quá trình biên dịch và đóng gói mã nguồn" tabindex="0">build</span>) trên máy tính xách tay cá nhân của mình, rồi mở phần mềm truyền tệp (<span class="gl" data-gl="File Transfer Protocol — giao thức truyền tệp tin mạng" tabindex="0">FTP</span>) hoặc kết nối máy chủ từ xa (<span class="gl" data-gl="Secure Shell — giao thức điều khiển máy chủ an toàn" tabindex="0">SSH</span>) để kéo thả đè các tệp mã nguồn lên máy chủ sản xuất (<span class="gl" data-gl="môi trường chạy thật phục vụ người dùng cuối" tabindex="0">production</span>).</p>
+  <div class="sec-head"><p class="eyebrow">Là gì</p><h2>Dây chuyền làm bánh tự động và Robot thủ kho siêu thị</h2></div>
+  <p>Hãy tưởng tượng bạn đang điều hành một xưởng làm bánh ngọt công nghiệp. Trong thời kỳ đồ đá của lập trình web, mỗi khi hoàn thành một tính năng mới, lập trình viên sẽ tự tay gõ lệnh đóng gói (<span class="gl" data-gl="quá trình biên dịch mã nguồn thành tệp tĩnh" tabindex="0">build</span>) trên chiếc laptop cá nhân của mình, rồi mở phần mềm kéo thả (<span class="gl" data-gl="giao thức truyền tệp mạng" tabindex="0">FTP/FileZilla</span>) hoặc đăng nhập từ xa (<span class="gl" data-gl="điều khiển máy chủ qua dòng lệnh an toàn" tabindex="0">SSH</span>) để chép đè tệp lên máy chủ thật (<span class="gl" data-gl="môi trường phục vụ người dùng cuối" tabindex="0">production</span>).</p>
 
-  <p>Cách làm thủ công này tiềm ẩn vô số thảm hoạ: <em>"Mã nguồn chạy mượt trên máy tính của em nhưng lên máy chủ lại sập"</em>, quên chạy các bài kiểm tra chất lượng, phiên bản môi trường thực thi (<span class="gl" data-gl="môi trường chạy mã nguồn Node.js" tabindex="0">Node.js</span>) ở máy cá nhân khác với máy chủ, hoặc đường truyền mạng chập chờn làm gián đoạn giữa chừng khiến trang web của khách hàng bị trắng xoá hoàn toàn.</p>
+  <p>Cách làm thủ công bằng tay này chính là cái nôi của vô số thảm họa vận hành: <em>"Ở máy em chạy mượt mà lên máy chủ lại sập"</em>, quên kiểm tra lỗi cú pháp, phiên bản môi trường thực thi (<span class="gl" data-gl="nền tảng chạy mã JavaScript máy chủ" tabindex="0">Node.js</span>) ở máy cá nhân khác với máy chủ, hoặc đường truyền mạng chập chờn rớt gói khiến tệp JavaScript bị đứt đoạn làm trắng xoá toàn bộ ứng dụng của khách hàng.</p>
 
-  <p><strong><span class="gl" data-gl="Continuous Integration / Continuous Delivery hoặc Deployment — Tích hợp liên tục và Triển khai liên tục" tabindex="0">CI/CD</span></strong> ra đời để thay thế hoàn toàn đôi tay con người bằng một <strong>dây chuyền băng tải tự động hoá 100%</strong>:</p>
+  <p><strong><span class="gl" data-gl="Continuous Integration / Continuous Delivery & Deployment" tabindex="0">CI/CD &amp; GitOps</span></strong> ra đời để thay thế hoàn toàn đôi tay con người bằng một <strong>dây chuyền tự động hóa 100%</strong> qua ba nhân vật:</p>
 
   <ol class="steps">
-    <li><strong><span class="gl" data-gl="Tích hợp liên tục — kiểm tra mã nguồn tự động mỗi khi có thay đổi" tabindex="0">CI (Continuous Integration)</span> — Người gác cổng chất lượng:</strong> Mỗi khi bạn đẩy mã nguồn lên kho lưu trữ (<span class="gl" data-gl="kho chứa mã nguồn phiên bản Git" tabindex="0">repository</span>) hoặc mở yêu cầu gộp mã (<span class="gl" data-gl="Pull Request — đề xuất gộp nhánh mã nguồn" tabindex="0">PR</span>), một máy chủ ảo độc lập (<span class="gl" data-gl="máy ảo hoặc thùng chứa chuyên chạy tác vụ tự động" tabindex="0">runner</span>) sẽ tự khởi động. Nó tự động kéo mã nguồn về, cài đặt thư viện, kiểm tra chuẩn cú pháp (<span class="gl" data-gl="công cụ phân tích và bắt lỗi quy chuẩn mã nguồn" tabindex="0">linter</span>), kiểm tra kiểu dữ liệu tĩnh (<span class="gl" data-gl="kiểm tra tính đúng đắn của kiểu dữ liệu TypeScript" tabindex="0">typecheck</span>), chạy toàn bộ các bài kiểm thử đơn vị (<span class="gl" data-gl="kiểm thử từng hàm và thành phần riêng lẻ" tabindex="0">unit tests</span>) và thử đóng gói bản phát hành. Nếu có bất kỳ lỗi nào xuất hiện, chiếc cổng sẽ lập tức khoá lại và từ chối gộp mã vào nhánh chính.</li>
-    <li><strong><span class="gl" data-gl="Phân phối liên tục và Triển khai liên tục" tabindex="0">CD (Continuous Delivery / Deployment)</span> — Xe tải giao hàng tự động:</strong> Ngay khi mã nguồn sạch được gộp vào nhánh chính, hệ thống sẽ tự động đóng gói ứng dụng ra thư mục thành phẩm tĩnh (<code>dist/</code>), phân phối tệp lên mạng phân phối nội dung toàn cầu (<span class="gl" data-gl="Content Delivery Network — hệ thống máy chủ đệm dữ liệu phân tán" tabindex="0">CDN</span>), xoá bộ nhớ đệm cũ (<span class="gl" data-gl="làm mới bộ đệm tại các trạm máy chủ biên" tabindex="0">cache invalidation</span>), và phát hành phiên bản mới tới tay người dùng cuối trong tích tắc mà <strong>không có một giây nào ứng dụng bị ngừng hoạt động</strong> (<span class="gl" data-gl="triển khai không làm gián đoạn dịch vụ" tabindex="0">zero-downtime</span>).</li>
+    <li><strong>Người gác cổng tại bếp (<span class="gl" data-gl="Git Hook Manager" tabindex="0">Husky</span> + <span class="gl" data-gl="Bộ phân tích và sửa lỗi cú pháp siêu tốc bằng Rust" tabindex="0">Biome</span>):</strong> Đứng ngay trước cửa phòng làm việc. Bạn vừa gõ lệnh commit, người gác cổng lập tức soi kính lúp quét toàn bộ lỗi cú pháp và kiểm tra cấu trúc câu từ của lời nhắn theo chuẩn doanh nghiệp (như <code>[ADD]</code>, <code>[REFACTOR]</code>, <code>[BUGFIX]</code>). Viết sai chuẩn là bị chặn lại ngay tại bàn, không cho phép đưa mã bẩn lên kho chung.</li>
+    <li><strong>Nhà máy đóng thùng kín (<span class="gl" data-gl="Tích hợp liên tục — máy ảo tự động build và test" tabindex="0">CI Pipeline</span> + <span class="gl" data-gl="Kỹ thuật đóng gói phân tầng trong Docker" tabindex="0">Docker Multi-stage</span>):</strong> Khi mã nguồn sạch được đẩy lên máy chủ Git, một máy ảo độc lập sẽ khởi động lò nướng (<span class="gl" data-gl="môi trường Node 22 đầy đủ công cụ biên dịch" tabindex="0">Node.js builder</span>) kéo từ máy chủ lưu trữ nội bộ (Private Registry), cài đặt trình biên dịch mã nguồn C++, đóng gói Angular Micro-Frontend, rồi chỉ gắp riêng phần bánh chín bỏ vào một chiếc hộp container tí hon (<span class="gl" data-gl="máy chủ phục vụ tệp tĩnh siêu nhẹ" tabindex="0">Nginx Alpine</span>) chạy dưới tài khoản bảo mật không có quyền root, dán nhãn phiên bản rồi đẩy lên kho lưu trữ ảnh.</li>
+    <li><strong>Robot thủ kho thông minh (<span class="gl" data-gl="Mô hình triển khai dựa trên Git làm chân lý" tabindex="0">GitOps</span> với <span class="gl" data-gl="Công cụ tự động đồng bộ trạng thái Kubernetes từ Git" tabindex="0">ArgoCD</span>):</strong> Thay vì đưa chìa khóa máy chủ cho CI bên ngoài nhảy vào can thiệp (rất dễ lộ mật khẩu), một chú robot đứng trực sẵn trong cụm máy chủ nội bộ (<span class="gl" data-gl="hệ thống điều phối container phân tán" tabindex="0">Kubernetes</span>). Robot liên tục đối chiếu sổ sách trên Git: hễ thấy kho có nhãn phiên bản mới là tự động kéo về thay thế trên kệ mà người dùng đang truy cập không hề bị gián đoạn (<span class="gl" data-gl="triển khai không làm gián đoạn dịch vụ" tabindex="0">zero-downtime rolling update</span>).</li>
   </ol>
 
   <div class="callout">
-    <p><strong>Bản chất cốt lõi:</strong> <strong>CI</strong> chịu trách nhiệm <em>"Không bao giờ để mã nguồn lỗi lọt vào nhánh chính"</em>. <strong>CD</strong> chịu trách nhiệm <em>"Đưa gói phần mềm đã được kiểm định an toàn tới tay người dùng một cách tự động, minh bạch và có thể đảo ngược phiên bản (<span class="gl" data-gl="khôi phục phiên bản trước khi gặp sự cố" tabindex="0">rollback</span>) bất kỳ lúc nào"</em>.</p>
+    <p><strong>Triết lý cốt lõi:</strong> <strong>CI (Tích hợp liên tục)</strong> đảm bảo <em>"Mọi dòng code khi hợp nhất đều phải hoàn toàn sạch lỗi và được đóng gói thành container chuẩn mực"</em>. <strong>GitOps CD (Triển khai liên tục)</strong> đảm bảo <em>"Cụm máy chủ luôn tự động kéo và phản ánh chính xác trạng thái khai báo trên Git mà không cần con người can thiệp thủ công"</em>.</p>
   </div>
 </section>
 
 <section>
-  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Dây chuyền 5 trạm kiểm định từ Git commit tới CDN</h2></div>
-  <p class="col">Dưới đây là sơ đồ chi tiết dòng chảy của một đường ống (<span class="gl" data-gl="chuỗi các giai đoạn tự động hoá nối tiếp nhau" tabindex="0">pipeline</span>) CI/CD hiện đại dành cho ứng dụng Single Page Application (<span class="gl" data-gl="ứng dụng web đơn trang" tabindex="0">SPA</span>) như Angular.</p>
+  <div class="sec-head col"><p class="eyebrow">Cơ chế</p><h2>Dòng chảy 4 trạm: Từ bàn phím đến Pods trên Kubernetes</h2></div>
+  <p class="col">Dưới đây là sơ đồ chi tiết hành trình của một commit: được bảo vệ từ local, đóng gói qua Docker hai tầng chuẩn doanh nghiệp và phân phối an toàn vào cụm máy chủ.</p>
 
   <figure>
     <div class="fig-scroll">
-      <svg viewBox="0 0 760 370" role="img" aria-label="Sơ đồ 5 trạm của đường ống CI/CD Frontend: 1. Trigger Git Commit và Pull Request; 2. Kiểm tra tĩnh Lint và Typecheck; 3. Kiểm thử tự động Unit Test trên Headless Chrome; 4. Đóng gói Production và kiểm tra Budgets; 5. Triển khai CDN và xóa bộ nhớ đệm.">
+      <svg viewBox="0 0 760 360" role="img" aria-label="Sơ đồ 4 trạm CI/CD và GitOps: 1. Gác cổng Local với Husky và Biome; 2. GitLab CI Runner kiểm tra và kế thừa template; 3. Docker Multi-stage tách biệt builder và Nginx runtime; 4. GitOps ArgoCD đồng bộ vào cụm Kubernetes.">
         <defs>
           <marker id="pipe-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
             <path d="M0 0 L10 5 L0 10 z" fill="currentColor"></path>
           </marker>
         </defs>
 
-        <!-- Trạm 1: Kích hoạt -->
-        <rect x="15" y="24" width="130" height="320" rx="12" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"></rect>
-        <rect x="25" y="38" width="110" height="28" rx="6" fill="var(--surface)"></rect>
-        <text x="80" y="56" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent)" font-family="monospace">1. KÍCH HOẠT</text>
-        <rect x="25" y="80" width="110" height="58" rx="8" fill="var(--surface)"></rect>
-        <text x="80" y="103" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">Git Push / PR</text>
-        <text x="80" y="122" font-size="8.5" text-anchor="middle" fill="var(--muted)">Nhánh feature / main</text>
-        <rect x="25" y="152" width="110" height="74" rx="8" fill="var(--surface)"></rect>
-        <text x="80" y="176" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">Khởi tạo Runner</text>
-        <text x="80" y="196" font-size="8.5" text-anchor="middle" fill="var(--muted)">actions/checkout</text>
-        <text x="80" y="212" font-size="8.5" text-anchor="middle" fill="var(--muted)">Khôi phục cache</text>
+        <!-- Trạm 1: Local Machine -->
+        <rect x="15" y="24" width="165" height="310" rx="14" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"></rect>
+        <rect x="25" y="38" width="145" height="28" rx="6" fill="var(--surface)"></rect>
+        <text x="97" y="56" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent)" font-family="monospace">1. LOCAL GÁC CỔNG</text>
+
+        <rect x="25" y="78" width="145" height="52" rx="8" fill="var(--surface)"></rect>
+        <text x="97" y="99" font-size="10.5" font-weight="700" text-anchor="middle" fill="currentColor">git commit</text>
+        <text x="97" y="116" font-size="8.5" text-anchor="middle" fill="var(--muted)">Lập trình viên tạo mã mới</text>
+
+        <rect x="25" y="140" width="145" height="82" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1"></rect>
+        <text x="97" y="161" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent)">Husky Git Hooks</text>
+        <text x="35" y="180" font-size="8.5" fill="var(--ink)">&bull; pre-commit: <tspan font-family="monospace" font-weight="700">biome lint</tspan></text>
+        <text x="35" y="196" font-size="8.5" fill="var(--ink)">&bull; commit-msg: <tspan font-family="monospace" font-weight="700">commitlint</tspan></text>
+        <text x="97" y="213" font-size="8" text-anchor="middle" fill="var(--good)">Chặn lỗi cú pháp trong 0.1s</text>
+
+        <rect x="25" y="232" width="145" height="52" rx="8" fill="var(--surface)"></rect>
+        <text x="97" y="253" font-size="10.5" font-weight="700" text-anchor="middle" fill="currentColor">git push origin</text>
+        <text x="97" y="270" font-size="8.5" text-anchor="middle" fill="var(--muted)">Đẩy nhánh develop</text>
 
         <!-- Mũi tên 1 -> 2 -->
-        <path d="M148 184 L162 184" fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#pipe-arr)" opacity=".6"></path>
+        <path d="M180 181 L200 181" fill="none" stroke="currentColor" stroke-width="1.6" marker-end="url(#pipe-arr)" opacity=".6"></path>
 
-        <!-- Trạm 2: Kiểm tra tĩnh -->
-        <rect x="165" y="24" width="130" height="320" rx="12" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"></rect>
-        <rect x="175" y="38" width="110" height="28" rx="6" fill="var(--surface)"></rect>
-        <text x="230" y="56" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent)" font-family="monospace">2. KIỂM TRA TĨNH</text>
-        <rect x="175" y="80" width="110" height="58" rx="8" fill="var(--surface)"></rect>
-        <text x="230" y="103" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">ng lint</text>
-        <text x="230" y="122" font-size="8.5" text-anchor="middle" fill="var(--muted)">ESLint &amp; Prettier</text>
-        <rect x="175" y="152" width="110" height="74" rx="8" fill="var(--surface)"></rect>
-        <text x="230" y="176" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">tsc --noEmit</text>
-        <text x="230" y="196" font-size="8.5" text-anchor="middle" fill="var(--muted)">Kiểm tra kiểu dữ liệu</text>
-        <text x="230" y="212" font-size="8.5" text-anchor="middle" fill="var(--accent)">Phát hiện lỗi sai kiểu</text>
+        <!-- Trạm 2: CI Pipeline Runner -->
+        <rect x="203" y="24" width="165" height="310" rx="14" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"></rect>
+        <rect x="213" y="38" width="145" height="28" rx="6" fill="var(--surface)"></rect>
+        <text x="285" y="56" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent)" font-family="monospace">2. CI RUNNER (GITLAB)</text>
+
+        <rect x="213" y="78" width="145" height="66" rx="8" fill="var(--surface)"></rect>
+        <text x="285" y="99" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">.gitlab-ci.yml</text>
+        <text x="285" y="117" font-size="8.5" text-anchor="middle" fill="var(--muted)">Kế thừa template tập trung:</text>
+        <text x="285" y="132" font-size="7.5" text-anchor="middle" fill="var(--accent)" font-family="monospace">auto-ubck.gitlab-ci.yml</text>
+
+        <rect x="213" y="154" width="145" height="68" rx="8" fill="var(--surface)"></rect>
+        <text x="285" y="175" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">Private Registry</text>
+        <text x="285" y="193" font-size="8.5" text-anchor="middle" fill="var(--muted)">Kéo Base Image nội bộ</text>
+        <text x="285" y="209" font-size="8.5" text-anchor="middle" fill="var(--good)">Không lo Docker Hub limit</text>
+
+        <rect x="213" y="232" width="145" height="52" rx="8" fill="var(--surface)"></rect>
+        <text x="285" y="253" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">Trigger Docker Build</text>
+        <text x="285" y="270" font-size="8.5" text-anchor="middle" fill="var(--muted)">Khởi động đóng gói 2 tầng</text>
 
         <!-- Mũi tên 2 -> 3 -->
-        <path d="M298 184 L312 184" fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#pipe-arr)" opacity=".6"></path>
+        <path d="M368 181 L388 181" fill="none" stroke="currentColor" stroke-width="1.6" marker-end="url(#pipe-arr)" opacity=".6"></path>
 
-        <!-- Trạm 3: Kiểm thử tự động -->
-        <rect x="315" y="24" width="130" height="320" rx="12" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"></rect>
-        <rect x="325" y="38" width="110" height="28" rx="6" fill="var(--surface)"></rect>
-        <text x="380" y="56" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent)" font-family="monospace">3. KIỂM THỬ</text>
-        <rect x="325" y="80" width="110" height="58" rx="8" fill="var(--surface)"></rect>
-        <text x="380" y="103" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">Unit Tests</text>
-        <text x="380" y="122" font-size="8.5" text-anchor="middle" fill="var(--muted)">ChromeHeadless</text>
-        <rect x="325" y="152" width="110" height="74" rx="8" fill="var(--surface)"></rect>
-        <text x="380" y="176" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">Đo độ bao phủ</text>
-        <text x="380" y="196" font-size="8.5" text-anchor="middle" fill="var(--muted)">Coverage Threshold</text>
-        <text x="380" y="212" font-size="8.5" text-anchor="middle" fill="var(--accent)">Chặn code thiếu test</text>
+        <!-- Trạm 3: Docker Multi-stage -->
+        <rect x="391" y="24" width="168" height="310" rx="14" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"></rect>
+        <rect x="401" y="38" width="148" height="28" rx="6" fill="var(--accent-soft)"></rect>
+        <text x="475" y="56" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent)" font-family="monospace">3. DOCKER 2 GIAI ĐOẠN</text>
+
+        <rect x="401" y="78" width="148" height="96" rx="8" fill="var(--surface-2)"></rect>
+        <text x="411" y="98" font-size="9.5" font-weight="700" fill="currentColor">Stage 1: Builder (Node 22)</text>
+        <text x="411" y="115" font-size="8.5" fill="var(--muted)">&bull; apk: python, make, g++, cairo</text>
+        <text x="411" y="131" font-size="8.5" fill="var(--muted)">&bull; pnpm install (Layer Cache)</text>
+        <text x="411" y="147" font-size="8.5" fill="var(--muted)">&bull; build Native Federation</text>
+        <text x="411" y="163" font-size="8.5" fill="var(--bad)">Ảnh nặng ~1.2GB (Bỏ lại)</text>
+
+        <rect x="401" y="184" width="148" height="96" rx="8" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1"></rect>
+        <text x="411" y="204" font-size="9.5" font-weight="700" fill="var(--good)">Stage 2: Runtime (Nginx)</text>
+        <text x="411" y="221" font-size="8.5" fill="var(--ink)">&bull; Chép /dist/ với chmod 555</text>
+        <text x="411" y="237" font-size="8.5" fill="var(--ink)">&bull; Chạy user webuser (1001)</text>
+        <text x="411" y="253" font-size="8.5" fill="var(--ink)">&bull; Cấu hình Nginx chmod 444</text>
+        <text x="411" y="269" font-size="8.5" fill="var(--good)" font-weight="700">Dung lượng siêu nhẹ ~28MB</text>
 
         <!-- Mũi tên 3 -> 4 -->
-        <path d="M448 184 L462 184" fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#pipe-arr)" opacity=".6"></path>
+        <path d="M559 181 L579 181" fill="none" stroke="currentColor" stroke-width="1.6" marker-end="url(#pipe-arr)" opacity=".6"></path>
 
-        <!-- Trạm 4: Đóng gói -->
-        <rect x="465" y="24" width="130" height="320" rx="12" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"></rect>
-        <rect x="475" y="38" width="110" height="28" rx="6" fill="var(--accent-soft)"></rect>
-        <text x="530" y="56" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent)" font-family="monospace">4. ĐÓNG GÓI</text>
-        <rect x="475" y="80" width="110" height="58" rx="8" fill="var(--surface-2)"></rect>
-        <text x="530" y="103" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">ng build --prod</text>
-        <text x="530" y="122" font-size="8.5" text-anchor="middle" fill="var(--muted)">Biên dịch AOT &amp; nén</text>
-        <rect x="475" y="152" width="110" height="74" rx="8" fill="var(--surface-2)"></rect>
-        <text x="530" y="176" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">Kiểm tra Budgets</text>
-        <text x="530" y="196" font-size="8.5" text-anchor="middle" fill="var(--muted)">Soát ngưỡng dung lượng</text>
-        <text x="530" y="212" font-size="8.5" text-anchor="middle" fill="var(--accent)">Chặn bundle phình to</text>
+        <!-- Trạm 4: GitOps & Kubernetes -->
+        <rect x="582" y="24" width="165" height="310" rx="14" fill="var(--surface-2)" stroke="var(--good)" stroke-width="2"></rect>
+        <rect x="592" y="38" width="145" height="28" rx="6" fill="var(--good-soft)"></rect>
+        <text x="664" y="56" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--good)" font-family="monospace">4. GITOPS (ARGOCD)</text>
 
-        <!-- Mũi tên 4 -> 5 -->
-        <path d="M598 184 L612 184" fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#pipe-arr)" opacity=".6"></path>
+        <rect x="592" y="78" width="145" height="66" rx="8" fill="var(--surface)"></rect>
+        <text x="664" y="99" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">Đẩy Registry &amp; Git</text>
+        <text x="664" y="117" font-size="8.5" text-anchor="middle" fill="var(--muted)">Push Image Tag mới</text>
+        <text x="664" y="132" font-size="8.5" text-anchor="middle" fill="var(--muted)">Commit tag vào repo ArgoCD</text>
 
-        <!-- Trạm 5: Triển khai -->
-        <rect x="615" y="24" width="130" height="320" rx="12" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"></rect>
-        <rect x="625" y="38" width="110" height="28" rx="6" fill="var(--surface)"></rect>
-        <text x="680" y="56" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent)" font-family="monospace">5. XUẤT XƯỞNG</text>
-        <rect x="625" y="80" width="110" height="58" rx="8" fill="var(--surface)"></rect>
-        <text x="680" y="103" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">Đẩy lên CDN</text>
-        <text x="680" y="122" font-size="8.5" text-anchor="middle" fill="var(--muted)">S3 / Cloudflare / Vercel</text>
-        <rect x="625" y="152" width="110" height="74" rx="8" fill="var(--surface)"></rect>
-        <text x="680" y="176" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">Cấu hình Header</text>
-        <text x="680" y="196" font-size="8.5" text-anchor="middle" fill="var(--muted)">index.html: no-cache</text>
-        <text x="680" y="212" font-size="8.5" text-anchor="middle" fill="var(--accent)">Purge Edge Cache</text>
+        <rect x="592" y="154" width="145" height="68" rx="8" fill="var(--surface)"></rect>
+        <text x="664" y="175" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent)">ArgoCD Tự Đồng Bộ</text>
+        <text x="664" y="193" font-size="8.5" text-anchor="middle" fill="var(--muted)">Phát hiện lệch trạng thái</text>
+        <text x="664" y="209" font-size="8.5" text-anchor="middle" fill="var(--good)">Kéo Image (Pull-based)</text>
+
+        <rect x="592" y="232" width="145" height="52" rx="8" fill="var(--good-soft)"></rect>
+        <text x="664" y="253" font-size="10" font-weight="700" text-anchor="middle" fill="var(--good)">Kubernetes Pods Mới</text>
+        <text x="664" y="270" font-size="8.5" text-anchor="middle" fill="var(--good)">Rolling update hoàn tất!</text>
       </svg>
     </div>
-    <figcaption>Hành trình 5 giai đoạn tự động hoá: Lập trình viên chỉ cần thao tác với Git, toàn bộ các khâu kiểm duyệt, đóng gói và xuất xưởng đều do máy ảo đám mây thực thi độc lập.</figcaption>
+    <figcaption>Hành trình 4 trạm tự động hóa: Runner CI bên ngoài không hề có quyền kết nối vào cụm Kubernetes. Việc cập nhật ứng dụng diễn ra an toàn thông qua cơ chế Pull-based của ArgoCD bên trong cụm.</figcaption>
   </figure>
 
   <div class="col">
-    <h3>Bốn trụ cột kỹ thuật cốt lõi trong đường ống CI/CD</h3>
-    
-    <h4>1. Kỹ thuật đòn bẩy bộ nhớ đệm (<span class="gl" data-gl="lưu trữ tạm thời các phụ thuộc để tái sử dụng" tabindex="0">Pipeline Caching</span>)</h4>
-    <p>Một trong những nỗi ám ảnh lớn nhất của lập trình viên là pipeline chạy quá chậm (10–15 phút cho mỗi commit). Thủ phạm chiếm hơn 70% thời gian chính là bước tải hàng ngàn thư viện trong <code>node_modules</code> từ <span class="gl" data-gl="kho lưu trữ gói thư viện Node.js" tabindex="0">npm registry</span> và việc Angular phải biên dịch lại toàn bộ từ con số không.</p>
-    <p>Bằng cách sử dụng <code>actions/setup-node</code> kèm cơ chế lưu đệm dựa trên mã băm của tệp khoá phụ thuộc (<span class="gl" data-gl="tệp khoá phiên bản chính xác của các gói thư viện" tabindex="0">package-lock.json</span>) và giữ lại thư mục <code>.angular/cache</code> giữa các lần chạy, thời gian thực thi pipeline có thể được rút ngắn thần tốc từ <strong>12 phút xuống dưới 2 phút</strong>.</p>
+    <h3>Bóc tách chuyên sâu các chốt chặn kỹ thuật trong dự án doanh nghiệp</h3>
 
-    <h4>2. Phân biệt Continuous Delivery vs. Continuous Deployment</h4>
-    <p>Mặc dù đều viết tắt là <strong>CD</strong>, hai khái niệm này mang ý nghĩa hoàn toàn khác nhau về mức độ tự động hoá:</p>
+    <h4>1. Thay thế ESLint bằng Biome + Husky: Chặn đứng rác từ nguồn</h4>
+    <p>Trong các dự án lớn, lý do hàng đầu khiến lập trình viên lười chạy lint ở máy cá nhân là vì ESLint quá chậm (thường mất 15–30 giây cho mỗi lần quét). Họ thường gõ cờ <code>--no-verify</code> để bỏ qua kiểm tra, đẩy code lỗi lên Git làm đỏ quạch pipeline của cả đội.</p>
+    <p>Bằng cách chuyển sang <strong>Biome</strong> (viết bằng Rust) tích hợp vào <code>.husky/pre-commit</code>, tốc độ phân tích cú pháp tăng gấp <strong>15 đến 20 lần</strong> (chưa tới 0.2 giây). Lỗi cú pháp, biến thừa và vi phạm định dạng bị chặn đứng ngay trước khi commit được tạo ra mà không gây bất kỳ sự ức chế nào cho lập trình viên. Đồng thời, <code>commitlint</code> bắt buộc thông điệp commit phải tuân thủ nghiêm ngặt định dạng chuẩn doanh nghiệp như <code>[ADD]</code>, <code>[CHANGE]</code>, <code>[REFACTOR]</code>, <code>[BUGFIX]</code> để phục vụ truy vết lịch sử.</p>
+
+    <h4>2. Docker Multi-stage dưới nắp ca-pô: 4 bí mật tại môi trường doanh nghiệp</h4>
+    <p>Nhìn vào file <code>Dockerfile</code> thực tế của một dự án lớn, bạn sẽ thấy sự khác biệt một trời một vực so với các ví dụ sách giáo khoa:</p>
     <ul>
-      <li><strong><span class="gl" data-gl="Phân phối liên tục — tạo gói thành phẩm sẵn sàng nhưng cần người duyệt xuất xưởng" tabindex="0">Continuous Delivery</span>:</strong> Toàn bộ quá trình từ lint, test cho đến build thành phẩm thư mục <code>dist/</code> đều tự động. Tuy nhiên, việc đưa bản build này lên môi trường người dùng thật (<span class="gl" data-gl="môi trường chạy thật" tabindex="0">production</span>) vẫn dừng lại ở một chốt chặn phê duyệt thủ công (<span class="gl" data-gl="nút bấm duyệt có sự kiểm soát của con người" tabindex="0">manual approval gate</span>). Thích hợp cho các hệ thống ngân hàng, thanh toán, y tế cần kiểm soát nghiêm ngặt.</li>
-      <li><strong><span class="gl" data-gl="Triển khai liên tục — đưa thẳng lên người dùng ngay khi vượt qua bài kiểm tra" tabindex="0">Continuous Deployment</span>:</strong> Mức độ tự động hoá tối đa. Bất kỳ dòng code nào vượt qua 100% các bài kiểm thử trên nhánh <code>main</code> sẽ tự động phóng thẳng lên CDN và tới tay người dùng sau vài phút mà không cần bất kỳ sự can thiệp nào của con người.</li>
+      <li><strong>Private Registry nội bộ:</strong> Không bao giờ kéo image từ Docker Hub công cộng để tránh bị chặn giới hạn tần suất (<span class="gl" data-gl="giới hạn số lần tải về" tabindex="0">rate limit</span>) và đảm bảo các base image (Node 22, Nginx 1.27) đã được bộ phận An toàn thông tin quét sạch lỗ hổng CVE. Tốc độ kéo image nội bộ đạt hàng trăm MB/s.</li>
+      <li><strong>Native C++ Bindings trên Alpine Linux:</strong> Tại sao một dự án Frontend lại cần <code>apk add python3 make g++ cairo-dev pango-dev...</code>? Vì các dự án lớn thường tích hợp thư viện vẽ biểu đồ, bản đồ hay xử lý tệp (như <code>canvas</code>, <code>jspdf</code>, <code>pdfjs-dist</code>). Những gói này chứa mã nguồn C++ gốc, đòi hỏi môi trường Alpine siêu tối giản phải có trình biên dịch để <code>node-gyp</code> build thành công trong container.</li>
+      <li><strong>Tận dụng tối đa Docker Layer Caching:</strong> Lệnh <code>COPY package.json pnpm-workspace.yaml .npmrc ./</code> được tách riêng lên trước <code>COPY . .</code>. Nếu không có thư viện mới nào được thêm vào, Docker sẽ tái sử dụng lại layer cài đặt <code>pnpm install</code> từ cache. Một commit chỉ sửa file <code>.ts</code> hay <code>.html</code> sẽ bỏ qua bước cài đặt, rút ngắn thời gian đóng gói từ 3 phút xuống chỉ còn <strong>vài giây</strong>.</li>
+      <li><strong>Hardening bảo mật thùng chứa (Container Security Hardening):</strong> Mặc định Nginx chạy quyền <code>root</code>. Dự án tạo riêng tài khoản <code>webuser</code> (UID 1001) và tước bỏ quyền root. Đặc biệt, thư mục mã nguồn web được phân quyền chỉ đọc và thực thi (<code>--chmod=555 /usr/share/nginx/html</code>), tệp cấu hình Nginx chỉ cho phép đọc (<code>--chmod=444 nginx.conf</code>). Dù hacker có khai thác được lỗ hổng tràn bộ đệm của web server, chúng cũng không thể ghi đè mã độc hay leo thang đặc quyền.</li>
     </ul>
 
-    <h4>3. Cạm bẫy định tuyến SPA Fallback (Lỗi 404 khi người dùng tải lại trang)</h4>
-    <p>Ứng dụng Angular là một ứng dụng đơn trang (<span class="gl" data-gl="Single Page Application" tabindex="0">SPA</span>). Điều này có nghĩa là trên máy chủ vật lý chỉ tồn tại duy nhất một tệp <code>index.html</code> thật sự. Các đường dẫn như <code>/dashboard/orders</code> hay <code>/profile/settings</code> chỉ là <strong>đường dẫn ảo</strong> do thư viện định tuyến (<span class="gl" data-gl="bộ định tuyến phía máy khách" tabindex="0">Angular Router</span>) xử lý ngay trên trình duyệt.</p>
-    <p>Khi người dùng nhấn F5 hoặc nhập trực tiếp link <code>https://my-app.com/dashboard/orders</code>, máy chủ web (hoặc kho lưu trữ đối tượng đám mây như AWS S3) sẽ ngơ ngác đi tìm tệp tĩnh có tên <code>dashboard/orders</code> trên ổ đĩa. Vì không tìm thấy, nó lập tức trả về lỗi <strong>404 Not Found</strong> kinh điển.</p>
-    <p><strong>Giải pháp trong giai đoạn CD:</strong> Cấu hình máy chủ web (Nginx) hoặc dịch vụ lưu trữ đám mây chuyển tiếp toàn bộ các yêu cầu không khớp với tệp vật lý quay trở về <code>index.html</code> kèm mã phản hồi HTTP 200:</p>
+    <h4>3. Đóng gói Micro-Frontend (Native Federation) và bẫy Dependency rình rập</h4>
+    <p>Container không chỉ phục vụ một ứng dụng Angular đơn lẻ, mà nó là một mảnh Micro-Frontend xuất bản các cổng giao tiếp từ xa (như <code>./Component</code> và <code>./EsbRoutes</code>) cho ứng dụng mẹ nhúng vào qua cơ chế <strong>Native Federation</strong>.</p>
+    <p>Điểm kỹ thuật sống còn ở đây là cấu hình <code>sharedMappings: []</code> trong <code>federation.config.js</code>: Mặc định, Native Federation sẽ biến mọi đường dẫn alias trong <code>tsconfig.json</code> (như <code>@components/*</code>) thành các gói chia sẻ riêng biệt. Điều này khiến cùng một Service bị khởi tạo ở hai thực thể độc lập khác nhau, gây ra lỗi kinh hoàng lúc chạy: <strong><code>NG0201: No provider found for _IamDialogService</code></strong>. Đưa <code>sharedMappings: []</code> vào cấu hình ép trình đóng gói esbuild gộp chung các alias nội bộ lại, giữ nguyên tính duy nhất của Dependency Injection.</p>
+
+    <h4>4. Chiến lược Cache Nginx: Cứu tinh của lỗi văng app (ChunkLoadError)</h4>
+    <p>Đây là cạm bẫy đau đớn nhất của các ứng dụng Single Page Application (SPA): Khi người dùng đang mở trang web làm việc, bạn deploy một phiên bản mới. Angular sẽ xóa các mảnh mã tải lười cũ (ví dụ <code>chunk-auth.a1b2.js</code>) và sinh ra mã băm mới (<code>chunk-auth.c3d4.js</code>). Nếu máy chủ Nginx cho phép trình duyệt lưu đệm tệp <code>index.html</code>, khi người dùng bấm chuyển trang, trình duyệt vẫn đòi nạp file mã băm cũ &rarr; <strong>Lỗi 404 ChunkLoadError và màn hình trắng xóa</strong>.</p>
+    <p>Chiến lược định tuyến chuẩn mực trong <code>nginx.conf</code> phải phân tách rạch ròi hai dòng dữ liệu:</p>
     <ul>
-      <li><strong>Với Nginx:</strong> <code>try_files $uri $uri/ /index.html;</code></li>
-      <li><strong>Với AWS CloudFront / S3:</strong> Cấu hình quy tắc phản hồi lỗi tuỳ chỉnh (<span class="gl" data-gl="Custom Error Response" tabindex="0">Custom Error Response</span>) ánh xạ mã lỗi 403/404 về tệp <code>/index.html</code>.</li>
+      <li><strong>Tệp chỉ mục và tuyến đường ảo (<code>index.html</code> &amp; fallback <code>/</code>):</strong> Gắn cờ nghiêm ngặt <code>Cache-Control: "no-store, no-cache, must-revalidate"</code>. Trình duyệt bắt buộc phải hỏi máy chủ mỗi lần tải lại để luôn nhận được danh sách mã băm mới nhất.</li>
+      <li><strong>Các tệp tĩnh có mã băm (<code>*.js</code>, <code>*.css</code>, font, ảnh):</strong> Gắn cờ lưu vĩnh viễn <code>Cache-Control: "public, max-age=31536000, immutable"</code>. Tệp đã tải một lần sẽ nằm mãi trong bộ nhớ đệm máy khách, giúp tốc độ chuyển trang đạt mức tức thì.</li>
+      <li><strong>Tệp cấu hình Runtime (<code>*.json</code> như bản dịch, remoteEntry):</strong> Bắt buộc mở CORS và cấm cache (<code>no-cache</code>) để các module Micro-Frontend nạp nhau không bị lỗi cùng nguồn gốc (Same-Origin Policy).</li>
     </ul>
 
-    <h4>4. Chiến lược bộ nhớ đệm kép (<span class="gl" data-gl="tiêu đề chỉ dẫn lưu bộ nhớ đệm HTTP" tabindex="0">Cache-Control Headers</span>)</h4>
-    <p>Để người dùng nhận bản cập nhật mới ngay tức thì mà vẫn đạt điểm số tốc độ tải trang cao nhất, cấu hình máy chủ web trong CD phải chia làm 2 tầng rõ rệt:</p>
-    <ul>
-      <li><strong>Tệp vỏ <code>index.html</code>:</strong> Phải được cấu hình <code>Cache-Control: no-cache, no-store, must-revalidate</code>. Trình duyệt bắt buộc phải hỏi máy chủ mỗi lần truy cập để lấy nội dung tệp HTML mới nhất (vốn chứa tên các tệp JavaScript vừa được đóng gói).</li>
-      <li><strong>Toàn bộ các tệp mã nguồn có mã băm (<code>main-*.js</code>, <code>styles-*.css</code>):</strong> Vì tên tệp đã mang chuỗi mã băm theo nội dung (<span class="gl" data-gl="mã băm nội dung chống trùng bộ đệm" tabindex="0">content hash</span>), chúng được gắn cờ lưu đệm vĩnh viễn: <code>Cache-Control: public, max-age=31536000, immutable</code>. Trình duyệt và máy chủ CDN sẽ lưu giữ tệp này trong 1 năm mà không bao giờ tải lại lần hai.</li>
-    </ul>
+    <h4>5. GitOps Pull-based (ArgoCD) vs CI Push-based: Chân lý thuộc về Git</h4>
+    <p>Trong mô hình cũ (Push-based), máy ảo GitLab CI Runner phải giữ chìa khóa bí mật (<span class="gl" data-gl="tệp cấu hình xác thực quyền quản trị Kubernetes" tabindex="0">kubeconfig</span>) để gõ lệnh <code>kubectl apply</code> đè vào máy chủ. Nếu máy ảo CI bị xâm nhập, kẻ tấn công sẽ có toàn quyền kiểm soát cụm máy chủ.</p>
+    <p>Với mô hình <strong>GitOps (Pull-based)</strong>, kết nối diễn ra theo chiều ngược lại: <strong>ArgoCD nằm bên trong cụm máy chủ</strong> và định kỳ lắng nghe Git repository. Khi GitLab CI đóng gói xong Docker Image, nó chỉ làm một nhiệm vụ duy nhất là cập nhật thẻ nhãn phiên bản (<span class="gl" data-gl="nhãn đánh dấu phiên bản ảnh container" tabindex="0">image tag</span>) lên kho Git cấu hình hạ tầng. ArgoCD phát hiện trạng thái thực tế bị lệch so với Git sẽ lập tức kéo ảnh về cập nhật. Không một mật mã nhạy cảm nào bị đưa ra ngoài vùng an toàn.</p>
   </div>
 </section>
 
 <section>
-  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Cân nhắc lợi ích và chi phí vận hành</h2></div>
-
+  <div class="sec-head col"><p class="eyebrow">Được gì — mất gì</p><h2>Ưu điểm và nhược điểm của mô hình CI/CD &amp; GitOps</h2></div>
   <div class="pc">
     <div class="panel pro">
-      <h3>Được gì (Ưu điểm)</h3>
+      <h3><span class="dot">+</span>Mặt lợi</h3>
       <ul>
-        <li><strong>Triệt tiêu lỗi môi trường:</strong> Chấm dứt vĩnh viễn căn bệnh <em>"Chạy được trên máy em nhưng chết trên máy chủ"</em> nhờ chạy trên môi trường máy ảo chuẩn hoá.</li>
-        <li><strong>Phát hiện lỗi từ sớm (<span class="gl" data-gl="kỹ thuật đưa các bước kiểm thử về giai đoạn sớm nhất của quy trình" tabindex="0">Shift-Left Testing</span>):</strong> Lỗi chính tả, lỗi kiểu dữ liệu và lỗi logic được phát hiện ngay khi vừa mở Pull Request, giảm chi phí khắc phục hàng chục lần.</li>
-        <li><strong>Khắc phục sự cố trong tích tắc:</strong> Khi phiên bản mới gặp lỗi bất ngờ, chỉ cần 1 thao tác nhấn nút để hoàn tác (<span class="gl" data-gl="khôi phục phiên bản trước khi gặp sự cố" tabindex="0">rollback</span>) lại gói tệp đã build trước đó mà không cần biên dịch lại từ đầu.</li>
-        <li><strong>Bảo vệ ngân sách kích thước (<span class="gl" data-gl="ngưỡng giới hạn kích thước gói mã nguồn tối đa cho phép" tabindex="0">Bundle Budgets</span>):</strong> Tự động chặn đứng các Pull Request lỡ tay nhập các thư viện nặng hàng chục megabyte làm chậm trang web của khách hàng.</li>
-        <li><strong>Giải phóng sức lao động:</strong> Lập trình viên tập trung 100% vào viết tính năng kinh doanh, toàn bộ khâu kiểm thử, đóng gói và xuất xưởng đều do máy móc đảm nhiệm.</li>
+        <li><b>Triệt tiêu lỗi phát sinh từ con người:</b> 100% các khâu kiểm tra cú pháp, biên dịch AOT và đóng gói đều chạy trong môi trường container cô lập chuẩn xác.</li>
+        <li><b>Bảo mật tuyệt đối (Zero Credential Leak):</b> Không lưu trữ kubeconfig hay khóa SSH nhạy cảm trên máy ảo CI runner công cộng.</li>
+        <li><b>Khôi phục sự cố trong 5 giây (Rollback):</b> Khi phiên bản mới gặp sự cố nghiêm trọng trên production, chỉ cần thực hiện <code>git revert</code> trên repo cấu hình, ArgoCD sẽ tự động kéo phiên bản cũ về thay thế ngay lập tức.</li>
+        <li><b>Chống trôi cấu hình (Configuration Drift):</b> Nếu ai đó vào máy chủ chỉnh sửa tham số bằng tay, ArgoCD sẽ phát hiện trạng thái <code>OutOfSync</code> và tự động ghi đè về đúng như cam kết trên Git.</li>
+        <li><b>Container siêu nhẹ &amp; kiên cố:</b> Nginx Alpine chỉ nặng 28MB, phân quyền chặt <code>555</code> và <code>444</code>, chạy dưới user thường không đặc quyền root.</li>
       </ul>
-    </div>
+      <div class="ex"><p class="ex-h">Mẫu Dockerfile Multi-stage chuẩn doanh nghiệp</p>
+<pre><code><span class="cm"># Giai đoạn 1: Builder (Node 22 + C++ compiler)</span>
+FROM dockerhub.internal/devops/node:22-alpine AS builder
+WORKDIR /app
+RUN apk add --no-cache python3 make g++ cairo-dev
+COPY package.json pnpm-workspace.yaml ./
+RUN npm i -g pnpm@9 &amp;&amp; pnpm install
+COPY . .
+RUN npm run lint &amp;&amp; npm run build:prd
 
+<span class="cm"># Giai đoạn 2: Runtime (Nginx Non-root &amp; Hardened)</span>
+FROM dockerhub.internal/repo/nginx:1.27-alpine
+RUN addgroup -g 1001 -S webuser &amp;&amp;     adduser -u 1001 -S webuser -G webuser
+<span class="cm"># Chỉ cấp quyền đọc và thực thi, cấm sửa:</span>
+COPY --from=builder --chmod=555 /app/dist/browser /usr/share/nginx/html
+COPY --chmod=444 ./nginx.conf /etc/nginx/nginx.conf
+RUN chown -R webuser:webuser /var/cache/nginx /var/log/nginx
+USER webuser
+EXPOSE 80
+CMD [<span class="str">"nginx"</span>, <span class="str">"-g"</span>, <span class="str">"daemon off;"</span>]</code></pre></div>
+    </div>
     <div class="panel con">
-      <h3>Mất gì (Chi phí &amp; Rủi ro)</h3>
+      <h3><span class="dot">−</span>Mặt hại</h3>
       <ul>
-        <li><strong>Chi phí hạ tầng và thiết lập:</strong> Cần thời gian đầu tư viết kịch bản cấu hình, mua thời lượng chạy máy ảo (<span class="gl" data-gl="thời gian sử dụng máy tính ảo chạy quy trình CI" tabindex="0">runner minutes</span>) trên GitHub Actions, GitLab CI hoặc tự dựng máy chủ.</li>
-        <li><strong>Nỗi ám ảnh kiểm thử chập chờn (<span class="gl" data-gl="bài kiểm thử lúc vượt qua lúc thất bại ngẫu nhiên dù không đổi mã nguồn" tabindex="0">Flaky Tests</span>):</strong> Những bài kiểm thử bất đồng bộ viết ẩu chạy lúc đậu lúc rớt ngẫu nhiên sẽ làm nghẽn toàn bộ đường ống, khiến cả đội nhóm bị tắc đường gộp code.</li>
-        <li><strong>Nguy cơ rò rỉ thông tin nhạy cảm (<span class="gl" data-gl="mã khoá bí mật, mật khẩu kết nối cơ sở dữ liệu" tabindex="0">Secrets</span>):</strong> Nếu vô tình in biến môi trường hoặc mã khoá truy cập đám mây ra màn hình ghi vết (<span class="gl" data-gl="nhật ký hoạt động của máy ảo" tabindex="0">logs</span>) của CI, hệ thống có thể bị kẻ xấu xâm nhập.</li>
-        <li><strong>Nghẽn cổ chai tiến độ:</strong> Nếu không biết cách cấu hình lưu đệm bộ nhớ và chạy song song các tác vụ, thời gian chờ đợi pipeline có thể làm giảm năng suất làm việc của toàn đội ngũ.</li>
+        <li><b>Độ trễ phản ánh thay đổi:</b> Vì ArgoCD định kỳ quét Git (thường từ 1–3 phút một lần), phiên bản mới sẽ không hiện diện tức thì như lệnh đẩy trực tiếp (có thể khắc phục bằng Webhook kích hoạt đồng bộ).</li>
+        <li><b>Độ phức tạp kiến trúc cao:</b> Đội ngũ phải quản lý thêm cụm Kubernetes, công cụ ArgoCD, máy chủ đăng ký Docker riêng và các tệp khai báo YAML.</li>
+        <li><b>Cạm bẫy bỏ quên tệp khóa (lockfile):</b> Nếu tệp <code>pnpm-lock.yaml</code> bị đưa vào <code>.gitignore</code> và dùng cờ <code>--no-frozen-lockfile</code> trong Dockerfile, các bản vá lỗi tự động từ thư viện bên ngoài có thể gây gãy bản build trên CI mà máy cá nhân không hề hay biết.</li>
+        <li><b>Tốn tài nguyên lưu trữ Image Registry:</b> Mỗi commit sinh ra một image container hoàn chỉnh; nếu không cấu hình chính sách dọn dẹp tự động định kỳ, máy chủ lưu trữ sẽ nhanh chóng bị tràn dung lượng.</li>
       </ul>
+      <div class="ex"><p class="ex-h">Mẫu cấu hình Cache chống ChunkLoadError</p>
+<pre><code><span class="cm"># Cấm tuyệt đối cache HTML &amp; đường dẫn ảo SPA:</span>
+location / {
+  try_files $uri /index.html;
+  add_header Cache-Control
+    <span class="str">"no-store, no-cache, must-revalidate"</span> always;
+}
+<span class="cm"># Cho phép cache vĩnh viễn file tĩnh có hash:</span>
+location ~* .(js|css|woff2|png|svg)$ {
+  add_header Cache-Control
+    <span class="str">"public, max-age=31536000, immutable"</span> always;
+}</code></pre></div>
     </div>
   </div>
 
-  <div class="col">
-    <div class="ex">
-      <div class="ex-title">Kịch bản GitHub Actions hoàn chỉnh cho Angular (.github/workflows/ci-cd.yml)</div>
-      <pre><code><span class="kw">name</span>: Frontend CI/CD Pipeline
-
-<span class="kw">on</span>:
-  <span class="kw">pull_request</span>:
-    <span class="kw">branches</span>: [ main, develop ]
-  <span class="kw">push</span>:
-    <span class="kw">branches</span>: [ main ]
-
-<span class="kw">jobs</span>:
-  <span class="cm"># Giai đoạn 1: Kiểm tra chất lượng mã nguồn</span>
-  <span class="kw">quality-check</span>:
-    <span class="kw">runs-on</span>: ubuntu-latest
-    <span class="kw">steps</span>:
-      - <span class="kw">name</span>: Tải mã nguồn về runner
-        <span class="kw">uses</span>: actions/checkout@v4
-
-      - <span class="kw">name</span>: Thiết lập Node.js và khôi phục cache thư viện
-        <span class="kw">uses</span>: actions/setup-node@v4
-        <span class="kw">with</span>:
-          <span class="kw">node-version</span>: 20
-          <span class="kw">cache</span>: <span class="str">'npm'</span>
-
-      - <span class="kw">name</span>: Cài đặt phụ thuộc chính xác
-        <span class="kw">run</span>: npm ci
-
-      - <span class="kw">name</span>: Kiểm tra chuẩn cú pháp (Lint)
-        <span class="kw">run</span>: npm run lint
-
-      - <span class="kw">name</span>: Kiểm tra tính đúng đắn của kiểu dữ liệu (Typecheck)
-        <span class="kw">run</span>: npx tsc --noEmit
-
-      - <span class="kw">name</span>: Chạy bài kiểm thử tự động với trình duyệt ẩn (Unit Test)
-        <span class="kw">run</span>: npm run test -- --watch=false --browsers=ChromeHeadless
-
-  <span class="cm"># Giai đoạn 2: Đóng gói bản phát hành (Chỉ chạy khi quality-check thành công)</span>
-  <span class="kw">build-production</span>:
-    <span class="kw">needs</span>: quality-check
-    <span class="kw">runs-on</span>: ubuntu-latest
-    <span class="kw">steps</span>:
-      - <span class="kw">uses</span>: actions/checkout@v4
-      - <span class="kw">uses</span>: actions/setup-node@v4
-        <span class="kw">with</span>:
-          <span class="kw">node-version</span>: 20
-          <span class="kw">cache</span>: <span class="str">'npm'</span>
-      - <span class="kw">run</span>: npm ci
-
-      - <span class="kw">name</span>: Biên dịch và đóng gói cho môi trường thật
-        <span class="kw">run</span>: npm run build -- --configuration=production
-
-      - <span class="kw">name</span>: Lưu trữ thành phẩm build làm artifact
-        <span class="kw">uses</span>: actions/upload-artifact@v4
-        <span class="kw">with</span>:
-          <span class="kw">name</span>: dist-production
-          <span class="kw">path</span>: dist/
-
-  <span class="cm"># Giai đoạn 3: Xuất xưởng lên CDN (Chỉ kích hoạt khi merge vào nhánh main)</span>
-  <span class="kw">deploy-to-cdn</span>:
-    <span class="kw">needs</span>: build-production
-    <span class="kw">if</span>: github.ref == <span class="str">'refs/heads/main'</span> &amp;&amp; github.event_name == <span class="str">'push'</span>
-    <span class="kw">runs-on</span>: ubuntu-latest
-    <span class="kw">steps</span>:
-      - <span class="kw">name</span>: Tải thành phẩm đã đóng gói từ bước trước
-        <span class="kw">uses</span>: actions/download-artifact@v4
-        <span class="kw">with</span>:
-          <span class="kw">name</span>: dist-production
-          <span class="kw">path</span>: dist/
-
-      - <span class="kw">name</span>: Đẩy tệp lên CDN / Dịch vụ đám mây an toàn
-        <span class="kw">run</span>: |
-          <span class="cm"># Ví dụ lệnh đồng bộ lên kho lưu trữ đám mây hoặc Cloudflare Pages</span>
-          echo <span class="str">"Đang tải các tệp tĩnh lên máy chủ phân phối toàn cầu..."</span>
-          <span class="cm"># aws s3 sync dist/ s3://my-angular-app --delete</span>
-          <span class="cm"># aws cloudfront create-invalidation --distribution-id $CF_ID --paths "/*"</span></code></pre>
-    </div>
-
-    <div class="callout good">
-      <p><strong>3 Quy tắc vàng để giữ Pipeline chạy dưới 3 phút của Senior:</strong></p>
-      <ul>
-        <li><strong>Nguyên tắc Thất bại tức thì (<span class="gl" data-gl="dừng ngay lập tức khi phát hiện lỗi ở bước nhẹ nhất" tabindex="0">Fail Fast</span>):</strong> Sắp xếp các tác vụ theo thứ tự thời gian tăng dần: <em>Lint (10s) $\rightarrow$ Typecheck (15s) $\rightarrow$ Unit Test (45s) $\rightarrow$ Production Build (60s)</em>. Không ai muốn đợi 5 phút đóng gói xong mới phát hiện một dấu chấm phẩy bị sai!</li>
-        <li><strong>Nguyên tắc Đóng gói một lần duy nhất (<span class="gl" data-gl="chỉ biên dịch một lần và phân phối gói đó qua các môi trường" tabindex="0">Build Once, Deploy Anywhere</span>):</strong> Tuyệt đối không chạy lệnh <code>npm run build</code> hai lần riêng biệt cho môi trường thử nghiệm (<span class="gl" data-gl="môi trường kiểm thử tiền phát hành" tabindex="0">staging</span>) và môi trường thật (<span class="gl" data-gl="môi trường sản xuất thực tế" tabindex="0">production</span>). Hãy đóng gói một tệp thành phẩm (<span class="gl" data-gl="gói thành phẩm sau biên dịch" tabindex="0">artifact</span>) duy nhất và truyền nạp các thông số biến môi trường linh hoạt tại thời điểm thực thi.</li>
-        <li><strong>Sử dụng lệnh cài đặt khóa chặt (<code>npm ci</code> thay vì <code>npm install</code>):</strong> Lệnh <code>npm ci</code> xoá sạch thư mục <code>node_modules</code> cũ và cài đặt tuyệt đối chính xác theo tệp <code>package-lock.json</code>, nhanh hơn gấp đôi và triệt tiêu hoàn toàn nguy cơ vô tình cập nhật thư viện ngoài ý muốn.</li>
-      </ul>
-    </div>
+  <div class="callout good col">
+    <p><strong>Bản kiểm tra an toàn (Checklist) trước khi xuất xưởng của một Senior:</strong></p>
+    <ul style="margin:8px 0 0;padding-left:20px;line-height:1.65">
+      <li><strong>Luôn cam kết Lockfile vào Git:</strong> Bắt buộc đưa <code>pnpm-lock.yaml</code> vào quản lý phiên bản và dùng <code>pnpm install --frozen-lockfile</code> trên CI để đảm bảo 100% gói thư viện giữa máy lập trình viên và máy chủ sản xuất đồng nhất từng byte.</li>
+      <li><strong>Chạy Nginx với User Non-root &amp; Chmod chặt:</strong> Luôn tạo group và user riêng (như UID 1001), phân quyền <code>555</code> cho file tĩnh, <code>444</code> cho file config và gán quyền sở hữu cache/log cho user thường.</li>
+      <li><strong>Cấu hình CORS nghiêm ngặt cho Micro-frontend:</strong> Nếu dự án chia nhỏ theo kiến trúc Native Federation, các file <code>remoteEntry.json</code> phải được cấp quyền CORS chính xác và tuyệt đối không được phép cache lâu.</li>
+    </ul>
   </div>
 </section>
 
 <section>
-  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Góc nhìn kiến trúc sư của Senior</h2></div>
-
+  <div class="sec-head col"><p class="eyebrow">Nói trong phỏng vấn</p><h2>Góc nhìn Senior: Bản lĩnh làm chủ hạ tầng xuất xưởng</h2></div>
   <div class="board col">
-    <div class="board-col">
-      <h3>Trả lời 30 giây gãy gọn</h3>
-      <p><em>"CI/CD là hệ thống tự động hoá biến mã nguồn từ bản commit thành tính năng chạy an toàn trên môi trường thực tế. <strong>CI</strong> là người gác cổng chất lượng—chạy phân tích tĩnh, kiểm tra kiểu dữ liệu, thực thi kiểm thử đơn vị và canh giữ ngân sách kích thước bundle để ngăn ngừa lỗi hồi quy (<span class="gl" data-gl="lỗi cũ xuất hiện trở lại sau khi sửa đổi mã nguồn" tabindex="0">regression bug</span>). <strong>CD</strong> chịu trách nhiệm đóng gói một artifact duy nhất và phân phối lên mạng CDN toàn cầu với chiến lược bộ nhớ đệm kép (HTML không lưu đệm, tài sản tĩnh có mã băm lưu 1 năm), cấu hình định tuyến SPA fallback để tránh lỗi 404 khi tải lại trang, bảo đảm khả năng xuất xưởng nhiều lần trong ngày mà không gây gián đoạn dịch vụ."</em></p>
-    </div>
+    <p><strong>Trả lời 30 giây:</strong> "Trong dự án Angular hiện đại, em thiết kế quy trình xuất xưởng theo triết lý GitOps với ranh giới phân định rõ ràng giữa CI và CD. Ở máy local, Husky kết hợp Biome kiểm duyệt cú pháp và chuẩn hóa commit message theo format [ADD]/[REFACTOR] ngay khi gõ phím. Trên CI Runner, pipeline kích hoạt Docker Multi-stage từ Private Registry: biên dịch mã Angular Native Federation trên môi trường Node.js 22 Alpine có cài sẵn compiler C++ phục vụ các thư viện xử lý tài liệu, rồi chỉ chép các tệp thành phẩm tĩnh sang image Nginx Alpine siêu nhẹ 28MB với quyền hạn nghiêm ngặt (chmod 555/444) chạy dưới user non-root UID 1001 để triệt tiêu bề mặt tấn công. Về khâu CD, em áp dụng mô hình Pull-based thông qua ArgoCD: CI chỉ cập nhật tag phiên bản vào Git repository hạ tầng, ArgoCD trong cụm Kubernetes sẽ tự động phát hiện lệch trạng thái để thực hiện rolling update không gián đoạn dịch vụ, loại bỏ hoàn toàn nguy cơ rò rỉ credential máy chủ ra ngoài CI runner."</p>
   </div>
 
-  <div class="cards col">
+  <div class="cards">
     <div class="card">
       <div class="card-num">01</div>
-      <div class="card-title">Lỗi 404 khi người dùng F5 hoặc nhập link trực tiếp: Xử lý thế nào trong CD?</div>
-      <p><strong>Tình huống:</strong> Người dùng truy cập trang chủ rồi click vào sản phẩm thì hoạt động bình thường. Nhưng khi họ ấn F5 tải lại trang hoặc gõ trực tiếp đường dẫn <code>/products/123</code> vào thanh địa chỉ thì gặp lỗi 404 Not Found.</p>
-      <p><strong>Câu trả lời ăn điểm:</strong> Bản chất Angular là Single Page Application, các đường dẫn URL là do Angular Router điều hướng ảo ở phía trình duyệt chứ không có thư mục vật lý <code>products/123</code> trên máy chủ. Trong giai đoạn CD, lập trình viên phải cấu hình máy chủ web (như Nginx với cú pháp <code>try_files $uri $uri/ /index.html;</code> hoặc cấu hình Custom Error Document trên AWS S3 / Cloudflare) để chuyển hướng mọi yêu cầu không khớp tệp tĩnh quay về <code>index.html</code> với mã phản hồi HTTP 200, để bộ định tuyến Angular tiếp quản việc hiển thị.</p>
+      <div class="card-title">Tại sao nên chọn GitOps Pull-based thay vì để CI chạy SSH / kubectl apply?</div>
+      <p><strong>Senior trả lời:</strong> Có hai lý do mang tính sống còn:</p>
+      <ul>
+        <li><strong>Bảo mật (Zero Credential Leak):</strong> Push-based bắt buộc phải nạp khóa bí mật (kubeconfig / SSH key) vào CI runner. Nếu máy ảo runner bị tấn công, toàn bộ cụm máy chủ bị chiếm quyền. Với Pull-based, ArgoCD nằm bên trong tường lửa nội bộ của cluster và chủ động kéo về; không một thông tin nhạy cảm nào bị lộ ra môi trường CI bên ngoài.</li>
+        <li><strong>Chống trôi cấu hình (Configuration Drift):</strong> Nếu quản trị viên vào server vá lỗi bằng tay trực tiếp trên Pod, CI truyền thống hoàn toàn mù tịt. ArgoCD sẽ lập tức phát hiện trạng thái <code>OutOfSync</code> và tự động ghi đè về đúng trạng thái khai báo chuẩn trên Git (Git là nguồn chân lý duy nhất).</li>
+      </ul>
     </div>
 
     <div class="card">
       <div class="card-num">02</div>
-      <div class="card-title">Làm sao quản lý cấu hình API giữa Staging và Production mà không cần build lại?</div>
-      <p><strong>Cạm bẫy:</strong> Nhiều bạn dùng các tệp <code>environment.ts</code> và <code>environment.prod.ts</code> trong Angular để chứa đường dẫn API. Cách này buộc bạn phải chạy lại lệnh build riêng cho từng môi trường, vi phạm nguyên tắc vàng <em>"Build Once, Deploy Anywhere"</em> và có nguy cơ bản build trên Production chạy khác với bản đã kiểm thử trên Staging.</p>
-      <p><strong>Cách trả lời Senior:</strong> Áp dụng cơ chế nạp cấu hình thời gian chạy (<span class="gl" data-gl="tải cấu hình động khi ứng dụng vừa khởi động" tabindex="0">Runtime Configuration</span>). Ứng dụng chỉ được build duy nhất 1 lần. Khi khởi chạy, Angular sử dụng <code>APP_INITIALIZER</code> (hoặc <code>provideAppInitializer()</code>) để tải một tệp tĩnh <code>config.json</code> trước khi vẽ giao diện. Trong pipeline CD, khi triển khai vào môi trường nào, ta chỉ việc ghi đè nội dung tệp <code>config.json</code> của môi trường đó.</p>
+      <div class="card-title">Người dùng đang dùng dở web thì bạn deploy bản mới, làm sao tránh lỗi ChunkLoadError?</div>
+      <p><strong>Senior trả lời:</strong></p>
+      <ul>
+        <li>Lỗi văng ứng dụng xảy ra do trình duyệt cache tệp <code>index.html</code> cũ trỏ tới các file lazy chunk đã bị xóa khỏi máy chủ sau khi xuất xưởng bản mới.</li>
+        <li>Giải pháp cốt lõi nằm ở cấu hình máy chủ Nginx: Tệp <code>index.html</code> và các route ảo SPA phải luôn được gắn <code>Cache-Control: "no-store, no-cache, must-revalidate"</code> để trình duyệt luôn lấy HTML mới nhất khi tải trang.</li>
+        <li>Ngược lại, các file JS/CSS chứa mã băm nội dung (content hash) được phép cache tối đa 1 năm (<code>immutable</code>). Khi người dùng nhấn F5, họ lập tức nhận HTML mới trỏ tới các chunk mới mà không gặp bất kỳ xung đột nào.</li>
+      </ul>
     </div>
 
     <div class="card">
       <div class="card-num">03</div>
-      <div class="card-title">Pipeline CI chạy mất 15 phút gây nghẽn tiến độ của cả đội. Bạn sẽ tối ưu những gì?</div>
-      <p><strong>Các đòn bẩy tối ưu:</strong></p>
+      <div class="card-title">Tại sao Dockerfile phải chia 2 stage và phân quyền chmod 555 / 444?</div>
+      <p><strong>Senior trả lời:</strong></p>
       <ul>
-        <li>1. <strong>Đòn bẩy bộ nhớ đệm:</strong> Lưu bộ đệm thư mục tải về của npm/yarn thông qua mã băm của <code>package-lock.json</code> và lưu lại thư mục <code>.angular/cache</code>.</li>
-        <li>2. <strong>Chạy song song (<span class="gl" data-gl="thực thi đồng thời nhiều tác vụ độc lập" tabindex="0">Parallel Jobs</span>):</strong> Thay vì chạy tuần tự, chia thành các công việc độc lập chạy cùng lúc trên nhiều máy ảo: một máy chạy Lint, một máy chạy Test, một máy kiểm tra Typecheck.</li>
-        <li>3. <strong>Chỉ kiểm thử những gì thay đổi:</strong> Áp dụng công cụ quản lý kho mã nguồn tập trung (như Nx hoặc Turborepo) để sử dụng tính năng thực thi theo vùng ảnh hưởng (<span class="gl" data-gl="chỉ kiểm tra và đóng gói các dự án con bị tác động bởi commit" tabindex="0">affected commands</span>) — chỉ chạy test trên các tệp có thay đổi mã nguồn.</li>
+        <li><strong>Tối ưu kích thước &amp; Tốc độ:</strong> Image builder chứa toàn bộ Node.js, công cụ biên dịch C++, Python và <code>node_modules</code> nặng hơn 1.2GB. Tách sang Nginx Alpine giúp ảnh thành phẩm chỉ còn ~28MB, đẩy lên registry và kéo về K8s chỉ mất 1–2 giây.</li>
+        <li><strong>Thu hẹp diện tích tấn công (Attack Surface):</strong> Loại bỏ toàn bộ các công cụ và thư viện phát triển có thể chứa lỗ hổng bảo mật ra khỏi môi trường chạy thật.</li>
+        <li><strong>Nguyên tắc phòng thủ chiều sâu (Defense-in-Depth):</strong> Nginx mặc định chạy quyền <code>root</code>. Tạo user thường <code>webuser</code> (UID 1001) kết hợp khóa quyền file tĩnh <code>chmod 555</code> (chỉ đọc và chạy, cấm ghi/sửa) và <code>chmod 444</code> trên file config đảm bảo dù có lỗ hổng RCE, tin tặc cũng không thể cấy mã độc hay leo thang đặc quyền chiếm server.</li>
       </ul>
     </div>
 
     <div class="card">
       <div class="card-num">04</div>
-      <div class="card-title">Thế nào là Flaky Test trong CI và chiến lược xử lý triệt để?</div>
-      <p><strong>Bản chất:</strong> <span class="gl" data-gl="bài kiểm thử lúc vượt qua lúc thất bại ngẫu nhiên" tabindex="0">Flaky test</span> là bài kiểm thử có kết quả chập chờn: không sửa một dòng code nào nhưng lúc thì xanh lá, lúc thì đỏ quạch. Nguyên nhân chủ yếu do các tác vụ bất đồng bộ dùng <code>setTimeout</code> cố định không đoán trước được thời gian chạy của máy ảo CI, hoặc các bài test vô tình chia sẻ trạng thái dùng chung (<span class="gl" data-gl="trạng thái toàn cục bị thay đổi giữa các bài test" tabindex="0">shared state</span>).</p>
-      <p><strong>Chiến lược xử lý:</strong></p>
+      <div class="card-title">Trong Micro-Frontend Native Federation, bẫy nguy hiểm nhất khi build và đóng gói là gì?</div>
+      <p><strong>Senior trả lời:</strong></p>
       <ul>
-        <li>Không bao giờ dùng thời gian chờ cố định; luôn sử dụng các hàm đồng bộ hoá của framework kiểm thử (như <code>fakeAsync</code>, <code>tick()</code> hoặc <code>waitForAsync</code> trong Angular).</li>
-        <li>Bắt buộc mỗi ca kiểm thử phải làm sạch dữ liệu trong hàm <code>afterEach()</code> để tránh làm ô nhiễm ca kiểm thử tiếp theo.</li>
-        <li>Đưa các bài test chập chờn vào khu vực cách ly (<span class="gl" data-gl="tạm thời không chặn đường ống nhưng gửi cảnh báo" tabindex="0">quarantine</span>) để đội ngũ chuyên trách sửa đổi ngay lập tức, không để làm tê liệt cả đội phát triển.</li>
+        <li>Bẫy nhân bản thực thể Class (Duplicate Class Identity): Mặc định Native Federation sẽ tự động biến các barrel path alias (như <code>@components/*</code>) thành các shared package độc lập. Khi các module con nạp nhau, cùng một Service token sẽ bị khởi tạo thành hai class khác nhau ở hai vùng nhớ &rarr; sinh ra lỗi runtime <code>NG0201: No provider found</code>.</li>
+        <li><strong>Giải pháp xử lý:</strong> Khai báo <code>sharedMappings: []</code> trong <code>federation.config.js</code> để ép bundler gộp chung mã nội bộ vào chunk tiêu thụ, chỉ giữ lại một identity duy nhất cho mỗi class. Đồng thời trên Nginx, các file <code>remoteEntry.json</code> phải được cấu hình mở CORS và tuyệt đối không được phép cache lâu.</li>
       </ul>
     </div>
   </div>
 
   <div class="callout bad col">
-    <p><strong>Sai lầm non nớt kinh điển:</strong> Xem CI/CD là công việc của riêng kỹ sư vận hành hệ thống (<span class="gl" data-gl="Development and Operations — kỹ sư vận hành hạ tầng" tabindex="0">DevOps</span>) và nghĩ rằng lập trình viên giao diện chỉ cần <em>"viết mã chạy được trên máy cá nhân"</em>. Một lập trình viên Senior bắt buộc phải làm chủ toàn bộ vòng đời ứng dụng từ lúc gõ phím đến khi tệp mã nguồn nằm trên máy chủ phân phối toàn cầu, nắm rõ chiến lược lưu bộ nhớ đệm và cơ chế định tuyến để chủ động ngăn ngừa 90% sự cố sập trang web ngoài đời thực.</p>
+    <p><strong>Sai lầm non nớt kinh điển:</strong> Xem CI/CD là việc của riêng kỹ sư DevOps và cho rằng lập trình viên Frontend chỉ cần <em>"chạy được trên máy cá nhân là xong việc"</em>. Một kỹ sư Frontend Senior phải làm chủ toàn bộ hành trình đưa mã nguồn từ bàn phím ra thế giới: hiểu rõ cơ chế cache của trình duyệt, kiểm soát dung lượng bundle budget, cấu hình máy chủ web chống lỗi nạp mảnh và phối hợp nhịp nhàng với hệ thống điều phối container.</p>
   </div>
 </section>
 
 <section class="col">
   <div class="sec-head"><p class="eyebrow">Từ điển</p><h2>Thuật ngữ chuyên ngành cần nhớ</h2></div>
-  <table class="dict">
-    <thead>
-      <tr>
-        <th scope="col">Thuật ngữ</th>
-        <th scope="col">Giải thích tiếng Việt trực diện</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>CI (Continuous Integration)</strong></td>
-        <td>Tích hợp liên tục — quy trình tự động kiểm tra, phân tích và chạy kiểm thử mã nguồn mỗi khi có thay đổi.</td>
-      </tr>
-      <tr>
-        <td><strong>CD (Continuous Delivery)</strong></td>
-        <td>Phân phối liên tục — tự động đóng gói ứng dụng sẵn sàng xuất xưởng nhưng có chốt duyệt của con người trước khi phát hành.</td>
-      </tr>
-      <tr>
-        <td><strong>CD (Continuous Deployment)</strong></td>
-        <td>Triển khai liên tục — tự động đưa mã nguồn thẳng lên môi trường người dùng thật ngay khi vượt qua bài kiểm tra.</td>
-      </tr>
-      <tr>
-        <td><strong>Pipeline</strong></td>
-        <td>Đường ống tự động hoá — chuỗi các công việc (Jobs) được thực hiện tuần tự hoặc song song trên máy chủ ảo.</td>
-      </tr>
-      <tr>
-        <td><strong>Runner / Agent</strong></td>
-        <td>Máy chủ ảo hoặc thùng chứa (container) do hệ thống khởi tạo để thực thi các dòng lệnh trong pipeline.</td>
-      </tr>
-      <tr>
-        <td><strong>Pull Request (PR)</strong></td>
-        <td>Yêu cầu gộp nhánh mã nguồn cá nhân vào nhánh chung của dự án để các thành viên khác thẩm định.</td>
-      </tr>
-      <tr>
-        <td><strong>Linter</strong></td>
-        <td>Công cụ quét tĩnh tự động bắt lỗi cú pháp, vi phạm quy tắc định dạng và các cạm bẫy viết mã không an toàn.</td>
-      </tr>
-      <tr>
-        <td><strong>Typecheck</strong></td>
-        <td>Quá trình kiểm tra tính hợp lệ và sự tương thích của toàn bộ kiểu dữ liệu tĩnh trong dự án TypeScript.</td>
-      </tr>
-      <tr>
-        <td><strong>Headless Browser</strong></td>
-        <td>Trình duyệt web chạy ẩn trong bộ nhớ, không có giao diện đồ hoạ người dùng, chuyên dùng để chạy kiểm thử tự động.</td>
-      </tr>
-      <tr>
-        <td><strong>Flaky Test</strong></td>
-        <td>Bài kiểm thử chập chờn — có kết quả lúc thành công lúc thất bại một cách ngẫu nhiên dù mã nguồn không thay đổi.</td>
-      </tr>
-      <tr>
-        <td><strong>Artifact</strong></td>
-        <td>Gói thành phẩm tĩnh sinh ra sau khi đóng gói (như thư mục <code>dist/</code>) được lưu lại để chuyển giao cho các bước sau.</td>
-      </tr>
-      <tr>
-        <td><strong>CDN (Content Delivery Network)</strong></td>
-        <td>Mạng lưới máy chủ phân tán toàn cầu giúp đưa tệp tĩnh đến vị trí địa lý gần nhất với người dùng để tải trang nhanh nhất.</td>
-      </tr>
-      <tr>
-        <td><strong>Cache Invalidation (Purge)</strong></td>
-        <td>Lệnh yêu cầu máy chủ phân phối xoá bỏ bản sao lưu cũ để lập tức nạp bản mới vừa xuất xưởng.</td>
-      </tr>
-      <tr>
-        <td><strong>SPA Fallback (Rewrite)</strong></td>
-        <td>Cơ chế máy chủ tự động chuyển hướng mọi đường dẫn ảo về tệp <code>index.html</code> để bộ định tuyến phía máy khách tiếp quản.</td>
-      </tr>
-      <tr>
-        <td><strong>Zero-downtime Deployment</strong></td>
-        <td>Phương thức triển khai phiên bản mới mà không làm gián đoạn hay sập trang của người dùng đang sử dụng hệ thống dù chỉ 1 giây.</td>
-      </tr>
-      <tr>
-        <td><strong>Rollback</strong></td>
-        <td>Hành động khôi phục ứng dụng quay trở lại phiên bản ổn định trước đó khi phiên bản vừa xuất xưởng gặp lỗi nghiêm trọng.</td>
-      </tr>
-      <tr>
-        <td><strong>Secrets Manager</strong></td>
-        <td>Hệ thống lưu trữ mã khoá bí mật an toàn, ngăn không cho lộ thông tin nhạy cảm vào mã nguồn hay màn hình nhật ký.</td>
-      </tr>
-      <tr>
-        <td><strong>Bundle Budgets</strong></td>
-        <td>Hạn mức dung lượng tối đa cho phép của tệp mã nguồn; nếu vượt quá ngưỡng, tiến trình đóng gói sẽ báo lỗi và dừng lại.</td>
-      </tr>
-      <tr>
-        <td><strong>Shift-Left Testing</strong></td>
-        <td>Chiến lược dời các bước kiểm tra chất lượng về sớm nhất có thể trong chu kỳ phát triển để phát hiện lỗi tức thì.</td>
-      </tr>
-      <tr>
-        <td><strong>Fail Fast</strong></td>
-        <td>Nguyên tắc cho các tác vụ tốn ít thời gian chạy trước để báo lỗi ngay lập tức nếu có sự cố, tiết kiệm thời gian chờ đợi.</td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="tbl-scroll">
+    <table class="dict">
+      <thead>
+        <tr>
+          <th scope="col">Thuật ngữ</th>
+          <th scope="col">Giải thích tiếng Việt trực diện</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>CI (Continuous Integration)</strong></td>
+          <td>Tích hợp liên tục — quy trình tự động kiểm tra cú pháp, rà soát lỗ hổng và chạy kiểm thử mỗi khi có thay đổi mã nguồn.</td>
+        </tr>
+        <tr>
+          <td><strong>CD (Continuous Delivery / Deployment)</strong></td>
+          <td>Phân phối / Triển khai liên tục — tự động đóng gói ứng dụng và phát hành phiên bản mới tới tay người dùng một cách an toàn.</td>
+        </tr>
+        <tr>
+          <td><strong>GitOps</strong></td>
+          <td>Triết lý vận hành hạ tầng lấy kho Git làm nguồn chân lý duy nhất (Single Source of Truth). Mọi thay đổi trên máy chủ đều bắt nguồn từ một commit.</td>
+        </tr>
+        <tr>
+          <td><strong>ArgoCD</strong></td>
+          <td>Công cụ triển khai GitOps chuyên dụng cho Kubernetes, tự động đồng bộ trạng thái thực tế của cụm Pods với khai báo trên Git.</td>
+        </tr>
+        <tr>
+          <td><strong>Private Registry</strong></td>
+          <td>Máy chủ lưu trữ ảnh container nội bộ của doanh nghiệp, giúp kiểm soát an toàn thông tin, quét lỗ hổng CVE và tránh bị giới hạn tải từ Docker Hub.</td>
+        </tr>
+        <tr>
+          <td><strong>Native C++ Bindings</strong></td>
+          <td>Các module Node.js chứa mã nguồn C/C++ cần được biên dịch bằng gcc/make lúc cài đặt (thường thấy ở các gói xử lý đồ họa, PDF, canvas).</td>
+        </tr>
+        <tr>
+          <td><strong>Docker Layer Cache</strong></td>
+          <td>Cơ chế lưu đệm từng bước lệnh trong Dockerfile; nếu các file đầu vào không đổi, Docker sẽ dùng lại kết quả cũ thay vì chạy lại từ đầu.</td>
+        </tr>
+        <tr>
+          <td><strong>Native Federation</strong></td>
+          <td>Kiến trúc Micro-Frontend hiện đại dựa trên chuẩn web standards (ES Modules, import maps) cho phép tải động các module từ xa lúc ứng dụng chạy thật.</td>
+        </tr>
+        <tr>
+          <td><strong>Pull-based vs Push-based</strong></td>
+          <td>Pull-based: Hệ thống máy chủ bên trong chủ động kéo bản cập nhật về. Push-based: Máy ảo bên ngoài nắm quyền điều khiển và đẩy vào máy chủ.</td>
+        </tr>
+        <tr>
+          <td><strong>Multi-stage Build</strong></td>
+          <td>Kỹ thuật đóng gói Docker nhiều giai đoạn: dùng môi trường nặng để biên dịch rồi chỉ sao chép thành phẩm sang môi trường siêu nhẹ để chạy.</td>
+        </tr>
+        <tr>
+          <td><strong>Non-root Container</strong></td>
+          <td>Thùng chứa chạy dưới quyền một người dùng thông thường không có đặc quyền root, ngăn ngừa nguy cơ bị chiếm quyền điều khiển máy chủ.</td>
+        </tr>
+        <tr>
+          <td><strong>ChunkLoadError</strong></td>
+          <td>Sự cố ứng dụng SPA bị sập trắng xóa khi người dùng bấm chuyển trang do trình duyệt đòi tải tệp chunk cũ đã bị xóa sau lần deploy mới.</td>
+        </tr>
+        <tr>
+          <td><strong>Cache Busting</strong></td>
+          <td>Kỹ thuật gắn mã băm nội dung (content hash) vào tên tệp mã nguồn để ép trình duyệt tải tệp mới khi mã thay đổi, đồng thời cho phép cache vĩnh viễn các tệp không đổi.</td>
+        </tr>
+        <tr>
+          <td><strong>SPA Fallback</strong></td>
+          <td>Cơ chế máy chủ tự động chuyển hướng mọi đường dẫn ảo về tệp <code>index.html</code> để bộ định tuyến phía trình duyệt tiếp quan việc hiển thị.</td>
+        </tr>
+        <tr>
+          <td><strong>Configuration Drift</strong></td>
+          <td>Hiện tượng cấu hình máy chủ thực tế bị sai lệch so với mã nguồn do việc can thiệp chỉnh sửa thủ công bằng tay.</td>
+        </tr>
+        <tr>
+          <td><strong>Flaky Test</strong></td>
+          <td>Bài kiểm thử chập chờn — có kết quả lúc thành công lúc thất bại ngẫu nhiên dù mã nguồn không hề thay đổi.</td>
+        </tr>
+        <tr>
+          <td><strong>Zero-downtime Deployment</strong></td>
+          <td>Phương thức phát hành phiên bản mới mà không làm gián đoạn hay ngắt quãng trải nghiệm của người dùng dù chỉ một giây.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </section>
